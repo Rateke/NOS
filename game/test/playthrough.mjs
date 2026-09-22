@@ -87,6 +87,22 @@ await page.waitForTimeout(1200)
 await clearDialogue()
 console.log('\nverificações:')
 {
+  // Regressão: o canvas já ficou travado em 300x150 (o tamanho intrínseco de
+  // um canvas sem dimensão), com o jogo inteiro num quadradinho no canto.
+  const fit = await page.evaluate(() => {
+    const c = document.getElementById('game')
+    const b = c.getBoundingClientRect()
+    return {
+      preencheLargura: Math.abs(b.width - innerWidth) <= 2,
+      preencheAltura: Math.abs(b.height - innerHeight) <= 2,
+      tamanho: `${Math.round(b.width)}x${Math.round(b.height)}`,
+    }
+  })
+  expect('canvas preenche a largura', fit.preencheLargura, true)
+  expect('canvas preenche a altura', fit.preencheAltura, true)
+  if (!fit.preencheLargura || !fit.preencheAltura) console.log(`     (mediu ${fit.tamanho})`)
+}
+{
   const s0 = await st()
   expect('nove tarefas no início', s0.left, 9)
   expect('diário ainda não lido', s0.diaryRead, false)

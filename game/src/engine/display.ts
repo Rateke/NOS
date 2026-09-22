@@ -19,6 +19,8 @@ export class Display {
   private worldCanvas: HTMLCanvasElement
   private grainCanvas: HTMLCanvasElement
   private grainSeed = 0
+  /** Caixa que define o tamanho útil. Ver nota em `resize`. */
+  private host: HTMLElement
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -37,22 +39,70 @@ export class Display {
     this.grainCanvas.width = WORLD_W
     this.grainCanvas.height = WORLD_H
 
+    this.host = this.buildHost()
+
     this.resize()
     window.addEventListener('resize', () => this.resize())
     window.addEventListener('orientationchange', () => this.resize())
+    // O CSS pode aplicar depois deste construtor (no build de arquivo único o
+    // estilo é injetado por script), e o teclado virtual do celular muda a
+    // altura sem disparar 'resize'. O observador cobre os dois casos.
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => this.resize()).observe(this.host)
+    }
+  }
+
+  /**
+   * Envolve o canvas numa div que ocupa a tela.
+   *
+   * O canvas não pode se dimensionar sozinho: é um elemento substituído, então
+   * `inset: 0` não o estica — ele fica nos 300x150 intrínsecos. Quem estica é
+   * a div (elemento normal), e o canvas é dimensionado a partir dela. Medir o
+   * próprio canvas para depois escrever seu tamanho seria circular, e foi
+   * exatamente o que já travou o jogo num quadrado de 300x150.
+   *
+   * Tudo em estilo inline, de propósito: assim o jogo funciona mesmo que a
+   * folha de estilo não carregue.
+   */
+  private buildHost(): HTMLElement {
+    const host = document.createElement('div')
+    host.setAttribute('data-nos', 'viewport')
+    const h = host.style
+    h.position = 'fixed'
+    h.left = '0'
+    h.right = '0'
+    h.top = '0'
+    h.bottom = '0'
+    // Refina com as áreas seguras do aparelho; se o navegador não conhecer
+    // env(), a declaração é ignorada e os zeros acima continuam valendo.
+    h.top = 'env(safe-area-inset-top, 0px)'
+    h.bottom = 'env(safe-area-inset-bottom, 0px)'
+    h.overflow = 'hidden'
+    h.background = '#000'
+
+    const c = this.canvas.style
+    c.display = 'block'
+    c.imageRendering = 'pixelated'
+    c.touchAction = 'none'
+
+    this.canvas.parentNode?.insertBefore(host, this.canvas)
+    host.appendChild(this.canvas)
+    return host
   }
 
   resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    // Mede o próprio canvas, não a janela: assim o jogo respeita as áreas
-    // seguras do aparelho (notch, barra inferior) em vez de passar por baixo.
-    const rect = this.canvas.getBoundingClientRect()
-    this.cssW = Math.max(1, Math.round(rect.width))
-    this.cssH = Math.max(1, Math.round(rect.height))
-    this.canvas.width = Math.floor(this.cssW * dpr)
-    this.canvas.height = Math.floor(this.cssH * dpr)
+    // Mede a div, nunca o canvas: medir o canvas para depois definir seu
+    // tamanho é circular e o trava na primeira leitura.
+    const rect = this.host.getBoundingClientRect()
+    const usable = rect.width >= 2 && rect.height >= 2
+    this.cssW = Math.max(1, Math.round(usable ? rect.width : window.innerWidth))
+    this.cssH = Math.max(1, Math.round(usable ? rect.height : window.innerHeight))
+
     this.canvas.style.width = `${this.cssW}px`
     this.canvas.style.height = `${this.cssH}px`
+    this.canvas.width = Math.round(this.cssW * dpr)
+    this.canvas.height = Math.round(this.cssH * dpr)
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     // Escala inteira sempre que couber; abaixo disso, aceita fracionária para

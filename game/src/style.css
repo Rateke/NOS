@@ -14,16 +14,12 @@ body {
   color: #868ea2;
 }
 
+/* A geometria do #game é definida por src/engine/display.ts, em estilo
+   inline, para o jogo não depender desta folha ter carregado. Aqui fica só
+   o que é cosmético. */
 #game {
-  display: block;
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: env(safe-area-inset-top, 0px);
-  bottom: env(safe-area-inset-bottom, 0px);
-  image-rendering: pixelated;
   cursor: none;
-  touch-action: none;
+  background: #000;
 }
 
 #loading {
