@@ -38,9 +38,17 @@ de cada momento.
 
 ### Publicar na internet
 
-`dist/nos.html` é autossuficiente: sobe em qualquer lugar que sirva um arquivo.
-Arrastar a pasta `dist/` para o [Netlify Drop](https://app.netlify.com/drop),
-ou ligar o GitHub Pages apontando para ela, já resolve.
+**GitHub Pages** já está configurado. Basta ligar uma vez, no GitHub:
+
+> **Settings → Pages → Build and deployment → Source: "GitHub Actions"**
+
+Não precisa escolher branch nem pasta. A partir daí, todo push constrói e
+publica sozinho em `https://<usuário>.github.io/NOS/` — o workflow está em
+`.github/workflows/pages.yml`.
+
+**Sem GitHub:** `dist/nos.html` é autossuficiente e sobe em qualquer lugar que
+sirva um arquivo. Arrastar a pasta `dist/` para o
+[Netlify Drop](https://app.netlify.com/drop) publica na hora.
 
 ## O que já está jogável
 
