@@ -33,4 +33,4 @@ que o amou para reconhecer que não deseja aquela relação em sua vida.
 
 ---
 
-Anterior: [Quatro finais](13-finais.md) · [Índice](../README.md) · Próximo: [Apêndice: personagens](apendice-personagens.md)
+Anterior: [Quatro finais](13-finais.md) · [Índice](../README.md) · Próximo: [Personagens, relações e arcos](personagens/README.md)

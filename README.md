@@ -31,7 +31,20 @@ de capítulos, a noite do incêndio, os quatro finais e o epílogo.
 | 12 | [A última casa](docs/12-a-ultima-casa.md) | A família perfeita e a porta aberta |
 | 13 | [Quatro finais](docs/13-finais.md) | A Casa Certa, O Novo Nó, Sem Nós, Fios Vivos |
 | 14 | [Epílogo de Fios Vivos](docs/14-epilogo-fios-vivos.md) | Hospital, manhã |
-| — | [Apêndice: personagens](docs/apendice-personagens.md) | Referência rápida, derivada do roteiro |
+| — | [**Personagens, relações e arcos**](docs/personagens/README.md) | Bíblia de personagens: princípio dramático, 12 fichas e relações centrais |
+| — | [**Tratamento em prosa**](docs/tratamento-em-prosa.md) | A obra inteira em prosa corrida, para leitura de uma sentada |
+
+## Os três documentos
+
+A obra é descrita por três materiais complementares, que contam a mesma história
+em formatos diferentes:
+
+- **Roteiro** (`docs/01`–`14`) — estrutura de produção: objetivo de cada
+  capítulo, acontecimentos em lista, falas e blocos de crítica.
+- **Personagens** (`docs/personagens/`) — quem é cada pessoa, o que espera de
+  Liam, seus objetos, seu arco e a crítica que representa.
+- **Tratamento em prosa** (`docs/tratamento-em-prosa.md`) — a mesma história
+  contada de forma contínua, sem marcação de produção.
 
 ## Objetivo emocional
 
