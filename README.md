@@ -34,6 +34,16 @@ de capítulos, a noite do incêndio, os quatro finais e o epílogo.
 | — | [**Personagens, relações e arcos**](docs/personagens/README.md) | Bíblia de personagens: princípio dramático, 12 fichas e relações centrais |
 | — | [**Tratamento em prosa**](docs/tratamento-em-prosa.md) | A obra inteira em prosa corrida, para leitura de uma sentada |
 
+## O jogo
+
+A fatia vertical da abertura já é jogável: `game/` (TypeScript + Canvas).
+Tela preta e a VOZ, o quarto de Liam, o diário, arrumar o quarto e a porta que
+abre. Ver [game/README.md](game/README.md).
+
+```bash
+cd game && npm install && npm run dev
+```
+
 ## Os três documentos
 
 A obra é descrita por três materiais complementares, que contam a mesma história

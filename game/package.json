@@ -1,0 +1,19 @@
+{
+  "name": "nos-game",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "NÓS — narrativa de exploração psicológica",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "test": "node test/playthrough.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}
