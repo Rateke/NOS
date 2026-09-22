@@ -17,9 +17,13 @@ body {
 #game {
   display: block;
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: env(safe-area-inset-top, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
   image-rendering: pixelated;
   cursor: none;
+  touch-action: none;
 }
 
 #loading {

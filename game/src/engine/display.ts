@@ -39,12 +39,16 @@ export class Display {
 
     this.resize()
     window.addEventListener('resize', () => this.resize())
+    window.addEventListener('orientationchange', () => this.resize())
   }
 
   resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    this.cssW = window.innerWidth
-    this.cssH = window.innerHeight
+    // Mede o próprio canvas, não a janela: assim o jogo respeita as áreas
+    // seguras do aparelho (notch, barra inferior) em vez de passar por baixo.
+    const rect = this.canvas.getBoundingClientRect()
+    this.cssW = Math.max(1, Math.round(rect.width))
+    this.cssH = Math.max(1, Math.round(rect.height))
     this.canvas.width = Math.floor(this.cssW * dpr)
     this.canvas.height = Math.floor(this.cssH * dpr)
     this.canvas.style.width = `${this.cssW}px`

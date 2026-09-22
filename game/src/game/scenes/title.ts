@@ -43,12 +43,18 @@ export class TitleScene implements Scene {
     c.font = `${hintSize}px ${FONT_BODY}`
     c.globalAlpha = 0.35 + Math.sin(this.t * 2) * 0.25
     c.fillStyle = PAL.inkDim
-    c.fillText('pressione qualquer tecla', cssW / 2, cssH / 2 + titleSize * 0.9)
+    const start = ctx.input.touchMode || 'ontouchstart' in window
+      ? 'toque para começar'
+      : 'pressione qualquer tecla'
+    c.fillText(start, cssW / 2, cssH / 2 + titleSize * 0.9)
     c.globalAlpha = 1
 
     c.font = `${Math.max(10, hintSize * 0.8)}px ${FONT_BODY}`
     c.fillStyle = PAL.inkFaint
-    c.fillText('fatia vertical · abertura', cssW / 2, cssH - 28)
+    const how = ctx.input.touchMode || 'ontouchstart' in window
+      ? 'arraste à esquerda para andar · toque à direita para interagir'
+      : 'setas ou WASD para andar · E ou espaço para interagir'
+    c.fillText(how, cssW / 2, cssH - 28)
     c.restore()
   }
 }

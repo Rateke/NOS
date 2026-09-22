@@ -47,6 +47,7 @@ function step(dt: number): void {
 
   scene.update(dt, ctx)
   scene.render(ctx)
+  drawStick()
 
   if (fade > 0) {
     const c = display.ctx
@@ -69,6 +70,30 @@ if (new URLSearchParams(location.search).has('debug')) {
       },
     },
   })
+}
+
+/** Desenha o manche virtual enquanto o dedo está na tela. */
+function drawStick(): void {
+  const st = input.stick
+  if (!st) return
+  const c = display.ctx
+  const dx = st.x - st.ox
+  const dy = st.y - st.oy
+  const d = Math.hypot(dx, dy)
+  const clamp = Math.min(d, 46)
+  const nx = d > 0 ? st.ox + (dx / d) * clamp : st.ox
+  const ny = d > 0 ? st.oy + (dy / d) * clamp : st.oy
+  c.save()
+  c.strokeStyle = 'rgba(232,236,244,0.20)'
+  c.lineWidth = 2
+  c.beginPath()
+  c.arc(st.ox, st.oy, 46, 0, Math.PI * 2)
+  c.stroke()
+  c.fillStyle = 'rgba(217,178,95,0.38)'
+  c.beginPath()
+  c.arc(nx, ny, 17, 0, Math.PI * 2)
+  c.fill()
+  c.restore()
 }
 
 let last = performance.now()
