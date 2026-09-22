@@ -41,8 +41,11 @@ Tela preta e a VOZ, o quarto de Liam, o diário, arrumar o quarto e a porta que
 abre. Ver [game/README.md](game/README.md).
 
 ```bash
-cd game && npm install && npm run dev
+cd game && npm install && npm run build:single
 ```
+
+Isso gera `game/dist/nos.html`: um arquivo único que abre com duplo clique, sem
+servidor. Para editar o jogo, use `npm run dev`.
 
 ## Os três documentos
 

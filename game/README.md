@@ -5,19 +5,42 @@ arquivo de arte ou áudio: tudo é desenhado e sintetizado em código.
 
 ## Rodar
 
+### Só quero jogar
+
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run build:single
 ```
+
+Gera **`dist/nos.html`**: um arquivo único de ~30 kB. Dê duplo clique e o jogo
+abre no navegador — sem servidor, sem node rodando, sem internet (sem rede as
+fontes caem para as do sistema). Dá para mandar por e-mail ou levar num
+pendrive.
+
+### Quero mexer no jogo
 
 ```bash
-npm run build      # checagem de tipos + build de produção em dist/
-npm run preview    # serve o build em :4173
-npm test           # joga a fatia inteira num navegador real e confere o resultado
+npm install
+npm run dev        # http://localhost:5173, recarrega ao salvar
 ```
 
-O teste precisa do preview rodando. `OUT=<pasta> npm test` salva capturas de
-cada momento.
+### Outros comandos
+
+```bash
+npm run build      # checagem de tipos + build em dist/ (este precisa de servidor)
+npm run preview    # serve o build em :4173
+npm test           # joga a fatia inteira num navegador real e confere tudo
+```
+
+O teste aponta para `http://localhost:4173` por padrão: rode o `preview` antes,
+ou passe `URL=file:///caminho/para/dist/nos.html`. `OUT=<pasta>` salva capturas
+de cada momento.
+
+### Publicar na internet
+
+`dist/nos.html` é autossuficiente: sobe em qualquer lugar que sirva um arquivo.
+Arrastar a pasta `dist/` para o [Netlify Drop](https://app.netlify.com/drop),
+ou ligar o GitHub Pages apontando para ela, já resolve.
 
 ## O que já está jogável
 
