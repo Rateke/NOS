@@ -23,6 +23,7 @@ const STICK_MAX = 46
 
 export class Input {
   private down = new Set<string>()
+  private tapped = new Set<string>()
   private confirmQueued = false
   private anyQueued = false
 
@@ -36,6 +37,7 @@ export class Input {
       const ev = e as KeyboardEvent
       if (ev.repeat) return
       this.down.add(ev.code)
+      this.tapped.add(ev.code)
       this.anyQueued = true
       if (CONFIRM_KEYS.has(ev.code)) {
         this.confirmQueued = true
@@ -115,6 +117,23 @@ export class Input {
     if (x === 0 && y === 0) return null
     const len = Math.hypot(x, y)
     return { x: x / len, y: y / len }
+  }
+
+  /** Verdadeiro uma única vez por toque nesta tecla. */
+  consumeKey(code: string): boolean {
+    if (!this.tapped.has(code)) return false
+    this.tapped.delete(code)
+    return true
+  }
+
+  /** Segurando esta tecla agora? */
+  held(code: string): boolean {
+    return this.down.has(code)
+  }
+
+  /** Chamado ao fim de cada quadro, para toques não lidos não vazarem. */
+  endFrame(): void {
+    this.tapped.clear()
   }
 
   consumeConfirm(): boolean {

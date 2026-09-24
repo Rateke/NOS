@@ -50,6 +50,22 @@ publica sozinho em `https://<usuário>.github.io/NOS/` — o workflow está em
 sirva um arquivo. Arrastar a pasta `dist/` para o
 [Netlify Drop](https://app.netlify.com/drop) publica na hora.
 
+## Os dois modos
+
+O menu do título oferece dois recortes:
+
+**Demo — Só mais um** *(o recorte para mostrar a estranhos)*
+Prólogo quente: Adrian ensina música a Liam, e o jogador repete a frase.
+O afeto é verdadeiro — e é na mesma fala que a função é instalada
+(`Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`).
+Daí a câmara do Tear: seis fios, e o jogador **absorve cada um com as próprias
+mãos**. Cada fio acalma a discussão lá em cima e, ao mesmo tempo, racha a
+imagem, empilha uma dissonância no som e enfia em Liam uma lembrança que não é
+dele. Não existe tela de fracasso e ninguém manda parar — parar só faz Adrian
+apertar e a discussão subir. É a tese da obra na mão do jogador.
+
+**Abertura** — o quarto de Liam, o diário e a porta que nunca esteve trancada.
+
 ## O que já está jogável
 
 Tela preta e a VOZ → título → Liam acorda no quarto → encontra o diário →

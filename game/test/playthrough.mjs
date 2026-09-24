@@ -79,7 +79,9 @@ async function grab(name, tx, ty, face) {
   console.log(`  ${name.padEnd(12)} restam=${s.left}`)
 }
 
-// Entrar no jogo e pular a abertura
+// Menu do título: descer até "Abertura" e confirmar.
+await page.keyboard.press('ArrowDown')
+await page.waitForTimeout(300)
 await page.keyboard.press('Space')
 await page.waitForTimeout(600)
 for (let i = 0; i < 6; i++) { await page.keyboard.press('Space'); await page.waitForTimeout(450) }

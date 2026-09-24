@@ -15,14 +15,22 @@ export class Dialogue {
   private elapsed = 0
   private onDone: (() => void) | null = null
   private lastTypeSound = 0
+  /** Segundos de espera antes de avançar sozinho; 0 = espera o jogador. */
+  private auto = 0
+  private paradoDesde = 0
 
   get active(): boolean {
     return this.current !== null || this.queue.length > 0
   }
 
-  play(lines: Line[], onDone?: () => void): void {
+  /**
+   * `auto` faz as falas correrem sozinhas, sem toque. Usado nos clímaxes:
+   * tirar o controle da mão do jogador é parte da direção.
+   */
+  play(lines: Line[], onDone?: () => void, auto = 0): void {
     this.queue = [...lines]
     this.onDone = onDone ?? null
+    this.auto = auto
     this.advance()
   }
 
@@ -38,6 +46,7 @@ export class Dialogue {
     this.current = next
     this.revealed = 0
     this.elapsed = 0
+    this.paradoDesde = 0
   }
 
   /** Um toque completa a linha; o toque seguinte passa para a próxima. */
@@ -60,6 +69,11 @@ export class Dialogue {
         this.lastTypeSound += 1
         if (this.lastTypeSound % 2 === 0) audio.type()
       }
+      return
+    }
+    if (this.auto > 0) {
+      this.paradoDesde += dt
+      if (this.paradoDesde >= this.auto) this.advance()
     }
   }
 

@@ -111,6 +111,128 @@ export class Audio {
     this.ping(98, 0.34, 0.075, 'sine')
   }
 
+  // --- Camadas para a cena do Tear ---------------------------------------
+  //
+  // Cada fio absorvido acrescenta uma voz. Elas são levemente desafinadas
+  // entre si de propósito: quanto mais "paz" Liam produz lá em cima, mais
+  // dissonante fica aqui dentro.
+
+  private layers: { osc: OscillatorNode; gain: GainNode }[] = []
+
+  addLayer(freq: number, type: OscillatorType = 'sine', gain = 0.07): void {
+    if (!this.ctx || !this.master) return
+    const ctx = this.ctx
+    const osc = ctx.createOscillator()
+    osc.type = type
+    osc.frequency.value = freq
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0, ctx.currentTime)
+    g.gain.linearRampToValueAtTime(gain, ctx.currentTime + 1.2)
+    osc.connect(g).connect(this.master)
+    osc.start()
+    this.layers.push({ osc, gain: g })
+  }
+
+  /** Corte seco de tudo: o silêncio depois do fio central ser cortado. */
+  cutAll(seconds = 0.25): void {
+    if (!this.ctx) return
+    const t = this.ctx.currentTime
+    for (const l of this.layers) {
+      l.gain.gain.cancelScheduledValues(t)
+      l.gain.gain.setValueAtTime(l.gain.gain.value, t)
+      l.gain.gain.linearRampToValueAtTime(0, t + seconds)
+      l.osc.stop(t + seconds + 0.1)
+    }
+    this.layers = []
+    this.setAmbient(0, seconds)
+  }
+
+  /** Batida cardíaca: dois golpes graves. Acelera com a intensidade. */
+  heartbeat(volume = 0.16): void {
+    this.thud(70, volume)
+    window.setTimeout(() => this.thud(58, volume * 0.72), 145)
+  }
+
+  private thud(freq: number, vol: number): void {
+    if (!this.ctx || !this.master) return
+    const ctx = this.ctx
+    const t = ctx.currentTime
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(freq, t)
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + 0.16)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(vol, t + 0.012)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3)
+    osc.connect(g).connect(this.master)
+    osc.start(t)
+    osc.stop(t + 0.34)
+  }
+
+  /**
+   * Discussão abafada no andar de cima: ruído filtrado com a banda variando,
+   * que soa como voz sem nenhuma palavra sair inteira.
+   */
+  private argueGain: GainNode | null = null
+
+  startArgument(): void {
+    if (!this.ctx || !this.master || this.argueGain) return
+    const ctx = this.ctx
+    const len = ctx.sampleRate * 5
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.6
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.loop = true
+
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 380
+    bp.Q.value = 6
+    // A frequência oscila: dá o contorno de alguém falando através do assoalho.
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 2.7
+    const lfoGain = ctx.createGain()
+    lfoGain.gain.value = 190
+    lfo.connect(lfoGain).connect(bp.frequency)
+    lfo.start()
+
+    const g = ctx.createGain()
+    g.gain.value = 0
+    src.connect(bp).connect(g).connect(this.master)
+    src.start()
+    this.argueGain = g
+  }
+
+  setArgument(level: number, seconds = 1.5): void {
+    if (!this.ctx || !this.argueGain) return
+    const t = this.ctx.currentTime
+    this.argueGain.gain.cancelScheduledValues(t)
+    this.argueGain.gain.setValueAtTime(this.argueGain.gain.value, t)
+    this.argueGain.gain.linearRampToValueAtTime(level, t + seconds)
+  }
+
+  /** Nota do prólogo: Adrian ensinando. Quente, com corpo. */
+  note(freq: number, dur = 0.9, vol = 0.1): void {
+    if (!this.ctx || !this.master) return
+    const ctx = this.ctx
+    const t = ctx.currentTime
+    for (const [mult, amp] of [[1, 1], [2, 0.32], [3, 0.14]] as const) {
+      const osc = ctx.createOscillator()
+      osc.type = 'triangle'
+      osc.frequency.value = freq * mult
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0, t)
+      g.gain.linearRampToValueAtTime(vol * amp, t + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+      osc.connect(g).connect(this.master)
+      osc.start(t)
+      osc.stop(t + dur + 0.05)
+    }
+  }
+
   reveal(): void {
     this.ping(196, 1.5, 0.07, 'sine')
     window.setTimeout(() => this.ping(294, 1.8, 0.05, 'sine'), 180)

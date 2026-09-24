@@ -48,6 +48,7 @@ function step(dt: number): void {
   scene.update(dt, ctx)
   scene.render(ctx)
   drawStick()
+  input.endFrame()
 
   if (fade > 0) {
     const c = display.ctx

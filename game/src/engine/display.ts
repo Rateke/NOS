@@ -1,5 +1,17 @@
 import { WORLD_W, WORLD_H } from './constants'
 
+/** Deformações de tela. Todas em pixels de mundo; 0 desliga. */
+export interface Fx {
+  /** Separação de canais de cor, em pixels. */
+  rgbSplit: number
+  /** Amplitude da ondulação horizontal. */
+  wave: number
+  /** Tremor da câmera. */
+  shake: number
+  /** Relógio, para a ondulação andar. */
+  time?: number
+}
+
 /**
  * Duas camadas: o mundo é desenhado em 384x216 e escalado por um inteiro
  * (pixels nítidos, sem meio-pixel); a interface é desenhada por cima, em
@@ -17,6 +29,8 @@ export class Display {
   cssH = 0
 
   private worldCanvas: HTMLCanvasElement
+  private tintA: HTMLCanvasElement
+  private tintB: HTMLCanvasElement
   private grainCanvas: HTMLCanvasElement
   private grainSeed = 0
   /** Caixa que define o tamanho útil. Ver nota em `resize`. */
@@ -38,6 +52,15 @@ export class Display {
     this.grainCanvas = document.createElement('canvas')
     this.grainCanvas.width = WORLD_W
     this.grainCanvas.height = WORLD_H
+
+    const buf = (): HTMLCanvasElement => {
+      const cv = document.createElement('canvas')
+      cv.width = WORLD_W
+      cv.height = WORLD_H
+      return cv
+    }
+    this.tintA = buf()
+    this.tintB = buf()
 
     this.host = this.buildHost()
 
@@ -144,19 +167,82 @@ export class Display {
     this.world.restore()
   }
 
-  /** Desenha o mundo escalado na tela e limpa as tarjas. */
-  present(): void {
+  /**
+   * Deformações aplicadas na hora de jogar o mundo na tela. Tudo aqui existe
+   * para uma coisa só: deixar visível, sem texto, que Liam está recebendo
+   * emoção que não é dele.
+   */
+  present(fx?: Fx): void {
     const c = this.ctx
     c.imageSmoothingEnabled = false
     c.fillStyle = '#000'
     c.fillRect(0, 0, this.cssW, this.cssH)
-    c.drawImage(
-      this.worldCanvas,
-      this.offsetX,
-      this.offsetY,
-      WORLD_W * this.scale,
-      WORLD_H * this.scale,
-    )
+
+    const w = WORLD_W * this.scale
+    const h = WORLD_H * this.scale
+    let ox = this.offsetX
+    let oy = this.offsetY
+
+    if (fx?.shake) {
+      ox += (Math.random() * 2 - 1) * fx.shake * this.scale
+      oy += (Math.random() * 2 - 1) * fx.shake * this.scale
+    }
+
+    if (!fx || (!fx.rgbSplit && !fx.wave)) {
+      c.drawImage(this.worldCanvas, ox, oy, w, h)
+      return
+    }
+
+    // Separação de canais: uma cópia só vermelha e outra só ciano, deslocadas
+    // em sentidos opostos e somadas — reconstrói a imagem "rachada".
+    if (fx.rgbSplit > 0) {
+      const d = fx.rgbSplit * this.scale
+      this.drawTinted(this.tintA, '#ff0000', ox - d, oy, w, h, fx)
+      c.save()
+      c.globalCompositeOperation = 'lighter'
+      this.drawTinted(this.tintB, '#00ffff', ox + d, oy, w, h, fx)
+      c.restore()
+    } else {
+      this.drawWaved(this.worldCanvas, ox, oy, w, h, fx)
+    }
+  }
+
+  private drawTinted(
+    buf: HTMLCanvasElement, color: string,
+    x: number, y: number, w: number, h: number, fx: Fx,
+  ): void {
+    const b = buf.getContext('2d')
+    if (!b) return
+    b.globalCompositeOperation = 'source-over'
+    b.clearRect(0, 0, WORLD_W, WORLD_H)
+    b.drawImage(this.worldCanvas, 0, 0)
+    b.globalCompositeOperation = 'multiply'
+    b.fillStyle = color
+    b.fillRect(0, 0, WORLD_W, WORLD_H)
+    this.drawWaved(buf, x, y, w, h, fx)
+  }
+
+  /** Desenha em faixas horizontais deslocadas por seno: a imagem "respira". */
+  private drawWaved(
+    src: CanvasImageSource, x: number, y: number, w: number, h: number, fx: Fx,
+  ): void {
+    const c = this.ctx
+    if (!fx.wave) {
+      c.drawImage(src, x, y, w, h)
+      return
+    }
+    const bands = 36
+    const bandSrc = WORLD_H / bands
+    const bandDst = h / bands
+    for (let i = 0; i < bands; i++) {
+      const t = i / bands
+      const dx = Math.sin(t * 13 + (fx.time ?? 0) * 3.1) * fx.wave * this.scale
+      c.drawImage(
+        src,
+        0, i * bandSrc, WORLD_W, bandSrc,
+        x + dx, y + i * bandDst, w, bandDst + 1,
+      )
+    }
   }
 
   /** Vinheta em resolução de tela, para a queda de luz ficar suave. */

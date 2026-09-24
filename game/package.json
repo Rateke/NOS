@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "test": "node test/playthrough.mjs",
-    "build:single": "npm run build && node scripts/build-single.mjs"
+    "build:single": "npm run build && node scripts/build-single.mjs",
+    "test:demo": "node test/demo.mjs",
+    "test:all": "npm test && npm run test:demo"
   },
   "devDependencies": {
     "playwright": "^1.63.0",
