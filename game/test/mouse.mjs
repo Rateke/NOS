@@ -52,6 +52,29 @@ async function clicarCaixa(i, esperaMs = 12000) {
   await page.mouse.click(r.x + r.w / 2, r.y + r.h / 2)
 }
 
+/** Espera uma cena específica, limpando falas pelo caminho. */
+async function esperarCena(alvo, ms = 60000) {
+  const ate = Date.now() + ms
+  while (Date.now() < ate) {
+    const e = await estado()
+    if (e.id === alvo) return true
+    await limpar(3)
+    await page.waitForTimeout(400)
+  }
+  return false
+}
+
+/** Espera uma fase dentro da cena atual, limpando falas pelo caminho. */
+async function esperarFase(alvo, ms = 30000) {
+  const ate = Date.now() + ms
+  while (Date.now() < ate) {
+    if ((await estado()).fase === alvo) return true
+    await limpar(3)
+    await page.waitForTimeout(300)
+  }
+  return false
+}
+
 await page.goto(URL + '?debug=1')
 await page.waitForTimeout(1400)
 
@@ -80,10 +103,10 @@ await page.waitForTimeout(700)
 }
 
 await limpar()
-await page.waitForTimeout(9500)
-await limpar()
+esperar('passou pela Mesa até o Tear', await esperarCena('demo-tear'), true)
 await page.waitForTimeout(800)
-esperar('entrou na câmara do Tear', (await estado()).id, 'demo-tear')
+
+esperar('o Tear aceita entrada', await esperarFase('absorvendo'), true)
 
 // Absorver os seis fios segurando o botão do mouse.
 for (let i = 0; i < 6; i++) {

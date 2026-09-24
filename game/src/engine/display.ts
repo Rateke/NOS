@@ -10,6 +10,11 @@ export interface Fx {
   shake: number
   /** Relógio, para a ondulação andar. */
   time?: number
+  /** Aproximação da câmera; 1 mostra o mundo inteiro. */
+  zoom?: number
+  /** Ponto do mundo que fica no centro da tela. */
+  alvoX?: number
+  alvoY?: number
 }
 
 /**
@@ -192,10 +197,15 @@ export class Display {
     c.fillStyle = '#000'
     c.fillRect(0, 0, this.cssW, this.cssH)
 
-    const w = WORLD_W * this.scale
-    const h = WORLD_H * this.scale
-    let ox = this.offsetX
-    let oy = this.offsetY
+    // Câmera: zoom em torno de um ponto do mundo. Com zoom 1 e alvo no
+    // centro, a conta devolve exatamente o enquadramento cheio.
+    const z = fx?.zoom && fx.zoom > 0 ? fx.zoom : 1
+    const alvoX = fx?.alvoX ?? WORLD_W / 2
+    const alvoY = fx?.alvoY ?? WORLD_H / 2
+    const w = WORLD_W * this.scale * z
+    const h = WORLD_H * this.scale * z
+    let ox = this.offsetX + (WORLD_W * this.scale) / 2 - alvoX * this.scale * z
+    let oy = this.offsetY + (WORLD_H * this.scale) / 2 - alvoY * this.scale * z
 
     if (fx?.shake) {
       ox += (Math.random() * 2 - 1) * fx.shake * this.scale
@@ -203,12 +213,22 @@ export class Display {
     }
 
     if (!fx || (!fx.rgbSplit && !fx.wave)) {
+      // Recorta as bordas quando a câmera aproxima, para não vazar no letterbox.
+      c.save()
+      c.beginPath()
+      c.rect(this.offsetX, this.offsetY, WORLD_W * this.scale, WORLD_H * this.scale)
+      c.clip()
       c.drawImage(this.worldCanvas, ox, oy, w, h)
+      c.restore()
       return
     }
 
     // Separação de canais: uma cópia só vermelha e outra só ciano, deslocadas
     // em sentidos opostos e somadas — reconstrói a imagem "rachada".
+    c.save()
+    c.beginPath()
+    c.rect(this.offsetX, this.offsetY, WORLD_W * this.scale, WORLD_H * this.scale)
+    c.clip()
     if (fx.rgbSplit > 0) {
       const d = fx.rgbSplit * this.scale
       this.drawTinted(this.tintA, '#ff0000', ox - d, oy, w, h, fx)
@@ -219,6 +239,7 @@ export class Display {
     } else {
       this.drawWaved(this.worldCanvas, ox, oy, w, h, fx)
     }
+    c.restore()
   }
 
   private drawTinted(

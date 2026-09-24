@@ -7,6 +7,8 @@ import {
   TEAR_FIM, ELISA_CORTE,
 } from '../../content/demoScript'
 import { FimScene } from './fim'
+import { Figura } from '../../world/figura'
+import { Particulas } from '../../world/particulas'
 
 const LIAM = { x: WORLD_W / 2, y: 150 }
 const TEMPO_ABSORCAO = 1.45
@@ -18,6 +20,13 @@ interface Fio {
   fase: number
   puxado: number
   absorvido: boolean
+  /**
+   * O que está amarrado na outra ponta. O roteiro diz que os fios unem
+   * objetos e lembranças de gerações diferentes — então cada um carrega uma
+   * relíquia, que balança e cai quando o fio é absorvido.
+   */
+  relíquia: 'retrato' | 'chave' | 'pulseira' | 'fita' | 'anel' | 'carta'
+  balanco: number
 }
 
 interface Eco {
@@ -59,15 +68,23 @@ export class TearScene implements Scene {
   private tCorte = 0
   private falaAdrian = ''
   private falaAdrianAte = 0
+  private po = new Particulas()
+  private liam = new Figura({
+    x: LIAM.x, y: LIAM.y, altura: 34,
+    cor: { roupa: '#141926', cabelo: '#080b12', pele: '#5c4c46', sombra: 'rgba(0,0,0,0.55)' },
+  })
 
   enter(): void {
     const cores = ['#6f86a8', '#8a6f9e', '#9e7a6f', '#6f9e8a', '#9e6f85', '#7a8a9e']
+    const relíquias = ['retrato', 'chave', 'pulseira', 'fita', 'anel', 'carta'] as const
     this.fios = cores.map((cor, i) => ({
       x0: 46 + i * 58,
       cor,
       fase: i * 1.7,
       puxado: 0,
       absorvido: false,
+      relíquia: relíquias[i] ?? 'carta',
+      balanco: i * 0.9,
     }))
     audio.startAmbient()
     audio.setAmbient(0.5, 1)
@@ -84,6 +101,7 @@ export class TearScene implements Scene {
     for (const f of this.fios) f.fase += dt * 0.7
     this.ecos = this.ecos.filter((e) => (e.vida -= dt) > 0)
     this.baterCoracao()
+    this.animar(dt)
 
     if (this.dialogue.active) {
       const cinematico = this.fase === 'pico' || this.fase === 'corte'
@@ -96,6 +114,28 @@ export class TearScene implements Scene {
     if (this.fase === 'absorvendo') this.absorver(dt, ctx)
     else if (this.fase === 'pico') this.pico(dt)
     else if (this.fase === 'corte') this.corte(dt, ctx)
+  }
+
+  /** Vida da cena fora da interação: corpo, brasas, poeira, balanço. */
+  private animar(dt: number): void {
+    const i = this.intensidade
+    this.po.update(dt)
+    for (const f of this.fios) f.balanco += dt * (0.5 + f.puxado * 1.6)
+
+    this.liam.update(dt)
+    this.liam.ofego = 1 + i * 3.4
+    this.liam.curvatura = Math.min(1, i * 0.9)
+    this.liam.tremor = i > 0.45 ? (i - 0.45) * 2.6 : 0
+    this.liam.braco = this.segurando > 0 ? 0.55 + this.segurando * 0.3 : 0.15
+
+    // Poeira desprendida do assoalho pela discussão lá em cima.
+    if (Math.random() < dt * (7 + i * 16)) {
+      this.po.poeira(24, 30, WORLD_W - 48, 4, 'rgba(190,180,200,')
+    }
+    // Brasas saindo de Liam: só aparecem quando ele já está cheio.
+    if (i > 0.3 && Math.random() < dt * i * 34) {
+      this.po.brasa(LIAM.x + (Math.random() - 0.5) * 16, LIAM.y - 18)
+    }
   }
 
   /** A batida acelera com a intensidade: de calma a taquicardia. */
@@ -252,12 +292,18 @@ export class TearScene implements Scene {
     for (const f of this.fios) this.desenharFio(w, f)
     this.desenharLiam(w)
 
+    this.po.draw(w, true)
+
     const i = this.intensidade
     ctx.display.applyGrain(0.05 + i * 0.09)
+    // A câmera fecha sobre ele conforme enche: o espaço some junto.
     ctx.display.present({
       rgbSplit: i * 2.6,
       wave: i * 1.5,
       shake: i * i * 1.6,
+      zoom: 1 + i * 0.4,
+      alvoX: WORLD_W / 2,
+      alvoY: WORLD_H / 2 + i * 16,
       time: this.t,
     })
     ctx.display.vignette(0.68 + i * 0.22)
@@ -285,8 +331,18 @@ export class TearScene implements Scene {
     c.fillStyle = '#080b12'
     c.fillRect(0, 162, WORLD_W, WORLD_H - 162)
 
-    // A estrutura do tear: dois montantes, uma travessa e os pinos de onde
-    // cada fio desce. Sem isso a cena não tem lugar, só fundo preto.
+    // Paredes de terra dos lados, com raízes descendo
+    c.fillStyle = '#070a10'
+    c.fillRect(0, 30, 16, 132)
+    c.fillRect(WORLD_W - 16, 30, 16, 132)
+    c.fillStyle = 'rgba(60,48,40,0.3)'
+    for (let i = 0; i < 7; i++) {
+      const y = 40 + i * 17
+      c.fillRect(4, y, 9, 1)
+      c.fillRect(WORLD_W - 13, y + 6, 9, 1)
+    }
+
+    // Estrutura do tear: montantes, travessa e pinos
     c.fillStyle = '#12161f'
     c.fillRect(16, 30, 7, 132)
     c.fillRect(WORLD_W - 23, 30, 7, 132)
@@ -294,9 +350,19 @@ export class TearScene implements Scene {
     c.fillStyle = '#1b2130'
     c.fillRect(16, 30, 7, 3)
     c.fillRect(WORLD_W - 23, 30, 7, 3)
+    c.fillRect(16, 30, WORLD_W - 32, 2)
+
+    // Escada de descida, ao fundo à esquerda
+    c.fillStyle = '#10141d'
+    c.fillRect(30, 36, 3, 126)
+    c.fillRect(44, 36, 3, 126)
+    c.fillStyle = '#161c28'
+    for (let y = 44; y < 160; y += 14) c.fillRect(30, y, 17, 2)
+
     for (const f of this.fios) {
       c.fillStyle = f.absorvido ? '#171c28' : '#232b3c'
       c.fillRect(f.x0 - 2, 34, 4, 5)
+      this.desenharRelíquia(c, f)
     }
 
     // Luz do próprio Tear, que cresce conforme Liam enche
@@ -307,6 +373,63 @@ export class TearScene implements Scene {
     g.addColorStop(1, 'rgba(196,170,224,0)')
     c.fillStyle = g
     c.fillRect(0, 0, WORLD_W, WORLD_H)
+    c.restore()
+  }
+
+  /**
+   * A relíquia amarrada na ponta de cada fio. Balança de leve; quando o fio é
+   * absorvido, ela fica pendurada, imóvel e apagada — o vínculo saiu dali e
+   * foi parar dentro do menino.
+   */
+  private desenharRelíquia(c: CanvasRenderingContext2D, f: Fio): void {
+    const morta = f.absorvido
+    const osc = morta ? 0 : Math.sin(f.balanco) * 3
+    const x = Math.round(f.x0 + osc)
+    const y = 44
+    c.save()
+    c.globalAlpha = morta ? 0.2 : 0.75
+    c.strokeStyle = 'rgba(120,130,150,0.35)'
+    c.beginPath()
+    c.moveTo(f.x0, 39)
+    c.lineTo(x, y)
+    c.stroke()
+    c.fillStyle = morta ? '#1a1f2c' : f.cor
+
+    switch (f.relíquia) {
+      case 'retrato':
+        c.fillRect(x - 5, y, 10, 8)
+        c.fillStyle = morta ? '#10141d' : 'rgba(12,15,22,0.6)'
+        c.fillRect(x - 3, y + 2, 6, 4)
+        break
+      case 'chave':
+        c.fillRect(x - 1, y, 2, 9)
+        c.fillRect(x - 3, y, 6, 3)
+        c.fillRect(x + 1, y + 6, 3, 2)
+        break
+      case 'pulseira':
+        c.fillRect(x - 4, y + 1, 8, 2)
+        c.fillRect(x - 5, y + 3, 2, 3)
+        c.fillRect(x + 3, y + 3, 2, 3)
+        break
+      case 'fita':
+        c.fillRect(x - 6, y, 12, 7)
+        c.fillStyle = morta ? '#10141d' : 'rgba(12,15,22,0.7)'
+        c.fillRect(x - 4, y + 2, 3, 3)
+        c.fillRect(x + 1, y + 2, 3, 3)
+        break
+      case 'anel':
+        c.fillRect(x - 2, y + 1, 4, 1)
+        c.fillRect(x - 3, y + 2, 1, 3)
+        c.fillRect(x + 2, y + 2, 1, 3)
+        c.fillRect(x - 2, y + 5, 4, 1)
+        break
+      case 'carta':
+        c.fillRect(x - 5, y, 10, 7)
+        c.fillStyle = morta ? '#10141d' : 'rgba(12,15,22,0.55)'
+        c.fillRect(x - 3, y + 2, 6, 1)
+        c.fillRect(x - 3, y + 4, 4, 1)
+        break
+    }
     c.restore()
   }
 
@@ -343,46 +466,20 @@ export class TearScene implements Scene {
   }
 
   /**
-   * Liam ocupa o centro e cresce em presença conforme enche. Os fios já
-   * absorvidos não desaparecem: passam a se enrolar nele. É a tradução visual
-   * da regra da obra — o conflito não some, muda de lugar.
+   * Liam no centro. A postura conta o estado: o ofego acelera, o corpo curva
+   * e treme, e os fios já absorvidos giram em volta dele — o conflito não
+   * sumiu, mudou de lugar.
    */
   private desenharLiam(c: CanvasRenderingContext2D): void {
     const i = this.intensidade
-    const x = Math.round(LIAM.x)
-    const tremor = i > 0.5 ? Math.round(Math.sin(this.t * 17) * (i - 0.5) * 3) : 0
-    const y = Math.round(LIAM.y) + tremor
-
-    this.desenharFiosEnrolados(c, x, y, i)
-
-    c.fillStyle = 'rgba(0,0,0,0.55)'
-    c.fillRect(x - 13, y - 3, 26, 4)
-
-    // Quanto mais cheio, mais ele se dobra para a frente.
-    const curva = Math.round(i * 7)
-    const altoTronco = 22 - curva
-
-    c.fillStyle = '#0d1119'
-    c.fillRect(x - 9, y - 2 - altoTronco, 18, altoTronco)   // tronco
-    c.fillRect(x - 8, y - 9, 6, 8)                           // pernas
-    c.fillRect(x + 2, y - 9, 6, 8)
-    c.fillStyle = '#121724'
-    c.fillRect(x - 10, y - 12 - altoTronco, 20, 13)          // cabeça
-    c.fillStyle = '#090c13'
-    c.fillRect(x - 10, y - 12 - altoTronco, 20, 5)           // cabelo
-
-    // Braços cruzados sobre o peito conforme aperta
-    c.fillStyle = '#0a0e15'
-    const braco = Math.round(i * 4)
-    c.fillRect(x - 12, y - 16 - altoTronco + 8 + braco, 5, 12 - braco)
-    c.fillRect(x + 7, y - 16 - altoTronco + 8 + braco, 5, 12 - braco)
-
-    // O que ele está segurando, brilhando através do peito
-    const luz = 0.18 + i * 0.6
+    this.desenharFiosEnrolados(c, Math.round(LIAM.x), Math.round(LIAM.y), i)
+    this.liam.draw(c, LIAM.x - 40, `rgba(196,170,224,${0.2 + i * 0.5})`)
+    // O que ele segura, brilhando através do peito
+    const luz = 0.14 + i * 0.62
     c.fillStyle = `rgba(196,170,224,${luz})`
-    c.fillRect(x - 7, y - 4 - altoTronco + 4, 14, 3)
-    c.fillStyle = `rgba(226,206,255,${luz * 0.7})`
-    c.fillRect(x - 4, y - 4 - altoTronco + 4, 8, 3)
+    c.fillRect(Math.round(LIAM.x) - 6, Math.round(LIAM.y) - 24 + Math.round(i * 5), 12, 3)
+    c.fillStyle = `rgba(232,214,255,${luz * 0.8})`
+    c.fillRect(Math.round(LIAM.x) - 3, Math.round(LIAM.y) - 24 + Math.round(i * 5), 6, 3)
   }
 
   /** Os fios já absorvidos, girando em volta dele. */

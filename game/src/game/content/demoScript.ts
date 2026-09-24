@@ -104,3 +104,51 @@ export const EPILOGO: string[] = [
 ]
 
 export const DEMO_FIM = 'Fim da demo'
+
+// --- A Mesa -----------------------------------------------------------------
+
+export const MESA_ABERTURA: Line[] = [
+  { text: 'As malas estão no chão da cozinha.' },
+  { text: 'Se eu ficar no meio, eles param.' },
+  { text: 'Sempre para.' },
+]
+
+/** As quatro falas da noite, na ordem em que o roteiro as fixa. */
+export const MESA_CONFRONTO: Line[] = [
+  { speaker: 'Adrian', text: 'Ninguém vai sair antes de a gente conversar.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Eu não estou pedindo.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Você está levando meus filhos.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Eu estou levando os meus para fora daqui.', style: 'speech' },
+]
+
+/** Quando Liam se aproxima da mãe, o pai puxa. E vice-versa. */
+export const PUXAO_ADRIAN: string[] = [
+  'Liam. Vem cá.',
+  'Fala pra ela, filho.',
+  'Você sabe que eu tenho razão.',
+  'Eu conto com você.',
+]
+
+export const PUXAO_EVELYN: string[] = [
+  'Liam, olha pra mim.',
+  'Você não precisa resolver isso.',
+  'Isso não é seu pra carregar.',
+  'Filho, pega sua irmã.',
+]
+
+export const PUXAO_LIA: string[] = [
+  'Não escuta ele.',
+  'Liam, anda.',
+]
+
+/** O que ele pensa enquanto tenta ficar no meio. Vai desmoronando. */
+export const MESA_PENSAMENTO: Line[][] = [
+  [{ text: 'Eu consigo.' }],
+  [{ text: 'É só achar o lado certo.' }],
+  [{ text: 'Não tem lado certo.' }],
+]
+
+export const MESA_FUGA: Line[] = [
+  { text: 'Eu não consigo.' },
+  { text: 'Mas lá embaixo eu consigo.' },
+]

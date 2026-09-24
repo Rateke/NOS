@@ -34,6 +34,29 @@ async function limpar(max = 14) {
   }
 }
 
+/** Espera uma cena específica, limpando falas pelo caminho. */
+async function esperarCena(alvo, ms = 60000) {
+  const ate = Date.now() + ms
+  while (Date.now() < ate) {
+    const e = await estado()
+    if (e.id === alvo) return true
+    await limpar(3)
+    await page.waitForTimeout(400)
+  }
+  return false
+}
+
+/** Espera uma fase dentro da cena atual, limpando falas pelo caminho. */
+async function esperarFase(alvo, ms = 30000) {
+  const ate = Date.now() + ms
+  while (Date.now() < ate) {
+    if ((await estado()).fase === alvo) return true
+    await limpar(3)
+    await page.waitForTimeout(300)
+  }
+  return false
+}
+
 await page.goto((process.env.URL ?? 'http://localhost:4173/') + '?debug=1')
 await page.waitForTimeout(1200)
 if (OUT) await page.screenshot({ path: `${OUT}/a-menu.png` })
@@ -55,12 +78,17 @@ esperar('a frase musical foi aceita', (await estado()).fase, 'acerto')
 if (OUT) await page.screenshot({ path: `${OUT}/c-acerto.png` })
 
 await limpar()
-await page.waitForTimeout(9500)            // o calor vai embora, entra o Tear
-await limpar()
+esperar('a sala dá lugar à cozinha', await esperarCena('demo-mesa'), true)
+if (OUT) await page.screenshot({ path: `${OUT}/d0-mesa.png` })
+
+// A Mesa não tem ponto neutro: a tensão sobe sozinha até ele correr.
+esperar('a Mesa empurra Liam para o porão', await esperarCena('demo-tear'), true)
 await page.waitForTimeout(800)
-esperar('entrou na câmara do Tear', (await estado()).id, 'demo-tear')
 if (OUT) await page.screenshot({ path: `${OUT}/d-tear-chegada.png` })
 
+esperar('o Tear aceita entrada', await esperarFase('absorvendo'), true)
+
+// Absorver os seis fios
 for (let i = 0; i < 6; i++) {
   await page.keyboard.down('KeyE')
   await page.waitForTimeout(1750)

@@ -1,12 +1,15 @@
 import type { Scene, SceneCtx } from '../types'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
-import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
+import { PAL } from '../../../engine/constants'
+import { Figura } from '../../world/figura'
+import { Particulas } from '../../world/particulas'
+import { drawSalaFundo, drawSalaFrente, drawLuzSala, ABAJUR, ASSENTO_Y } from '../../world/sala'
 import { audio } from '../../../engine/audio'
 import {
   PROLOGO_ABERTURA, PROLOGO_ENSINO, PROLOGO_ACERTO, PROLOGO_ERRO, PROLOGO_DICA,
   FRASE_MUSICAL,
 } from '../../content/demoScript'
-import { TearScene } from './tear'
+import { MesaScene } from './mesa'
 
 /**
  * As quatro notas. Cada uma aceita a seta ou a letra equivalente do WASD,
@@ -42,6 +45,19 @@ export class PrologoScene implements Scene {
   private proxNota = 0
   private calor = 0
   private saida = 0
+
+  private adrian = new Figura({
+    x: 152, y: ASSENTO_Y, altura: 40,
+    cor: { roupa: '#2b2129', cabelo: '#171017', pele: '#6a4f48', sombra: 'rgba(0,0,0,0.42)' },
+    pose: 'sentado',
+  })
+  private liam = new Figura({
+    x: 200, y: ASSENTO_Y, altura: 31,
+    cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.42)' },
+    pose: 'sentado',
+  })
+  private po = new Particulas()
+  private dedilhado = 0
   /** Onde as quatro teclas foram desenhadas, para poderem ser clicadas. */
   private caixas: { x: number; y: number; w: number; h: number }[] = []
 
@@ -56,17 +72,51 @@ export class PrologoScene implements Scene {
   update(dt: number, ctx: SceneCtx): void {
     this.t += dt
     this.calor = Math.min(1, this.calor + dt / 2.5)
+    this.animar(dt)
     this.brilhoTecla = Math.max(0, this.brilhoTecla - dt * 2.4)
     this.dialogue.update(dt)
 
     if (this.dialogue.active) {
       if (ctx.input.consumeConfirm()) this.dialogue.confirm()
-      return
+      // Na vez do jogador as teclas respondem mesmo com a fala na tela: ele
+      // vai tentar tocar assim que vir as teclas, e engolir essa nota em
+      // silêncio parece o jogo travado.
+      if (this.fase !== 'sua-vez') return
     }
 
     if (this.fase === 'ele-toca') this.eleToca(ctx)
     else if (this.fase === 'sua-vez') this.suaVez(ctx)
     else if (this.fase === 'saida') this.sair(dt, ctx)
+  }
+
+  /**
+   * Nada aqui é entrada do jogador: é a cena respirando sozinha. Adrian olha
+   * para o instrumento enquanto toca e para o filho quando fala; Liam olha
+   * para as mãos do pai. A poeira só existe dentro do cone do abajur.
+   */
+  private animar(dt: number): void {
+    this.adrian.update(dt)
+    this.liam.update(dt)
+    this.po.update(dt)
+
+    if (Math.random() < dt * 22 * this.calor) {
+      this.po.poeira(ABAJUR.x - 42, ABAJUR.y + 6, 84, 70)
+    }
+
+    this.dedilhado = Math.max(0, this.dedilhado - dt * 3)
+    const tocando = this.fase === 'ele-toca'
+    const vezDele = this.fase === 'sua-vez'
+
+    this.adrian.braco = 0.55 + this.dedilhado * 0.3
+    this.adrian.olhar = tocando ? -0.25 : 0.7
+    this.liam.olhar = -0.8
+    this.liam.braco = vezDele ? 0.45 + this.brilhoTecla * 0.35 : 0.1
+
+    // Na saída, o calor indo embora também encolhe os dois.
+    if (this.fase === 'saida') {
+      this.adrian.olhar = 0
+      this.liam.curvatura = Math.min(0.5, this.saida * 0.14)
+    }
   }
 
   /** Adrian toca a frase; o jogador só escuta e vê. */
@@ -82,6 +132,7 @@ export class PrologoScene implements Scene {
     audio.note(NOTAS[nota] ?? 261.63, 1.1)
     this.ultimaTecla = nota
     this.brilhoTecla = 1
+    this.dedilhado = 1
     this.idxDemo++
     this.proxNota = this.t + 0.72
     void ctx
@@ -103,6 +154,7 @@ export class PrologoScene implements Scene {
     audio.note(NOTAS[tocada] ?? 261.63, 0.9)
     this.ultimaTecla = tocada
     this.brilhoTecla = 1
+    this.dedilhado = 1
 
     if (FRASE_MUSICAL[this.idxJogador] === tocada) {
       this.idxJogador++
@@ -126,75 +178,56 @@ export class PrologoScene implements Scene {
     this.calor = Math.max(0, 1 - this.saida / 3.5)
     if (this.saida > 4.5) {
       this.fase = 'entrada'
-      ctx.transition(new TearScene(), 2.4, 2.0)
+      ctx.transition(new MesaScene(), 2.4, 2.0)
     }
   }
 
   render(ctx: SceneCtx): void {
     const w = ctx.display.beginWorld()
-    this.desenharSala(w)
-    ctx.display.applyGrain(0.04)
-    ctx.display.present()
-    ctx.display.vignette(0.66 + (1 - this.calor) * 0.2)
+    const k = this.calor
+
+    drawSalaFundo(w, k)
+    this.adrian.draw(w, ABAJUR.x)
+    this.liam.draw(w, ABAJUR.x)
+    this.drawViolao(w, k)
+    drawSalaFrente(w, k)
+    this.po.draw(w, true)
+    drawLuzSala(w, k, this.t)
+
+    ctx.display.applyGrain(0.045)
+    // A câmera entra devagar enquanto ele ensina e recua quando o calor sai:
+    // a sala volta a ficar grande demais no fim.
+    const entrada = Math.min(1, this.t / 26)
+    const recuo = this.fase === 'saida' ? Math.min(1, this.saida / 4) : 0
+    ctx.display.present({
+      rgbSplit: 0,
+      wave: 0,
+      shake: 0,
+      zoom: 1.32 + entrada * 0.16 - recuo * 0.44,
+      alvoX: 176 + entrada * 6,
+      alvoY: 116 - recuo * 6,
+      time: this.t,
+    })
+    ctx.display.vignette(0.6 + (1 - k) * 0.26)
 
     if (this.fase === 'sua-vez') this.desenharTeclas(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
 
-  /**
-   * Sala de estar vista de frente. Duas silhuetas lado a lado e um abajur
-   * quente — a paleta inteira puxada para o âmbar enquanto `calor` está alto.
-   */
-  private desenharSala(c: CanvasRenderingContext2D): void {
-    const k = this.calor
-    const mix = (frio: string, quente: string): string => (k > 0.5 ? quente : frio)
-
-    c.fillStyle = mix('#0b0e16', '#171219')
-    c.fillRect(0, 0, WORLD_W, WORLD_H)
-    c.fillStyle = mix('#141926', '#231a20')
-    c.fillRect(0, 0, WORLD_W, 132)
-    c.fillStyle = mix('#181d2a', '#2a1f24')
-    c.fillRect(0, 132, WORLD_W, WORLD_H - 132)
-
-    // Abajur: a fonte de calor da cena
-    c.fillStyle = '#3a2c2a'
-    c.fillRect(300, 96, 4, 36)
-    c.fillStyle = `rgba(255,214,150,${0.5 + k * 0.4})`
-    c.fillRect(292, 84, 20, 12)
-
-    // Sofá
-    c.fillStyle = mix('#232a3a', '#33242a')
-    c.fillRect(96, 116, 150, 26)
-    c.fillStyle = mix('#2c3446', '#3d2c33')
-    c.fillRect(96, 110, 150, 8)
-
-    // Adrian, maior, de lado; Liam ao lado, menor
-    this.silhueta(c, 150, 130, 26, '#120f14')
-    this.silhueta(c, 186, 132, 19, '#0f0d12')
-
-    // Instrumento no colo de Adrian
-    c.fillStyle = mix('#3a4358', '#4a3630')
-    c.fillRect(140, 118, 30, 7)
-
-    // Halo do abajur
-    c.save()
-    c.globalCompositeOperation = 'lighter'
-    const g = c.createRadialGradient(302, 92, 6, 302, 92, 190)
-    g.addColorStop(0, `rgba(255,206,146,${0.3 * (0.35 + k * 0.65)})`)
-    g.addColorStop(0.4, `rgba(226,150,92,${0.12 * (0.35 + k * 0.65)})`)
-    g.addColorStop(1, 'rgba(226,150,92,0)')
-    c.fillStyle = g
-    c.fillRect(0, 0, WORLD_W, WORLD_H)
-    c.restore()
-  }
-
-  private silhueta(c: CanvasRenderingContext2D, x: number, base: number, alt: number, cor: string): void {
-    c.fillStyle = cor
-    c.fillRect(x - 7, base - alt, 14, alt)
-    c.fillRect(x - 6, base - alt - 9, 12, 10)
-    // Contraluz do abajur, do lado direito
-    c.fillStyle = `rgba(255,206,146,${0.18 + this.calor * 0.22})`
-    c.fillRect(x + 5, base - alt - 9, 2, alt + 9)
+  /** O violão no colo de Adrian, com a mão dele batendo nas cordas. */
+  private drawViolao(c: CanvasRenderingContext2D, k: number): void {
+    const x = this.adrian.x
+    const y = ASSENTO_Y - 10
+    c.fillStyle = k > 0.5 ? '#5a3a2c' : '#2f3548'
+    c.fillRect(x - 4, y, 22, 12)
+    c.fillRect(x + 16, y + 3, 16, 5)
+    c.fillStyle = k > 0.5 ? '#3a2318' : '#20263a'
+    c.fillRect(x + 3, y + 4, 6, 5)
+    c.fillStyle = k > 0.5 ? '#6f4a36' : '#3a4159'
+    c.fillRect(x - 4, y, 22, 1)
+    // Cordas, brilhando no instante do dedilhado
+    c.fillStyle = `rgba(255,232,196,${0.14 + this.dedilhado * 0.55})`
+    for (let i = 0; i < 3; i++) c.fillRect(x - 2, y + 3 + i * 3, 32, 1)
   }
 
   /** As quatro teclas, com a última tocada acesa. */

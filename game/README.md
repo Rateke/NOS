@@ -71,15 +71,28 @@ iframe, sem foco nenhuma tecla chega à página.
 
 O menu do título oferece dois recortes:
 
-**Demo — Só mais um** *(o recorte para mostrar a estranhos)*
-Prólogo quente: Adrian ensina música a Liam, e o jogador repete a frase.
-O afeto é verdadeiro — e é na mesma fala que a função é instalada
-(`Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`).
-Daí a câmara do Tear: seis fios, e o jogador **absorve cada um com as próprias
-mãos**. Cada fio acalma a discussão lá em cima e, ao mesmo tempo, racha a
-imagem, empilha uma dissonância no som e enfia em Liam uma lembrança que não é
-dele. Não existe tela de fracasso e ninguém manda parar — parar só faz Adrian
-apertar e a discussão subir. É a tese da obra na mão do jogador.
+**Demo — Só mais um** *(o recorte para mostrar a estranhos)*, em três cenas:
+
+1. **A Música.** Sala de estar, a única cena quente da obra: abajur, poeira no
+   feixe de luz, retratos na parede. Adrian ensina uma frase ao filho e o
+   jogador repete. O afeto é verdadeiro — e é na mesma fala que a função é
+   instalada (`Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto
+   com você.`). No fim o calor drena sozinho e a câmera recua: a sala volta a
+   ficar grande demais.
+
+2. **A Mesa.** A cozinha, a porta trancada, as malas no chão. Liam pode andar
+   entre a mãe e o pai, e é puxado pelos dois — chegar perto de um faz o outro
+   chamar. **Não existe ponto neutro**, e a tensão sobe mesmo parado. As
+   paredes fecham até ele correr para o porão. No fogão, uma panela esquecida
+   com um pano na tampa; ninguém olha para ela.
+
+3. **O Tear.** Seis fios, cada um pendurando uma relíquia de outra geração
+   (retrato, chave, pulseira, fita, anel, carta). O jogador **absorve cada fio
+   com as próprias mãos**: a discussão lá em cima acalma, e ao mesmo tempo a
+   imagem racha, o som empilha dissonância, o coração acelera e entra em Liam
+   uma lembrança que não é dele. Os fios absorvidos não somem — passam a se
+   enrolar nele. Não existe tela de fracasso e ninguém manda parar; parar só
+   faz Adrian apertar.
 
 **Abertura** — o quarto de Liam, o diário e a porta que nunca esteve trancada.
 
