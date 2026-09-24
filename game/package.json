@@ -12,7 +12,8 @@
     "test": "node test/playthrough.mjs",
     "build:single": "npm run build && node scripts/build-single.mjs",
     "test:demo": "node test/demo.mjs",
-    "test:all": "npm test && npm run test:demo"
+    "test:all": "npm test && npm run test:demo && npm run test:mouse",
+    "test:mouse": "node test/mouse.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0",

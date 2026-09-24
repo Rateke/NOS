@@ -24,6 +24,8 @@ export class BedroomScene implements Scene {
   private leaving = false
   private tidyAnnounced = false
   private target: Interactable | null = null
+  /** Destino de um clique no chão; limpo ao chegar ou ao usar o teclado. */
+  private destino: { x: number; y: number } | null = null
 
   enter(ctx: SceneCtx): void {
     for (const it of INTERACTABLES) if (it.chore) ctx.state.registerChore(it.id)
@@ -43,7 +45,23 @@ export class BedroomScene implements Scene {
     }
     if (this.leaving) return
 
-    this.player.update(dt, ctx.input.moveAxis(), FLOOR, this.solids(ctx))
+    // Clique: perto de algo examinável, interage; senão, anda até lá.
+    const tap = ctx.input.consumeTap()
+    if (tap) {
+      const wx = ctx.display.toWorldX(tap.x)
+      const wy = ctx.display.toWorldY(tap.y)
+      const alvo = this.alvoEm(wx, wy, ctx)
+      if (alvo && this.perto(alvo)) {
+        this.destino = null
+        this.interact(alvo, ctx)
+        return
+      }
+      this.destino = { x: wx, y: wy }
+    }
+
+    const teclado = ctx.input.moveAxis()
+    if (teclado) this.destino = null
+    this.player.update(dt, teclado ?? this.rumoAoDestino(), FLOOR, this.solids(ctx))
     this.target = this.findTarget(ctx)
 
     if (confirm && this.target) this.interact(this.target, ctx)
@@ -54,6 +72,38 @@ export class BedroomScene implements Scene {
       audio.reveal()
       this.dialogue.play(ROOM_TIDY)
     }
+  }
+
+  /** Direção até o ponto clicado, ou null se já chegou (ou está travado). */
+  private rumoAoDestino(): { x: number; y: number } | null {
+    const d = this.destino
+    if (!d) return null
+    const dx = d.x - this.player.x
+    const dy = d.y - this.player.y
+    const dist = Math.hypot(dx, dy)
+    if (dist < 3) {
+      this.destino = null
+      return null
+    }
+    return { x: dx / dist, y: dy / dist }
+  }
+
+  /** O examinável sob um ponto do mundo, se houver. */
+  private alvoEm(wx: number, wy: number, ctx: SceneCtx): Interactable | null {
+    for (const it of INTERACTABLES) {
+      if (it.consumable && ctx.state.isResolved(it.id)) continue
+      const r = it.rect
+      // Margem generosa: os objetos soltos são pequenos demais para mirar.
+      if (wx >= r.x - 5 && wx <= r.x + r.w + 5 && wy >= r.y - 5 && wy <= r.y + r.h + 5) return it
+    }
+    return null
+  }
+
+  private perto(it: Interactable): boolean {
+    const r = it.rect
+    const dx = Math.max(r.x - this.player.x, 0, this.player.x - (r.x + r.w))
+    const dy = Math.max(r.y - this.player.y, 0, this.player.y - (r.y + r.h))
+    return Math.hypot(dx, dy) < REACH + 12
   }
 
   private solids(ctx: SceneCtx) {

@@ -103,6 +103,20 @@ export class Display {
     h.overflow = 'hidden'
     h.background = '#000'
 
+    // Focável: dentro de um iframe, sem foco nenhum elemento recebe teclado.
+    this.canvas.tabIndex = 0
+    this.canvas.style.outline = 'none'
+    const focar = () => {
+      try {
+        this.canvas.focus({ preventScroll: true })
+      } catch {
+        /* ignora */
+      }
+    }
+    focar()
+    window.setTimeout(focar, 60)
+    host.addEventListener('pointerdown', focar)
+
     const c = this.canvas.style
     c.display = 'block'
     c.imageRendering = 'pixelated'
@@ -265,5 +279,14 @@ export class Display {
 
   toScreenY(y: number): number {
     return this.offsetY + y * this.scale
+  }
+
+  /** Inverso de toScreenX/Y: onde, no mundo, o jogador clicou. */
+  toWorldX(sx: number): number {
+    return (sx - this.offsetX) / this.scale
+  }
+
+  toWorldY(sy: number): number {
+    return (sy - this.offsetY) / this.scale
   }
 }

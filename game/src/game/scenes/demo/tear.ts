@@ -121,9 +121,31 @@ export class TearScene implements Scene {
     if (ctx.input.consumeKey('ArrowLeft') || ctx.input.consumeKey('KeyA')) this.mover(-1)
     if (ctx.input.consumeKey('ArrowRight') || ctx.input.consumeKey('KeyD')) this.mover(1)
 
+    // Clicar perto de um fio escolhe aquele fio.
+    const tap = ctx.input.consumeTap()
+    if (tap) {
+      const mx = ctx.display.toWorldX(tap.x)
+      let melhor = -1
+      let dist = Infinity
+      for (const [i, f] of this.fios.entries()) {
+        if (f.absorvido) continue
+        const d = Math.abs(f.x0 - mx)
+        if (d < dist) {
+          dist = d
+          melhor = i
+        }
+      }
+      if (melhor >= 0 && melhor !== this.sel) {
+        this.sel = melhor
+        this.segurando = 0
+        audio.interact()
+      }
+    }
+
+    // Segurar o botão do mouse vale como segurar E.
     const puxando =
       ctx.input.held('KeyE') || ctx.input.held('Space') || ctx.input.held('Enter') ||
-      ctx.input.stick !== null
+      ctx.input.pointerDown || ctx.input.stick !== null
 
     const fio = this.fios[this.sel]
     if (puxando && fio && !fio.absorvido) {
@@ -424,7 +446,9 @@ export class TearScene implements Scene {
     c.font = `${size}px ${FONT_BODY}`
     c.fillStyle = PAL.inkFaint
     c.fillText(
-      this.segurando > 0 ? 'segure' : 'segure E para juntar  ·  ← → escolhe',
+      this.segurando > 0
+        ? 'segure'
+        : 'segure o clique ou E para juntar  ·  ← → escolhe o fio',
       cssW / 2, cssH - size * 4.2,
     )
 

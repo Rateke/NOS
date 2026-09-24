@@ -11,6 +11,8 @@ export class TitleScene implements Scene {
   private t = 0
   private leaving = false
   private sel = 0
+  /** Onde cada item foi desenhado, para poder ser clicado. */
+  private caixas: { x: number; y: number; w: number; h: number }[] = []
 
   private readonly itens = [
     { rotulo: 'Demo — Só mais um', nota: 'o Tear, a cena central', cena: () => new PrologoScene() },
@@ -30,7 +32,20 @@ export class TitleScene implements Scene {
       audio.interact()
     }
 
-    if (ctx.input.consumeConfirm() || (ctx.input.touchMode && ctx.input.consumeAny())) {
+    // Clique num item: seleciona e confirma de uma vez.
+    const tap = ctx.input.consumeTap()
+    let clicou = false
+    if (tap) {
+      const i = this.caixas.findIndex(
+        (r) => tap.x >= r.x && tap.x <= r.x + r.w && tap.y >= r.y && tap.y <= r.y + r.h,
+      )
+      if (i >= 0) {
+        this.sel = i
+        clicou = true
+      }
+    }
+
+    if (clicou || ctx.input.consumeConfirm()) {
       this.leaving = true
       audio.init()
       audio.resume()
@@ -60,7 +75,11 @@ export class TitleScene implements Scene {
 
     const hintSize = Math.max(12, Math.min(cssW / 60, 18))
     let y = cssH / 2 + titleSize * 0.75
+    this.caixas = []
     for (const [i, item] of this.itens.entries()) {
+      this.caixas.push({
+        x: cssW * 0.2, y: y - hintSize * 1.4, w: cssW * 0.6, h: hintSize * 2.6,
+      })
       const ativo = i === this.sel
       c.font = `${hintSize * (ativo ? 1.25 : 1.1)}px ${FONT_BODY}`
       c.globalAlpha = ativo ? 0.92 + Math.sin(this.t * 3) * 0.08 : 0.38
@@ -80,7 +99,7 @@ export class TitleScene implements Scene {
     c.fillStyle = PAL.inkFaint
     const how = ctx.input.touchMode || 'ontouchstart' in window
       ? 'toque para escolher'
-      : '↑ ↓ escolhe  ·  E ou espaço confirma'
+      : 'clique, ou ↑ ↓ e espaço'
     c.fillText(how, cssW / 2, cssH - 28)
     c.restore()
   }

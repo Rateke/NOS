@@ -42,6 +42,8 @@ export class PrologoScene implements Scene {
   private proxNota = 0
   private calor = 0
   private saida = 0
+  /** Onde as quatro teclas foram desenhadas, para poderem ser clicadas. */
+  private caixas: { x: number; y: number; w: number; h: number }[] = []
 
   enter(): void {
     audio.setAmbient(0.22, 2)
@@ -86,7 +88,16 @@ export class PrologoScene implements Scene {
   }
 
   private suaVez(ctx: SceneCtx): void {
-    const tocada = TECLAS.findIndex((teclas) => teclas.some((k) => ctx.input.consumeKey(k)))
+    let tocada = TECLAS.findIndex((teclas) => teclas.some((k) => ctx.input.consumeKey(k)))
+    if (tocada < 0) {
+      // Também dá para tocar clicando na tecla desenhada.
+      const tap = ctx.input.consumeTap()
+      if (tap) {
+        tocada = this.caixas.findIndex(
+          (r) => tap.x >= r.x && tap.x <= r.x + r.w && tap.y >= r.y && tap.y <= r.y + r.h,
+        )
+      }
+    }
     if (tocada < 0) return
 
     audio.note(NOTAS[tocada] ?? 261.63, 0.9)
@@ -198,7 +209,9 @@ export class PrologoScene implements Scene {
     c.save()
     c.textAlign = 'center'
     c.font = `${Math.round(s * 0.5)}px ${FONT_BODY}`
+    this.caixas = []
     for (let i = 0; i < 4; i++) {
+      this.caixas.push({ x, y, w: s, h: s })
       const aceso = i === this.ultimaTecla ? this.brilhoTecla : 0
       const feito = i < this.idxJogador
       c.fillStyle = `rgba(20,25,38,${0.72 + aceso * 0.2})`

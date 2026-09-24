@@ -32,6 +32,12 @@ export class Input {
   private stickId: number | null = null
   touchMode = false
 
+  /** Ponteiro (mouse ou dedo), em pixels de tela. */
+  pointer: { x: number; y: number } | null = null
+  /** Botão/dedo pressionado agora — equivale a segurar E. */
+  pointerDown = false
+  private tapQueued: { x: number; y: number } | null = null
+
   constructor(target: EventTarget = window) {
     target.addEventListener('keydown', (e) => {
       const ev = e as KeyboardEvent
@@ -52,6 +58,48 @@ export class Input {
       this.stickId = null
     })
     this.bindTouch()
+    this.bindMouse()
+  }
+
+  /**
+   * Mouse. Existe por dois motivos: deixa o jogo jogável sem teclado, e
+   * garante que um clique traga o foco para cá — dentro de um iframe, sem
+   * foco, nenhuma tecla chega.
+   */
+  private bindMouse(): void {
+    const pos = (e: MouseEvent) => ({ x: e.clientX, y: e.clientY })
+    window.addEventListener('mousemove', (e) => {
+      this.pointer = pos(e)
+    })
+    window.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return
+      try {
+        window.focus()
+      } catch {
+        /* alguns navegadores recusam; o clique já costuma bastar */
+      }
+      this.pointer = pos(e)
+      this.pointerDown = true
+      this.tapQueued = pos(e)
+      this.anyQueued = true
+      // Um clique vale como confirmar: sem isto, quem não tem teclado não
+      // consegue nem passar da primeira fala.
+      this.confirmQueued = true
+    })
+    window.addEventListener('mouseup', () => {
+      this.pointerDown = false
+    })
+    window.addEventListener('mouseleave', () => {
+      this.pointerDown = false
+      this.pointer = null
+    })
+  }
+
+  /** Último toque/clique ainda não lido, em pixels de tela. */
+  consumeTap(): { x: number; y: number } | null {
+    const t = this.tapQueued
+    this.tapQueued = null
+    return t
   }
 
   private bindTouch(): void {
@@ -67,6 +115,9 @@ export class Input {
         } else {
           this.confirmQueued = true
         }
+        this.pointer = { x: t.clientX, y: t.clientY }
+        this.tapQueued = { x: t.clientX, y: t.clientY }
+        this.pointerDown = true
       }
       e.preventDefault()
     }
@@ -86,6 +137,7 @@ export class Input {
           this.stick = null
         }
       }
+      if (e.touches.length === 0) this.pointerDown = false
       e.preventDefault()
     }
     window.addEventListener('touchstart', onStart, { passive: false })
@@ -131,9 +183,15 @@ export class Input {
     return this.down.has(code)
   }
 
-  /** Chamado ao fim de cada quadro, para toques não lidos não vazarem. */
+  /**
+   * Chamado ao fim de cada quadro. Entrada não lida é descartada, em vez de
+   * ficar guardada e disparar sozinha numa cena seguinte.
+   */
   endFrame(): void {
     this.tapped.clear()
+    this.tapQueued = null
+    this.confirmQueued = false
+    this.anyQueued = false
   }
 
   consumeConfirm(): boolean {

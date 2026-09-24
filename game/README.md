@@ -50,6 +50,23 @@ publica sozinho em `https://<usuário>.github.io/NOS/` — o workflow está em
 sirva um arquivo. Arrastar a pasta `dist/` para o
 [Netlify Drop](https://app.netlify.com/drop) publica na hora.
 
+## Controles
+
+O jogo inteiro é jogável **só com o mouse**, só com o teclado, ou no toque —
+os três caminhos são testados de ponta a ponta.
+
+| | Mouse | Teclado | Toque |
+|---|---|---|---|
+| Escolher no menu | clicar no item | ↑ ↓ e espaço | tocar no item |
+| Avançar uma fala | clicar | espaço, E ou Enter | tocar |
+| Andar pelo quarto | clicar no chão | setas ou WASD | arrastar à esquerda |
+| Examinar | clicar no objeto | E perto dele | tocar |
+| Tocar a frase musical | clicar na tecla | setas ou WASD | tocar na tecla |
+| Juntar um fio no Tear | segurar o clique | segurar E | segurar o toque |
+
+O clique também traz o foco do teclado para o jogo — dentro de um painel ou
+iframe, sem foco nenhuma tecla chega à página.
+
 ## Os dois modos
 
 O menu do título oferece dois recortes:
