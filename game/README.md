@@ -36,9 +36,29 @@ O teste aponta para `http://localhost:4173` por padrão: rode o `preview` antes,
 ou passe `URL=file:///caminho/para/dist/nos.html`. `OUT=<pasta>` salva capturas
 de cada momento.
 
-### Publicar na internet
+### Publicar na Vercel
 
-**GitHub Pages** já está configurado. Basta ligar uma vez, no GitHub:
+Já está configurado na raiz do repositório (`vercel.json` + `package.json`).
+Dois caminhos:
+
+**Sem GitHub, na hora** — publica a pasta construída direto:
+
+```bash
+cd game && npm run build
+npx vercel deploy dist --prod
+```
+
+Na primeira vez ele pede login e o nome do projeto. Ao fim imprime a URL.
+
+**Com GitHub, publicando a cada push** — em vercel.com/new, importe o
+repositório e **não mude nada**: a configuração da raiz já diz o que
+construir (`npm run build`) e o que publicar (`game/dist`). O
+`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD` está ligado ali para o build não baixar um
+navegador por causa de uma dependência que só serve aos testes.
+
+### Publicar no GitHub Pages
+
+Também configurado. Basta ligar uma vez, no GitHub:
 
 > **Settings → Pages → Build and deployment → Source: "GitHub Actions"**
 

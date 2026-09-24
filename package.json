@@ -1,0 +1,9 @@
+{
+  "name": "nos",
+  "private": true,
+  "description": "NÓS — narrativa de exploração psicológica",
+  "scripts": {
+    "build": "cd game && npm ci && npm run build && node scripts/build-single.mjs",
+    "dev": "cd game && npm run dev"
+  }
+}

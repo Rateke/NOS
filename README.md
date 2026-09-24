@@ -47,6 +47,16 @@ cd game && npm install && npm run build:single
 Isso gera `game/dist/nos.html`: um arquivo único que abre com duplo clique, sem
 servidor. Para editar o jogo, use `npm run dev`.
 
+**Para publicar e mandar o link para alguém jogar:**
+
+```bash
+cd game && npm run build
+npx vercel deploy dist --prod
+```
+
+O repositório já vem configurado para a Vercel (`vercel.json`), então importar
+no vercel.com/new também funciona sem mexer em nada.
+
 ## Os três documentos
 
 A obra é descrita por três materiais complementares, que contam a mesma história
