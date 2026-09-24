@@ -30,6 +30,11 @@ export class Display {
   scale = 1
   offsetX = 0
   offsetY = 0
+  /**
+   * Câmera usada no último quadro. As conversões tela<->mundo precisam dela:
+   * sem isso, com zoom, o clique do jogador cai num ponto errado do mundo.
+   */
+  private cam = { zoom: 1, alvoX: WORLD_W / 2, alvoY: WORLD_H / 2 }
   cssW = 0
   cssH = 0
 
@@ -202,6 +207,7 @@ export class Display {
     const z = fx?.zoom && fx.zoom > 0 ? fx.zoom : 1
     const alvoX = fx?.alvoX ?? WORLD_W / 2
     const alvoY = fx?.alvoY ?? WORLD_H / 2
+    this.cam = { zoom: z, alvoX, alvoY }
     const w = WORLD_W * this.scale * z
     const h = WORLD_H * this.scale * z
     let ox = this.offsetX + (WORLD_W * this.scale) / 2 - alvoX * this.scale * z
@@ -293,21 +299,28 @@ export class Display {
     c.fillRect(0, 0, this.cssW, this.cssH)
   }
 
-  /** Converte coordenada de mundo para coordenada de tela (para a interface). */
+  /**
+   * Mundo para tela, já contando a câmera do último quadro — é assim que um
+   * aviso desenhado na interface para em cima do objeto certo.
+   */
   toScreenX(x: number): number {
-    return this.offsetX + x * this.scale
+    const { zoom, alvoX } = this.cam
+    return this.offsetX + (WORLD_W * this.scale) / 2 + (x - alvoX) * this.scale * zoom
   }
 
   toScreenY(y: number): number {
-    return this.offsetY + y * this.scale
+    const { zoom, alvoY } = this.cam
+    return this.offsetY + (WORLD_H * this.scale) / 2 + (y - alvoY) * this.scale * zoom
   }
 
-  /** Inverso de toScreenX/Y: onde, no mundo, o jogador clicou. */
+  /** Inverso: onde, no mundo, o jogador clicou. */
   toWorldX(sx: number): number {
-    return (sx - this.offsetX) / this.scale
+    const { zoom, alvoX } = this.cam
+    return alvoX + (sx - this.offsetX - (WORLD_W * this.scale) / 2) / (this.scale * zoom)
   }
 
   toWorldY(sy: number): number {
-    return (sy - this.offsetY) / this.scale
+    const { zoom, alvoY } = this.cam
+    return alvoY + (sy - this.offsetY - (WORLD_H * this.scale) / 2) / (this.scale * zoom)
   }
 }

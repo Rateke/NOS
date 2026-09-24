@@ -5,8 +5,8 @@ import { audio } from '../../../engine/audio'
 import { Figura } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import {
-  MESA_ABERTURA, MESA_CONFRONTO, MESA_PENSAMENTO, MESA_FUGA,
-  PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
+  MESA_ABERTURA, MESA_CONFRONTO, MESA_PENSAMENTO, MESA_FUGA, MESA_FECHO,
+  MESA_VESTIGIOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
 } from '../../content/demoScript'
 import { TearScene } from './tear'
 
@@ -36,7 +36,7 @@ export class MesaScene implements Scene {
   private po = new Particulas()
 
   private liam = new Figura({
-    x: 204, y: CHAO, altura: 31,
+    x: 232, y: CHAO, altura: 31,
     cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' },
   })
   private evelyn = new Figura({
@@ -58,6 +58,13 @@ export class MesaScene implements Scene {
   private proxPuxao = 3
   private idxPuxao = 0
   private idxPensamento = 0
+  /** Vestígios já examinados. É a única coisa que o jogador muda aqui. */
+  private achados = new Set<string>()
+  private panoTirado = false
+  /** Destino de um clique. Liam anda sozinho até lá. */
+  private destino: number | null = null
+  private desdeQuePreso = 0
+  private examinarAoChegar = false
 
   enter(): void {
     audio.setAmbient(0.5, 2)
@@ -78,7 +85,7 @@ export class MesaScene implements Scene {
     for (const f of [this.liam, this.evelyn, this.adrian, this.lia]) f.update(dt)
 
     // Fumaça fina saindo da panela esquecida no fogo. Ninguém olha.
-    if (Math.random() < dt * 5) this.po.poeira(198, 90, 7, 3, 'rgba(150,146,152,')
+    if (!this.panoTirado && Math.random() < dt * 5) this.po.poeira(198, 90, 7, 3, 'rgba(150,146,152,')
 
     this.encarar()
 
@@ -108,14 +115,54 @@ export class MesaScene implements Scene {
   }
 
   private preso(dt: number, ctx: SceneCtx): void {
-    // Andar
+    // Carência curta ao entrar na fase: um confirmar que sobrou de fechar a
+    // fala anterior não pode examinar nada sozinho.
+    this.desdeQuePreso += dt
+    if (this.desdeQuePreso < 0.35) {
+      ctx.input.consumeConfirm()
+      ctx.input.consumeTap()
+      return
+    }
+
+    // Examinar o que estiver ao alcance
+    const perto = this.vestigioPerto()
+    if (perto && !this.achados.has(perto.id) && ctx.input.consumeConfirm()) {
+      this.examinar(perto)
+      return
+    }
+
+    // Andar. O teclado manda direto; o clique vira destino e Liam vai
+    // sozinho até lá — clicar de quadro em quadro seria insuportável.
     const eixo = ctx.input.moveAxis()
     let dx = eixo ? eixo.x : 0
+    if (eixo) this.destino = null
+
     const tap = ctx.input.consumeTap()
     if (tap) {
       const alvo = ctx.display.toWorldX(tap.x)
-      dx = Math.sign(alvo - this.liam.x)
+      // Clique em cima de um vestígio: anda até ele e examina ao chegar.
+      const v = MESA_VESTIGIOS.find((c) => Math.abs(c.x - alvo) < 24)
+      this.destino = v ? v.x : alvo
+      this.examinarAoChegar = Boolean(v)
     }
+
+    if (this.destino !== null && dx === 0) {
+      const d = this.destino - this.liam.x
+      if (Math.abs(d) < 3) {
+        this.destino = null
+        if (this.examinarAoChegar) {
+          this.examinarAoChegar = false
+          const v = this.vestigioPerto()
+          if (v && !this.achados.has(v.id)) {
+            this.examinar(v)
+            return
+          }
+        }
+      } else {
+        dx = Math.sign(d)
+      }
+    }
+
     this.liam.x = Math.max(LIMITE_ESQ, Math.min(LIMITE_DIR, this.liam.x + dx * 42 * dt))
 
     // A tensão sobe sozinha. Ficar parado não é neutro: é mais um jeito de
@@ -144,7 +191,10 @@ export class MesaScene implements Scene {
     if (this.tensao >= 1) {
       this.fase = 'fuga'
       audio.refuse()
-      this.dialogue.play(MESA_FUGA, () => {
+      // O fecho depende de quanto ele viu — nunca do que ele conseguiu mudar.
+      const n = this.achados.size
+      const fecho = MESA_FECHO[n >= 4 ? 4 : n >= 2 ? 2 : 0] ?? MESA_FUGA
+      this.dialogue.play(fecho, () => {
         audio.setArgument(0.1, 1)
         ctx.transition(new TearScene(), 1.6, 1.6)
       }, 1.7)
@@ -157,6 +207,21 @@ export class MesaScene implements Scene {
     this.liam.x += dx * 70 * dt
     this.liam.braco = 0.6
     void ctx
+  }
+
+  private examinar(v: (typeof MESA_VESTIGIOS)[number]): void {
+    this.achados.add(v.id)
+    if (v.id === 'fogao') this.panoTirado = true
+    audio.interact()
+    this.dialogue.play(v.linhas)
+  }
+
+  /** O vestígio ao alcance de Liam, se houver. */
+  private vestigioPerto(): (typeof MESA_VESTIGIOS)[number] | null {
+    for (const v of MESA_VESTIGIOS) {
+      if (Math.abs(v.x - this.liam.x) < 17) return v
+    }
+    return null
   }
 
   private chamar(quem: 'Adrian' | 'Evelyn' | 'Lia', falas: string[]): void {
@@ -191,6 +256,7 @@ export class MesaScene implements Scene {
     })
     ctx.display.vignette(0.66 + this.tensao * 0.2)
 
+    this.drawAviso(ctx)
     this.drawPuxao(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
@@ -216,8 +282,10 @@ export class MesaScene implements Scene {
     c.fillRect(186, 96, 22, 9)                       // panela
     c.fillStyle = '#3a4256'
     c.fillRect(184, 94, 26, 3)                       // tampa
-    c.fillStyle = '#5c4f58'
-    c.fillRect(196, 90, 13, 4)                       // o pano
+    if (!this.panoTirado) {
+      c.fillStyle = '#5c4f58'
+      c.fillRect(196, 90, 13, 4)                     // o pano na tampa
+    }
     c.fillStyle = 'rgba(226,120,60,0.5)'
     c.fillRect(190, 105, 14, 2)                      // a chama
 
@@ -284,6 +352,42 @@ export class MesaScene implements Scene {
     g.addColorStop(1, '#3f4658')
     c.fillStyle = g
     c.fillRect(0, 0, WORLD_W, WORLD_H)
+    c.restore()
+  }
+
+  /** Aviso de que há algo ao alcance, e quantos ele já viu. */
+  private drawAviso(ctx: SceneCtx): void {
+    if (this.fase !== 'preso') return
+    const c = ctx.display.ctx
+    const { cssW, cssH } = ctx.display
+    const s = Math.max(12, Math.min(cssW / 70, 17))
+    c.save()
+    c.textAlign = 'center'
+    c.font = `${s}px ${FONT_BODY}`
+
+    const perto = this.vestigioPerto()
+    if (perto && !this.achados.has(perto.id)) {
+      const sx = ctx.display.toScreenX(this.liam.x)
+      const sy = ctx.display.toScreenY(this.liam.y - 40)
+      const txt = perto.rotulo
+      const w = c.measureText(txt).width + s * 3.2
+      c.fillStyle = 'rgba(4,6,11,0.82)'
+      c.fillRect(sx - w / 2, sy - s, w, s * 1.9)
+      c.textAlign = 'left'
+      c.fillStyle = PAL.accent
+      c.fillText('E', sx - w / 2 + s * 0.7, sy + s * 0.45)
+      c.fillStyle = PAL.ink
+      c.fillText(txt, sx - w / 2 + s * 2, sy + s * 0.45)
+      c.textAlign = 'center'
+    }
+
+    c.globalAlpha = 0.45
+    c.fillStyle = PAL.inkDim
+    c.font = `${s * 0.92}px ${FONT_BODY}`
+    c.fillText(
+      `${this.achados.size}/${MESA_VESTIGIOS.length} · ← → anda · E examina`,
+      cssW / 2, cssH - s * 2,
+    )
     c.restore()
   }
 

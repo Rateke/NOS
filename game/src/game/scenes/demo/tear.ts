@@ -4,14 +4,15 @@ import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
 import { audio } from '../../../engine/audio'
 import {
   TEAR_CHEGADA, ADRIAN_DURANTE, ADRIAN_INSISTE, FRAGMENTOS, CORPO,
-  TEAR_FIM, ELISA_CORTE,
+  TEAR_FIM, ELISA_CORTE, TEAR_PIANO, TEAR_ERRO,
 } from '../../content/demoScript'
 import { FimScene } from './fim'
 import { Figura } from '../../world/figura'
+import { Piano } from '../../systems/piano'
+import { musica, TEMA } from '../../../engine/musica'
 import { Particulas } from '../../world/particulas'
 
 const LIAM = { x: WORLD_W / 2, y: 150 }
-const TEMPO_ABSORCAO = 1.45
 const NOTAS_FIO = [147, 165, 185, 196, 220, 233]
 
 interface Fio {
@@ -58,7 +59,6 @@ export class TearScene implements Scene {
   private t = 0
   private fios: Fio[] = []
   private sel = 0
-  private segurando = 0
   private ecos: Eco[] = []
   private intensidade = 0
   private ocioso = 0
@@ -69,10 +69,25 @@ export class TearScene implements Scene {
   private falaAdrian = ''
   private falaAdrianAte = 0
   private po = new Particulas()
+  private piano = new Piano()
+  /** Posição dentro da frase exigida pelo fio selecionado. */
+  private passo = 0
+  private errosFio = 0
+  private jolt = 0
   private liam = new Figura({
     x: LIAM.x, y: LIAM.y, altura: 34,
     cor: { roupa: '#141926', cabelo: '#080b12', pele: '#5c4c46', sombra: 'rgba(0,0,0,0.55)' },
   })
+
+  /** Exposto para o clique nas teclas e para os testes. */
+  get caixas(): { x: number; y: number; w: number; h: number }[] {
+    return this.piano.caixas
+  }
+
+  /** A frase do tema que este fio exige. Ciclam, e crescem. */
+  private fraseDoFio(indice: number): readonly number[] {
+    return TEMA[indice % TEMA.length] ?? []
+  }
 
   enter(): void {
     const cores = ['#6f86a8', '#8a6f9e', '#9e7a6f', '#6f9e8a', '#9e6f85', '#7a8a9e']
@@ -90,8 +105,14 @@ export class TearScene implements Scene {
     audio.setAmbient(0.5, 1)
     audio.startArgument()
     audio.setArgument(0.32, 2)
+    // O piano volta desafinado e abafado: é o mesmo instrumento, estragado.
+    musica.desafinado = -0.35
+    musica.abafado = 0.45
+    musica.setPad(0.35, 3)
     this.dialogue.play(TEAR_CHEGADA, () => {
-      this.fase = 'absorvendo'
+      this.dialogue.play(TEAR_PIANO, () => {
+        this.fase = 'absorvendo'
+      })
     })
   }
 
@@ -108,7 +129,12 @@ export class TearScene implements Scene {
       if (!cinematico && ctx.input.consumeConfirm()) this.dialogue.confirm()
       // Nos clímaxes a fala corre sozinha, mas a cena continua andando por
       // baixo: a distorção e a batida não param para esperar o jogador.
-      if (!cinematico) return
+      if (!cinematico && this.fase !== 'absorvendo') return
+      if (cinematico) {
+        /* o clímax roda por baixo da fala */
+      } else if (this.dialogue.active && this.fase === 'absorvendo') {
+        // As teclas respondem durante a fala: o jogador vai tentar tocar.
+      }
     }
 
     if (this.fase === 'absorvendo') this.absorver(dt, ctx)
@@ -120,13 +146,15 @@ export class TearScene implements Scene {
   private animar(dt: number): void {
     const i = this.intensidade
     this.po.update(dt)
+    this.piano.update(dt)
+    this.jolt = Math.max(0, this.jolt - dt * 3)
     for (const f of this.fios) f.balanco += dt * (0.5 + f.puxado * 1.6)
 
     this.liam.update(dt)
     this.liam.ofego = 1 + i * 3.4
     this.liam.curvatura = Math.min(1, i * 0.9)
     this.liam.tremor = i > 0.45 ? (i - 0.45) * 2.6 : 0
-    this.liam.braco = this.segurando > 0 ? 0.55 + this.segurando * 0.3 : 0.15
+    this.liam.braco = this.passo > 0 ? 0.55 + Math.min(0.35, this.passo * 0.08) : 0.15
 
     // Poeira desprendida do assoalho pela discussão lá em cima.
     if (Math.random() < dt * (7 + i * 16)) {
@@ -148,64 +176,60 @@ export class TearScene implements Scene {
     }
   }
 
+  /**
+   * Absorver deixou de ser segurar um botão: agora é **tocar a melodia** que
+   * Adrian ensinou no prólogo, no mesmo piano, desafinado. Cada fio pede uma
+   * frase do tema, e as frases crescem. Errar uma nota faz o fio chicotear de
+   * volta e Adrian pedir, com toda a calma, de novo do começo.
+   */
   private absorver(dt: number, ctx: SceneCtx): void {
     const vivos = this.fios.filter((f) => !f.absorvido)
     if (vivos.length === 0) {
       this.fase = 'pico'
       this.tPico = 0
-      // Sem toque daqui em diante: o clímax corre sozinho.
       this.dialogue.play(TEAR_FIM, undefined, 1.6)
       return
     }
 
-    if (ctx.input.consumeKey('ArrowLeft') || ctx.input.consumeKey('KeyA')) this.mover(-1)
-    if (ctx.input.consumeKey('ArrowRight') || ctx.input.consumeKey('KeyD')) this.mover(1)
-
-    // Clicar perto de um fio escolhe aquele fio.
-    const tap = ctx.input.consumeTap()
-    if (tap) {
-      const mx = ctx.display.toWorldX(tap.x)
-      let melhor = -1
-      let dist = Infinity
-      for (const [i, f] of this.fios.entries()) {
-        if (f.absorvido) continue
-        const d = Math.abs(f.x0 - mx)
-        if (d < dist) {
-          dist = d
-          melhor = i
-        }
-      }
-      if (melhor >= 0 && melhor !== this.sel) {
-        this.sel = melhor
-        this.segurando = 0
-        audio.interact()
-      }
-    }
-
-    // Segurar o botão do mouse vale como segurar E.
-    const puxando =
-      ctx.input.held('KeyE') || ctx.input.held('Space') || ctx.input.held('Enter') ||
-      ctx.input.pointerDown || ctx.input.stick !== null
+    if (ctx.input.consumeKey('ArrowLeft')) this.mover(-1)
+    if (ctx.input.consumeKey('ArrowRight')) this.mover(1)
 
     const fio = this.fios[this.sel]
-    if (puxando && fio && !fio.absorvido) {
-      this.ocioso = 0
-      this.segurando += dt
-      fio.puxado = Math.min(1, this.segurando / TEMPO_ABSORCAO)
-      if (this.segurando >= TEMPO_ABSORCAO) this.concluir(fio)
-    } else {
-      this.segurando = Math.max(0, this.segurando - dt * 2)
-      if (fio) fio.puxado = this.segurando / TEMPO_ABSORCAO
+    if (!fio || fio.absorvido) {
+      this.mover(1)
+      return
+    }
+
+    const frase = this.fraseDoFio(this.sel)
+    const tocada = this.piano.ler(ctx.input, ctx.display)
+    if (tocada === null) {
       this.ocioso += dt
-      // Parar não alivia: Adrian aperta e a discussão sobe.
-      if (this.ocioso > 4.5) {
+      if (this.ocioso > 5.5) {
         this.ocioso = 0
         const fala = ADRIAN_INSISTE[this.idxInsiste % ADRIAN_INSISTE.length]
         this.idxInsiste++
         this.dizer(fala ?? '', 3.2)
-        audio.setArgument(0.32 + this.intensidade * 0.3 + 0.12, 1)
+        audio.setArgument(0.3 + this.intensidade * 0.3 + 0.1, 1)
       }
+      return
     }
+
+    this.ocioso = 0
+    if (frase[this.passo] === tocada) {
+      this.passo++
+      fio.puxado = this.passo / Math.max(1, frase.length)
+      if (this.passo >= frase.length) this.concluir(fio)
+      return
+    }
+
+    // Nota errada: o fio recua e a cena dá um solavanco.
+    this.passo = 0
+    fio.puxado = 0
+    this.jolt = 1
+    audio.refuse()
+    const fala = TEAR_ERRO[Math.min(this.errosFio, TEAR_ERRO.length - 1)]
+    this.errosFio++
+    this.dizer(fala ?? '', 2.8)
   }
 
   private mover(d: number): void {
@@ -214,7 +238,7 @@ export class TearScene implements Scene {
       const j = (this.sel + d * i + n * 2) % n
       if (!this.fios[j]?.absorvido) {
         this.sel = j
-        this.segurando = 0
+        this.passo = 0
         audio.interact()
         return
       }
@@ -225,11 +249,14 @@ export class TearScene implements Scene {
   private concluir(fio: Fio): void {
     fio.absorvido = true
     fio.puxado = 1
-    this.segurando = 0
+    this.passo = 0
     const feitos = this.fios.filter((f) => f.absorvido).length
     this.intensidade = feitos / this.fios.length
 
     audio.addLayer(NOTAS_FIO[feitos - 1] ?? 147, 'sine', 0.055)
+    // O instrumento estraga mais a cada fio: desafina e fecha.
+    musica.desafinado = -0.35 - this.intensidade * 1.1
+    musica.abafado = 0.45 + this.intensidade * 0.45
     audio.setArgument(Math.max(0, 0.34 - this.intensidade * 0.3), 1.6)
     audio.reveal()
 
@@ -256,6 +283,7 @@ export class TearScene implements Scene {
     const fala = ADRIAN_DURANTE[feitos - 1]
     if (fala) this.dizer(fala, 3.6)
     this.mover(1)
+    this.errosFio = 0
   }
 
   private dizer(texto: string, dur: number): void {
@@ -300,7 +328,7 @@ export class TearScene implements Scene {
     ctx.display.present({
       rgbSplit: i * 2.6,
       wave: i * 1.5,
-      shake: i * i * 1.6,
+      shake: i * i * 1.6 + this.jolt * 2.2,
       zoom: 1 + i * 0.4,
       alvoX: WORLD_W / 2,
       alvoY: WORLD_H / 2 + i * 16,
@@ -309,7 +337,14 @@ export class TearScene implements Scene {
     ctx.display.vignette(0.68 + i * 0.22)
 
     this.desenharEcos(ctx)
-    this.desenharBarra(ctx)
+    if (this.fase === 'absorvendo') {
+      this.piano.draw(ctx.display, { fantasma: true })
+      const frase = this.fraseDoFio(this.sel)
+      this.piano.drawDica(
+        ctx.display,
+        `toque a melodia  ·  ${this.passo}/${frase.length}  ·  ← → escolhe o fio`,
+      )
+    }
     this.desenharAdrian(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
@@ -528,44 +563,6 @@ export class TearScene implements Scene {
       c.globalAlpha = a * 0.82
       c.fillStyle = PAL.ink
       c.fillText(e.texto, cssW * e.x, cssH * e.y)
-    }
-    c.restore()
-  }
-
-  /** Quantos fios faltam, e o quanto o atual já entrou. */
-  private desenharBarra(ctx: SceneCtx): void {
-    if (this.fase !== 'absorvendo') return
-    const c = ctx.display.ctx
-    const { cssW, cssH } = ctx.display
-    const size = Math.max(11, Math.min(cssW / 80, 16))
-    c.save()
-    c.textAlign = 'center'
-    c.font = `${size}px ${FONT_BODY}`
-    c.fillStyle = PAL.inkFaint
-    c.fillText(
-      this.segurando > 0
-        ? 'segure'
-        : 'segure o clique ou E para juntar  ·  ← → escolhe o fio',
-      cssW / 2, cssH - size * 4.2,
-    )
-
-    const larg = Math.min(cssW * 0.4, 360)
-    const x = (cssW - larg) / 2
-    const y = cssH - size * 3
-    c.fillStyle = 'rgba(232,236,244,0.12)'
-    c.fillRect(x, y, larg, 3)
-    const fio = this.fios[this.sel]
-    if (fio) {
-      c.fillStyle = PAL.accent
-      c.fillRect(x, y, larg * Math.min(1, this.segurando / TEMPO_ABSORCAO), 3)
-    }
-
-    // Marcas dos fios restantes
-    const n = this.fios.length
-    for (let i = 0; i < n; i++) {
-      const fx = x + (larg / (n - 1)) * i
-      c.fillStyle = this.fios[i]?.absorvido ? 'rgba(196,170,224,0.5)' : 'rgba(232,236,244,0.3)'
-      c.fillRect(fx - 1, y + 8, 2, 5)
     }
     c.restore()
   }

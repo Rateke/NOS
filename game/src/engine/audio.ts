@@ -3,6 +3,8 @@
  * O ambiente é um drone grave com ruído filtrado; os efeitos são envelopes
  * curtos. Serve de base até existir trilha de verdade.
  */
+import { musica } from './musica'
+
 export class Audio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
@@ -18,6 +20,7 @@ export class Audio {
     this.master = this.ctx.createGain()
     this.master.gain.value = 0.5
     this.master.connect(this.ctx.destination)
+    musica.conectar(this.ctx, this.master)
   }
 
   resume(): void {

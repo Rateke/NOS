@@ -1,116 +1,164 @@
 /**
- * Teste de integração da demo "Só mais um": joga o prólogo musical e a câmara
- * do Tear num navegador real, conferindo que a frase é aceita, que os seis
- * fios podem ser absorvidos e que o clímax corre sozinho até o fim.
+ * Teste de integração da demo "Só mais um", pelo teclado.
+ *
+ * Cobre as três cenas e, principalmente, a espinha da demo: o tema aprendido
+ * no piano do prólogo é o mesmo que abre os fios na câmara do Tear.
  *
  *   npm run build && npm run preview &
  *   npm run test:demo
+ *
+ * OUT=<dir> salva capturas de cada momento.
  */
 import { chromium } from 'playwright'
 import { mkdirSync } from 'fs'
+
 const OUT = process.env.OUT ?? null
+const URL = process.env.URL ?? 'http://localhost:4173/'
 if (OUT) mkdirSync(OUT, { recursive: true })
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
+
+/** O tema, em graus da escala. Tem de bater com engine/musica.ts. */
+const TEMA = [[0, 2, 4, 3], [0, 2, 4, 6, 5], [0, 2, 4, 3, 2, 1, 0]]
+const TECLAS = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK']
+
 const falhas = []
 function esperar(rotulo, real, esperado) {
   const ok = JSON.stringify(real) === JSON.stringify(esperado)
   console.log(`  ${ok ? 'ok  ' : 'FALHA'} ${rotulo}: ${JSON.stringify(real)}`)
   if (!ok) falhas.push(rotulo)
 }
-const errs = []
-page.on('pageerror', e => errs.push(String(e)))
 
-const falando = () => page.evaluate(() => !!window.__nos?.scene?.dialogue?.active)
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
+const errs = []
+page.on('pageerror', (e) => errs.push(String(e)))
+
 const estado = () => page.evaluate(() => {
   const s = window.__nos?.scene
-  return { id: s?.id, fase: s?.fase, intensidade: s?.intensidade?.toFixed?.(2) }
+  return {
+    id: s?.id, fase: s?.fase, frase: s?.frase, passo: s?.passo, sel: s?.sel,
+    achados: s?.achados?.size, x: Math.round(s?.liam?.x ?? 0),
+    intensidade: s?.intensidade?.toFixed?.(2),
+  }
 })
+const falando = () => page.evaluate(() => !!window.__nos?.scene?.dialogue?.active)
+const caixas = () => page.evaluate(() => window.__nos?.scene?.caixas ?? [])
+
 async function limpar(max = 14) {
   for (let i = 0; i < max; i++) {
     if (!(await falando())) return
     await page.keyboard.press('Space')
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(260)
   }
 }
-
-/** Espera uma cena específica, limpando falas pelo caminho. */
-async function esperarCena(alvo, ms = 60000) {
-  const ate = Date.now() + ms
-  while (Date.now() < ate) {
-    const e = await estado()
-    if (e.id === alvo) return true
-    await limpar(3)
-    await page.waitForTimeout(400)
-  }
-  return false
-}
-
-/** Espera uma fase dentro da cena atual, limpando falas pelo caminho. */
-async function esperarFase(alvo, ms = 30000) {
+async function esperarFase(alvo, ms = 45000) {
   const ate = Date.now() + ms
   while (Date.now() < ate) {
     if ((await estado()).fase === alvo) return true
-    await limpar(3)
+    await limpar(2)
     await page.waitForTimeout(300)
   }
   return false
 }
-
-await page.goto((process.env.URL ?? 'http://localhost:4173/') + '?debug=1')
-await page.waitForTimeout(1200)
-if (OUT) await page.screenshot({ path: `${OUT}/a-menu.png` })
-
-await page.keyboard.press('Space')
-await page.waitForTimeout(2200)
-await limpar()
-await page.waitForTimeout(4200)            // Adrian toca a frase
-if (OUT) await page.screenshot({ path: `${OUT}/b-prologo.png` })
-
-await limpar()
-for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp']) {
-  await page.keyboard.press(k)
-  await page.waitForTimeout(430)
+async function esperarCena(alvo, ms = 90000) {
+  const ate = Date.now() + ms
+  while (Date.now() < ate) {
+    if ((await estado()).id === alvo) return true
+    await limpar(2)
+    await page.waitForTimeout(350)
+  }
+  return false
 }
-await page.waitForTimeout(700)
-console.log('\nverificações:')
-esperar('a frase musical foi aceita', (await estado()).fase, 'acerto')
-if (OUT) await page.screenshot({ path: `${OUT}/c-acerto.png` })
+async function tocar(graus) {
+  for (const g of graus) {
+    await page.keyboard.press(TECLAS[g])
+    await page.waitForTimeout(240)
+  }
+}
 
+await page.goto(URL + '?debug=1')
+await page.waitForTimeout(1300)
+console.log('\nverificações (teclado):')
+
+{
+  const fit = await page.evaluate(() => {
+    const c = document.getElementById('game')
+    const b = c.getBoundingClientRect()
+    return Math.abs(b.width - innerWidth) <= 2 && Math.abs(b.height - innerHeight) <= 2
+  })
+  esperar('canvas preenche a janela', fit, true)
+}
+
+// Menu -> demo
+{
+  const c = await caixas()
+  await page.mouse.click(c[0].x + c[0].w / 2, c[0].y + c[0].h / 2)
+}
+esperar('o prólogo chega na vez do jogador', await esperarFase('toca'), true)
 await limpar()
-esperar('a sala dá lugar à cozinha', await esperarCena('demo-mesa'), true)
-if (OUT) await page.screenshot({ path: `${OUT}/d0-mesa.png` })
+if (OUT) await page.screenshot({ path: `${OUT}/a-piano.png` })
 
-// A Mesa não tem ponto neutro: a tensão sobe sozinha até ele correr.
-esperar('a Mesa empurra Liam para o porão', await esperarCena('demo-tear'), true)
-await page.waitForTimeout(800)
-if (OUT) await page.screenshot({ path: `${OUT}/d-tear-chegada.png` })
-
-esperar('o Tear aceita entrada', await esperarFase('absorvendo'), true)
-
-// Absorver os seis fios
-for (let i = 0; i < 6; i++) {
-  await page.keyboard.down('KeyE')
-  await page.waitForTimeout(1750)
-  await page.keyboard.up('KeyE')
+// As três frases do tema, cada uma maior que a anterior
+for (let f = 0; f < 3; f++) {
+  const st = await estado()
+  await tocar(TEMA[st.frase ?? f])
   await page.waitForTimeout(450)
-  if (i === 0) if (OUT) await page.screenshot({ path: `${OUT}/e-primeiro-fio.png` })
-  if (i === 3) if (OUT) await page.screenshot({ path: `${OUT}/f-tear-meio.png` })
+  await limpar()
+  if (f < 2) {
+    esperar(`frase ${f + 1} aceita`, (await estado()).frase, f + 1)
+    await esperarFase('toca', 25000)
+    await limpar()
+  }
+}
+esperar('tema inteiro aprendido', (await estado()).fase, 'livre')
+if (OUT) await page.screenshot({ path: `${OUT}/b-livre.png` })
+
+// A Mesa e seus vestígios
+esperar('a sala dá lugar à cozinha', await esperarCena('demo-mesa'), true)
+await esperarFase('preso')
+await limpar()
+if (OUT) await page.screenshot({ path: `${OUT}/c-mesa.png` })
+
+for (const alvo of [116, 158, 200, 262]) {
+  for (let i = 0; i < 150; i++) {
+    const st = await estado()
+    if (st.id !== 'demo-mesa' || Math.abs(st.x - alvo) < 12) break
+    const t = st.x < alvo ? 'ArrowRight' : 'ArrowLeft'
+    await page.keyboard.down(t)
+    await page.waitForTimeout(70)
+    await page.keyboard.up(t)
+  }
+  await page.keyboard.press('KeyE')
+  await page.waitForTimeout(320)
+  await limpar()
+}
+esperar('os quatro vestígios foram encontrados', (await estado()).achados, 4)
+if (OUT) await page.screenshot({ path: `${OUT}/d-achados.png` })
+
+// A câmara: o mesmo tema abre os fios
+esperar('a Mesa empurra Liam para o porão', await esperarCena('demo-tear'), true)
+esperar('o Tear aceita entrada', await esperarFase('absorvendo'), true)
+await limpar()
+if (OUT) await page.screenshot({ path: `${OUT}/e-tear-piano.png` })
+
+for (let i = 0; i < 6; i++) {
+  const st = await estado()
+  if (st.fase !== 'absorvendo') break
+  await tocar(TEMA[(st.sel ?? 0) % 3])
+  await page.waitForTimeout(500)
+  await limpar(3)
+  if (i === 2 && OUT) await page.screenshot({ path: `${OUT}/f-tear-meio.png` })
 }
 {
   const e = await estado()
-  esperar('os seis fios foram absorvidos', e.fase, 'pico')
+  esperar('os seis fios foram abertos pela melodia', e.fase, 'pico')
   esperar('intensidade no máximo', Number(e.intensidade) >= 1, true)
 }
 if (OUT) await page.screenshot({ path: `${OUT}/g-pico.png` })
 
-await limpar()
-await page.waitForTimeout(3000)
-if (OUT) await page.screenshot({ path: `${OUT}/h-corte.png` })
-await page.waitForTimeout(6000)
-if (OUT) await page.screenshot({ path: `${OUT}/i-fim.png` })
-esperar('o clímax correu sozinho até o fim', (await estado()).id, 'demo-fim')
+esperar('o clímax correu sozinho até o fim', await esperarCena('demo-fim', 40000), true)
 esperar('sem erros de runtime', errs, [])
+if (OUT) await page.screenshot({ path: `${OUT}/h-fim.png` })
+
 await browser.close()
 if (falhas.length) {
   console.error(`\n${falhas.length} falha(s): ${falhas.join(', ')}`)

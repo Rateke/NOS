@@ -11,34 +11,38 @@ import type { Line } from '../world/types'
 
 export const PROLOGO_ABERTURA: Line[] = [
   { speaker: 'Adrian', text: 'Senta aqui. Deixa eu te mostrar uma coisa.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Escuta primeiro. Depois você faz.', style: 'speech' },
 ]
 
-/**
- * A frase que Adrian toca e Liam precisa repetir.
- * Cada número é uma das quatro teclas: 0=←  1=↑  2=→  3=↓
- * Valores fora de 0..3 travariam a cena, porque não haveria tecla para eles.
- */
-export const FRASE_MUSICAL = [0, 2, 3, 1] as const
-
-export const PROLOGO_ENSINO: Line[] = [
-  { speaker: 'Adrian', text: 'Assim. Sem pressa. Agora você.', style: 'speech' },
+/** Uma linha por frase do tema, dita antes de Adrian tocá-la. */
+export const PROLOGO_FRASES: Line[][] = [
+  [{ speaker: 'Adrian', text: 'Essa é a primeira parte.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Agora cresce. Presta atenção no fim.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'E essa desce tudo. Até onde começou.', style: 'speech' }],
 ]
 
-/** Fica na tela enquanto é a vez do jogador — não bloqueia como fala. */
-export const PROLOGO_DICA = 'repita a sequência  ·  clique, setas ou WASD'
-
-export const PROLOGO_ERRO: Line[] = [
-  { speaker: 'Adrian', text: 'Calma. De novo, do começo.', style: 'speech' },
+export const PROLOGO_ACERTOU_FRASE: Line[][] = [
+  [{ speaker: 'Adrian', text: 'Isso. Sem pressa.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Você pega rápido.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Inteira. Na primeira noite.', style: 'speech' }],
 ]
 
-/**
- * O elogio e o veneno na mesma frase. É o coração da obra: não existe momento
- * em que Adrian deixa de amar — existe o momento em que amar vira encargo.
- */
+export const PROLOGO_ERRO: Line[][] = [
+  [{ speaker: 'Adrian', text: 'Calma. De novo, do começo.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Quase. Escuta mais uma vez.', style: 'speech' }],
+  [{ text: 'Ele não levanta a voz. Nunca levanta aqui.' }],
+]
+
+/** O elogio e a função instalada na mesma frase. */
 export const PROLOGO_ACERTO: Line[] = [
-  { speaker: 'Adrian', text: 'Viu? Você pega rápido.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Pronto. Agora é sua.', style: 'speech' },
   { speaker: 'Adrian', text: 'Sua mãe não tem paciência pra isso. Você tem.', style: 'speech' },
   { speaker: 'Adrian', text: 'Por isso eu conto com você.', style: 'speech' },
+]
+
+export const PROLOGO_LIVRE = 'toque à vontade'
+
+export const PROLOGO_FECHO: Line[] = [
   { text: 'Eu gostava quando ele falava assim.' },
   { text: 'Eu ainda gosto.' },
 ]
@@ -49,6 +53,21 @@ export const TEAR_CHEGADA: Line[] = [
   { text: 'A discussão atravessa o assoalho.' },
   { text: 'Se eu juntar os fios, eles param.' },
   { text: 'Sempre para.' },
+]
+
+/**
+ * O piano reaparece aqui. É a virada da demo: a mesma interface que era
+ * carinho vira ferramenta. Adrian não precisa explicar nada — só lembrar.
+ */
+export const TEAR_PIANO: Line[] = [
+  { speaker: 'Adrian', text: 'Você lembra da música?', style: 'speech' },
+  { speaker: 'Adrian', text: 'É só tocar. Igual eu te ensinei.', style: 'speech' },
+]
+
+export const TEAR_ERRO: string[] = [
+  'De novo, do começo.',
+  'Calma. Você sabe essa.',
+  'Escuta o fio. Ele te dá a nota.',
 ]
 
 /** Adrian entre uma absorção e outra. Nunca grita: é essa a questão. */
@@ -152,3 +171,67 @@ export const MESA_FUGA: Line[] = [
   { text: 'Eu não consigo.' },
   { text: 'Mas lá embaixo eu consigo.' },
 ]
+
+/**
+ * O que Liam pode encontrar na cozinha enquanto os pais discutem. Nada disso
+ * muda o que vai acontecer — muda o que ele sabe quando acontecer. É a única
+ * agência real da cena, e é de propósito que ela não salva ninguém.
+ */
+export interface Vestigio {
+  id: string
+  x: number
+  rotulo: string
+  linhas: Line[]
+}
+
+export const MESA_VESTIGIOS: Vestigio[] = [
+  {
+    id: 'malas', x: 116, rotulo: 'Olhar',
+    linhas: [
+      { text: 'Documentos, remédios, dinheiro contado.' },
+      { text: 'Tem uma pulseira de hospital no meio. Com outro sobrenome.' },
+      { text: 'Não é o meu. Nem o da minha mãe.' },
+    ],
+  },
+  {
+    id: 'bilhete', x: 158, rotulo: 'Ler',
+    linhas: [
+      { text: 'Um bilhete dobrado no bolso do casaco dela.' },
+      { text: 'É a letra da tia Fernanda.', style: 'read' },
+      { text: '23h. Estarei na esquina. Não precisa explicar nada.', style: 'read' },
+      { text: 'Ela ia mesmo.' },
+    ],
+  },
+  {
+    id: 'fogao', x: 200, rotulo: 'Tirar o pano',
+    linhas: [
+      { text: 'Tem um pano apoiado na tampa da panela.' },
+      { text: 'Eu tiro. Minha mãe sempre fala pra não deixar ali.' },
+      { text: 'Ninguém olha.' },
+    ],
+  },
+  {
+    id: 'telefone', x: 262, rotulo: 'Pegar',
+    linhas: [
+      { text: 'O telefone está fora do gancho.' },
+      { text: 'Fui eu que liguei pra ele.' },
+      { text: 'Eu achei que estava pedindo ajuda.' },
+    ],
+  },
+]
+
+/** O fecho muda conforme quanto ele viu. Nunca muda o que acontece. */
+export const MESA_FECHO: Record<number, Line[]> = {
+  0: [{ text: 'Eu não consigo.' }, { text: 'Mas lá embaixo eu consigo.' }],
+  2: [
+    { text: 'Tem coisa demais nessa cozinha que eu não sabia.' },
+    { text: 'E nada disso me diz o que fazer.' },
+    { text: 'Lá embaixo eu sei.' },
+  ],
+  4: [
+    { text: 'Eu vi tudo.' },
+    { text: 'A pulseira, o bilhete, o telefone fora do gancho.' },
+    { text: 'E continua não sendo escolha minha.' },
+    { text: 'Só tem um lugar onde eu resolvo alguma coisa.' },
+  ],
+}

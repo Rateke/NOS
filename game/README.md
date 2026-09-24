@@ -61,55 +61,42 @@ os três caminhos são testados de ponta a ponta.
 | Avançar uma fala | clicar | espaço, E ou Enter | tocar |
 | Andar pelo quarto | clicar no chão | setas ou WASD | arrastar à esquerda |
 | Examinar | clicar no objeto | E perto dele | tocar |
-| Tocar a frase musical | clicar na tecla | setas ou WASD | tocar na tecla |
-| Juntar um fio no Tear | segurar o clique | segurar E | segurar o toque |
+| Tocar o piano | clicar na tecla | A S D F G H J K | tocar na tecla |
+| Abrir um fio no Tear | tocar a melodia | tocar a melodia | tocar a melodia |
+| Examinar um vestígio | clicar nele | E perto dele | tocar nele |
 
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
 
 ## Os dois modos
 
-O menu do título oferece dois recortes:
+**Demo — Só mais um**, em três cenas. A espinha é uma só: **o tema que você
+aprende no piano do prólogo é o que abre os fios no porão.** O presente vira a
+ferramenta, na mesma interface.
 
-**Demo — Só mais um** *(o recorte para mostrar a estranhos)*, em três cenas:
+1. **A Música.** Sala de estar, o único ambiente quente da obra. Adrian ensina
+   um tema em ré menor, em três frases que crescem (4, 5 e 7 notas), num piano
+   de verdade — sintetizado por harmônicos, com reverberação longa. Você escuta
+   e repete de ouvido. Errar não é punido: ele reensina, sem levantar a voz.
+   No fim, toque à vontade. E aí vem o elogio, com a função dentro dele:
+   `Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`
 
-1. **A Música.** Sala de estar, a única cena quente da obra: abajur, poeira no
-   feixe de luz, retratos na parede. Adrian ensina uma frase ao filho e o
-   jogador repete. O afeto é verdadeiro — e é na mesma fala que a função é
-   instalada (`Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto
-   com você.`). No fim o calor drena sozinho e a câmera recua: a sala volta a
-   ficar grande demais.
+2. **A Mesa.** Cozinha, porta trancada, malas no chão. Liam anda entre a mãe e
+   o pai e é puxado pelos dois — **não existe ponto neutro**, e a tensão sobe
+   mesmo parado. Enquanto isso há **quatro vestígios** para achar: a pulseira
+   de hospital com outro sobrenome, o bilhete da tia marcando 23h, o telefone
+   fora do gancho, e o pano esquecido na tampa da panela — que você pode tirar.
+   Nada disso muda o que vai acontecer. Muda o que ele sabe quando acontecer,
+   e o fecho da cena reflete quanto você viu.
 
-2. **A Mesa.** A cozinha, a porta trancada, as malas no chão. Liam pode andar
-   entre a mãe e o pai, e é puxado pelos dois — chegar perto de um faz o outro
-   chamar. **Não existe ponto neutro**, e a tensão sobe mesmo parado. As
-   paredes fecham até ele correr para o porão. No fogão, uma panela esquecida
-   com um pano na tampa; ninguém olha para ela.
-
-3. **O Tear.** Seis fios, cada um pendurando uma relíquia de outra geração
-   (retrato, chave, pulseira, fita, anel, carta). O jogador **absorve cada fio
-   com as próprias mãos**: a discussão lá em cima acalma, e ao mesmo tempo a
-   imagem racha, o som empilha dissonância, o coração acelera e entra em Liam
-   uma lembrança que não é dele. Os fios absorvidos não somem — passam a se
-   enrolar nele. Não existe tela de fracasso e ninguém manda parar; parar só
-   faz Adrian apertar.
+3. **O Tear.** Seis fios, cada um pendurando uma relíquia de outra geração.
+   O piano reaparece — apagado, torto, frio — e Adrian pergunta:
+   `Você lembra da música?` Cada fio se abre tocando uma frase do tema. A cada
+   fio o instrumento **desafina e abafa mais**, a imagem racha, o coração
+   acelera, e entra em Liam uma lembrança que não é dele. Errar uma nota faz o
+   fio chicotear de volta. Não há tela de fracasso e ninguém manda parar.
 
 **Abertura** — o quarto de Liam, o diário e a porta que nunca esteve trancada.
-
-## O que já está jogável
-
-Tela preta e a VOZ → título → Liam acorda no quarto → encontra o diário →
-arruma o quarto → a porta abre → cartão do Capítulo 1.
-
-**A porta nunca esteve trancada.** Tentá-la antes da hora não dá "está
-trancada": dá a recusa do próprio Liam, que escala em três passos até
-`Não é que eu não possa sair. / É que eu não consigo imaginar sair assim.`
-Essa é a tese da obra virada mecânica, e é o motivo desta fatia existir.
-
-Os cinco objetos que ele guarda no bolso — botão, passagem vencida, pedra
-pintada, chave sem porta, papel dobrado — contam como tarefa mas não são
-descartados: Liam não consegue jogar fora. A pedra pintada e o papel dobrado
-já plantam Elisa sem nomeá-la.
 
 ## Onde mexer
 
@@ -122,6 +109,10 @@ já plantam Elisa sem nomeá-la.
 | Paleta e resolução interna | `src/engine/constants.ts` |
 | Caixa de diálogo | `src/game/systems/dialogue.ts` |
 | Ordem das cenas | `src/game/scenes/` |
+| **O tema musical** | `src/engine/musica.ts` (`TEMA`, em graus da escala) |
+| Timbre do piano e reverberação | `src/engine/musica.ts` |
+| Vestígios da cozinha | `src/game/content/demoScript.ts` (`MESA_VESTIGIOS`) |
+| Personagens animados | `src/game/world/figura.ts` |
 
 Para escrever falas novas basta editar `script.ts`; nenhum outro arquivo
 precisa ser aberto.

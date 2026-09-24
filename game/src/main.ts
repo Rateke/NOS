@@ -69,6 +69,10 @@ if (new URLSearchParams(location.search).has('debug')) {
       get scene() {
         return scene
       },
+      /** Converte um ponto do mundo em pixels de tela (usado nos testes). */
+      paraTela(x: number, y: number) {
+        return { x: display.toScreenX(x), y: display.toScreenY(y) }
+      },
     },
   })
 }
