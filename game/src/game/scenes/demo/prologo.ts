@@ -8,10 +8,19 @@ import {
 } from '../../content/demoScript'
 import { TearScene } from './tear'
 
-/** As quatro teclas viram as quatro notas. */
-const TECLAS = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'] as const
+/**
+ * As quatro notas. Cada uma aceita a seta ou a letra equivalente do WASD,
+ * para a mão poder ficar onde o jogador estiver acostumado.
+ */
+const TECLAS: readonly (readonly string[])[] = [
+  ['ArrowLeft', 'KeyA'],
+  ['ArrowUp', 'KeyW'],
+  ['ArrowRight', 'KeyD'],
+  ['ArrowDown', 'KeyS'],
+]
 const NOTAS = [261.63, 329.63, 392.0, 493.88]
 const NOMES = ['←', '↑', '→', '↓']
+const LETRAS = ['A', 'W', 'D', 'S']
 
 type Fase = 'entrada' | 'ele-toca' | 'sua-vez' | 'acerto' | 'saida'
 
@@ -77,7 +86,7 @@ export class PrologoScene implements Scene {
   }
 
   private suaVez(ctx: SceneCtx): void {
-    const tocada = TECLAS.findIndex((k) => ctx.input.consumeKey(k))
+    const tocada = TECLAS.findIndex((teclas) => teclas.some((k) => ctx.input.consumeKey(k)))
     if (tocada < 0) return
 
     audio.note(NOTAS[tocada] ?? 261.63, 0.9)
@@ -188,11 +197,6 @@ export class PrologoScene implements Scene {
 
     c.save()
     c.textAlign = 'center'
-    c.globalAlpha = 0.5
-    c.fillStyle = PAL.inkFaint
-    c.font = `${Math.round(s * 0.32)}px ${FONT_BODY}`
-    c.fillText(PROLOGO_DICA, cssW / 2, y - s * 0.5)
-    c.globalAlpha = 1
     c.font = `${Math.round(s * 0.5)}px ${FONT_BODY}`
     for (let i = 0; i < 4; i++) {
       const aceso = i === this.ultimaTecla ? this.brilhoTecla : 0
@@ -205,9 +209,26 @@ export class PrologoScene implements Scene {
       c.lineWidth = 2
       c.strokeRect(x + 1, y + 1, s - 2, s - 2)
       c.fillStyle = aceso > 0 ? '#ffd79a' : feito ? PAL.accent : PAL.inkDim
-      c.fillText(NOMES[i] ?? '', x + s / 2, y + s * 0.66)
+      c.font = `${Math.round(s * 0.46)}px ${FONT_BODY}`
+      c.fillText(NOMES[i] ?? '', x + s / 2, y + s * 0.52)
+      c.globalAlpha = aceso > 0 ? 0.85 : 0.42
+      c.font = `${Math.round(s * 0.26)}px ${FONT_BODY}`
+      c.fillText(LETRAS[i] ?? '', x + s / 2, y + s * 0.84)
+      c.globalAlpha = 1
+      c.font = `${Math.round(s * 0.5)}px ${FONT_BODY}`
       x += s * 1.5
     }
+
+    // A dica vai abaixo das teclas: ali o chão está vazio. Em cima do sofá
+    // ela ficava ilegível.
+    const dicaSize = Math.round(s * 0.3)
+    c.font = `${dicaSize}px ${FONT_BODY}`
+    const larg = c.measureText(PROLOGO_DICA).width
+    c.fillStyle = 'rgba(8,6,10,0.55)'
+    c.fillRect((cssW - larg) / 2 - dicaSize, y + s * 1.05, larg + dicaSize * 2, dicaSize * 2)
+    c.fillStyle = PAL.inkDim
+    c.globalAlpha = 0.66
+    c.fillText(PROLOGO_DICA, cssW / 2, y + s * 1.05 + dicaSize * 1.4)
     c.restore()
   }
 }

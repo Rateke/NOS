@@ -25,7 +25,7 @@ export const PROLOGO_ENSINO: Line[] = [
 ]
 
 /** Fica na tela enquanto é a vez do jogador — não bloqueia como fala. */
-export const PROLOGO_DICA = 'repita a sequência'
+export const PROLOGO_DICA = 'repita a sequência  ·  setas ou WASD'
 
 export const PROLOGO_ERRO: Line[] = [
   { speaker: 'Adrian', text: 'Calma. De novo, do começo.', style: 'speech' },
