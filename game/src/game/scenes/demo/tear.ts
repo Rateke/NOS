@@ -9,6 +9,8 @@ import {
 import { FimScene } from './fim'
 import { Figura } from '../../world/figura'
 import { Piano } from '../../systems/piano'
+import { RELIQUIAS, desenharReliquia } from '../../world/reliquias'
+import type { TipoReliquia } from '../../world/reliquias'
 import { musica, TEMA } from '../../../engine/musica'
 import { Particulas } from '../../world/particulas'
 
@@ -26,7 +28,7 @@ interface Fio {
    * objetos e lembranças de gerações diferentes — então cada um carrega uma
    * relíquia, que balança e cai quando o fio é absorvido.
    */
-  relíquia: 'retrato' | 'chave' | 'pulseira' | 'fita' | 'anel' | 'carta'
+  relíquia: TipoReliquia
   balanco: number
 }
 
@@ -91,7 +93,7 @@ export class TearScene implements Scene {
 
   enter(): void {
     const cores = ['#6f86a8', '#8a6f9e', '#9e7a6f', '#6f9e8a', '#9e6f85', '#7a8a9e']
-    const relíquias = ['retrato', 'chave', 'pulseira', 'fita', 'anel', 'carta'] as const
+    const relíquias = RELIQUIAS
     this.fios = cores.map((cor, i) => ({
       x0: 46 + i * 58,
       cor,
@@ -428,43 +430,11 @@ export class TearScene implements Scene {
     c.moveTo(f.x0, 39)
     c.lineTo(x, y)
     c.stroke()
-    c.fillStyle = morta ? '#1a1f2c' : f.cor
-
-    switch (f.relíquia) {
-      case 'retrato':
-        c.fillRect(x - 5, y, 10, 8)
-        c.fillStyle = morta ? '#10141d' : 'rgba(12,15,22,0.6)'
-        c.fillRect(x - 3, y + 2, 6, 4)
-        break
-      case 'chave':
-        c.fillRect(x - 1, y, 2, 9)
-        c.fillRect(x - 3, y, 6, 3)
-        c.fillRect(x + 1, y + 6, 3, 2)
-        break
-      case 'pulseira':
-        c.fillRect(x - 4, y + 1, 8, 2)
-        c.fillRect(x - 5, y + 3, 2, 3)
-        c.fillRect(x + 3, y + 3, 2, 3)
-        break
-      case 'fita':
-        c.fillRect(x - 6, y, 12, 7)
-        c.fillStyle = morta ? '#10141d' : 'rgba(12,15,22,0.7)'
-        c.fillRect(x - 4, y + 2, 3, 3)
-        c.fillRect(x + 1, y + 2, 3, 3)
-        break
-      case 'anel':
-        c.fillRect(x - 2, y + 1, 4, 1)
-        c.fillRect(x - 3, y + 2, 1, 3)
-        c.fillRect(x + 2, y + 2, 1, 3)
-        c.fillRect(x - 2, y + 5, 4, 1)
-        break
-      case 'carta':
-        c.fillRect(x - 5, y, 10, 7)
-        c.fillStyle = morta ? '#10141d' : 'rgba(12,15,22,0.55)'
-        c.fillRect(x - 3, y + 2, 6, 1)
-        c.fillRect(x - 3, y + 4, 4, 1)
-        break
-    }
+    desenharReliquia(
+      c, f.relíquia, x, y,
+      morta ? '#1a1f2c' : f.cor,
+      morta ? '#10141d' : 'rgba(12,15,22,0.6)',
+    )
     c.restore()
   }
 

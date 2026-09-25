@@ -88,6 +88,27 @@ os três caminhos são testados de ponta a ponta.
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
 
+## Menu e fecho
+
+O jogo **abre em preto absoluto**: uma linha piscando, e nada mais. O primeiro
+toque acende tudo de uma vez — a música entra, o corredor em fuga aparece ao
+fundo e o título se monta, depois os itens do menu, um a um. Quem já viu a
+abertura pula tudo com um toque.
+
+A trilha do menu é uma peça própria: quatro compassos lentos em ré menor
+(Dm–Si♭–Fá–Sol menor), arpejo na mão esquerda e uma melodia esparsa por cima,
+feita dos mesmos intervalos do tema que Adrian ensina. Pouca nota, muito
+silêncio, e a reverberação fazendo o resto.
+
+O fecho começa em **silêncio absoluto**. Só então o tema volta — afinado, do
+jeito que o pai ensinou antes de estragá-lo — enquanto as relíquias que os
+fios seguravam sobem soltas no escuro. As frases ganham a tela uma de cada
+vez, e o título se monta abrindo o espaçamento das letras.
+
+Tipografia: **Bodoni Moda** nos títulos (alto contraste, dramática) e
+**Spectral** no texto — serifa desenhada para tela, que dá peso literário ao
+diálogo.
+
 ## Os dois modos
 
 **Demo — Só mais um**, em três cenas. A espinha é uma só: **o tema que você
@@ -174,8 +195,11 @@ a janela é fria e **não anima**, porque a manhã lá fora está congelada.
 
 ## Depuração
 
-`?debug=1` na URL expõe `window.__nos` com o estado e a cena atual. Não tem
-efeito nenhum no jogo normal.
+`?debug=1` na URL expõe `window.__nos` com o estado e a cena atual.
+
+`?cena=<id>` começa direto numa cena, sem rejogar tudo — útil para conferir um
+trecho durante a produção. Os ids são `prologo`, `casa`, `mesa`, `tear` e
+`fim`. Nenhum dos dois tem efeito no jogo normal.
 
 ## Limites conhecidos
 

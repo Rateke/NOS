@@ -79,14 +79,30 @@ async function grab(name, tx, ty, face) {
   console.log(`  ${name.padEnd(12)} restam=${s.left}`)
 }
 
-// Menu do título: descer até "Abertura" e confirmar.
+// O menu abre em preto: o primeiro toque acende tudo. Só depois de pronto
+// dá para descer até "Abertura" e confirmar.
+await page.keyboard.press('Space')
+for (let i = 0; i < 40; i++) {
+  const pronto = await page.evaluate(() => window.__nos?.scene?.fase === 'pronto')
+  if (pronto) break
+  await page.waitForTimeout(250)
+}
 await page.keyboard.press('ArrowDown')
-await page.waitForTimeout(300)
+await page.waitForTimeout(350)
 await page.keyboard.press('Space')
 await page.waitForTimeout(600)
 for (let i = 0; i < 6; i++) { await page.keyboard.press('Space'); await page.waitForTimeout(450) }
 await page.waitForTimeout(1200)
 await clearDialogue()
+// Espera a abertura terminar e o quarto carregar antes de conferir nada.
+for (let i = 0; i < 80; i++) {
+  const cena = await page.evaluate(() => window.__nos?.scene?.id)
+  if (cena === 'bedroom') break
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(350)
+}
+await clearDialogue()
+
 console.log('\nverificações:')
 {
   // Regressão: o canvas já ficou travado em 300x150 (o tamanho intrínseco de

@@ -3,6 +3,11 @@ import { Display } from './engine/display'
 import { Input } from './engine/input'
 import { GameState } from './game/systems/state'
 import { TitleScene } from './game/scenes/title'
+import { PrologoScene } from './game/scenes/demo/prologo'
+import { CasaScene } from './game/scenes/demo/casa'
+import { MesaScene } from './game/scenes/demo/mesa'
+import { TearScene } from './game/scenes/demo/tear'
+import { FimScene } from './game/scenes/demo/fim'
 import type { Scene, SceneCtx } from './game/scenes/types'
 
 const canvas = document.getElementById('game') as HTMLCanvasElement | null
@@ -12,7 +17,24 @@ const display = new Display(canvas)
 const input = new Input()
 const state = new GameState()
 
-let scene: Scene = new TitleScene()
+/**
+ * `?cena=<id>` começa direto numa cena, sem rejogar tudo. Existe para
+ * produção: dá para conferir o fecho ou o Tear sem atravessar a demo inteira.
+ * Sem o parâmetro, nada muda.
+ */
+function cenaInicial(): Scene {
+  const pedida = new URLSearchParams(location.search).get('cena')
+  switch (pedida) {
+    case 'prologo': return new PrologoScene()
+    case 'casa': return new CasaScene()
+    case 'mesa': return new MesaScene()
+    case 'tear': return new TearScene()
+    case 'fim': return new FimScene()
+    default: return new TitleScene()
+  }
+}
+
+let scene: Scene = cenaInicial()
 let fade = 0
 let fadeTarget = 0
 let fadeRate = 0

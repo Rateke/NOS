@@ -175,3 +175,96 @@ export class Musica {
 }
 
 export const musica = new Musica()
+
+// --- Trilha ----------------------------------------------------------------
+
+/** Frequências usadas nas composições. */
+const N = {
+  D2: 73.42, F2: 87.31, G2: 98.0, A2: 110.0, Bb2: 116.54,
+  C3: 130.81, D3: 146.83, F3: 174.61, G3: 196.0, A3: 220.0, Bb3: 233.08,
+  C4: 261.63, D4: 293.66, F4: 349.23, G4: 392.0, A4: 440.0, Bb4: 466.16,
+  D5: 587.33,
+} as const
+
+export interface Evento {
+  /** Instante dentro do laço, em segundos. */
+  t: number
+  freq: number
+  forca: number
+  dur?: number
+}
+
+/**
+ * Tema do menu.
+ *
+ * Quatro compassos lentos em ré menor — Dm, Si♭, Fá, Sol menor — com a mão
+ * esquerda em arpejo e uma melodia esparsa por cima, feita dos mesmos
+ * intervalos do tema que Adrian ensina. A ideia é a mesma de Magdalene: pouca
+ * nota, muito silêncio, e a reverberação fazendo o resto.
+ */
+export const TEMA_MENU: Evento[] = (() => {
+  const ev: Evento[] = []
+  const compassos: [number, number[]][] = [
+    [N.D2, [N.D3, N.F3, N.A3, N.D4]],
+    [N.Bb2, [N.D3, N.F3, N.Bb3, N.D4]],
+    [N.F2, [N.C3, N.F3, N.A3, N.C4]],
+    [N.G2, [N.D3, N.G3, N.Bb3, N.D4]],
+  ]
+  compassos.forEach(([baixo, arpejo], i) => {
+    const t0 = i * 6
+    ev.push({ t: t0, freq: baixo, forca: 0.5, dur: 5 })
+    arpejo.forEach((f, k) => {
+      ev.push({ t: t0 + 0.7 + k * 0.85, freq: f, forca: 0.3 - k * 0.03, dur: 3.4 })
+    })
+  })
+  // Melodia por cima, sempre entrando depois do arpejo começar.
+  const melodia: [number, number][] = [
+    [1.6, N.A4], [3.6, N.D5],
+    [7.6, N.Bb4], [9.6, N.A4],
+    [13.2, N.F4], [15.2, N.A4],
+    [19.2, N.G4], [21.2, N.F4], [22.6, N.D4],
+  ]
+  for (const [t, freq] of melodia) ev.push({ t, freq, forca: 0.52, dur: 4 })
+  return ev.sort((a, b) => a.t - b.t)
+})()
+
+export const DURACAO_MENU = 24
+
+/**
+ * Toca uma sequência em laço, disparando as notas quadro a quadro. Simples de
+ * propósito: a música é lenta, não precisa de precisão de sequenciador.
+ */
+export class Trilha {
+  private eventos: Evento[] = []
+  private duracao = 1
+  private t = 0
+  private proximo = 0
+  private tocando = false
+
+  iniciar(eventos: Evento[], duracao: number): void {
+    this.eventos = eventos
+    this.duracao = duracao
+    this.t = 0
+    this.proximo = 0
+    this.tocando = true
+  }
+
+  parar(): void {
+    this.tocando = false
+  }
+
+  update(dt: number): void {
+    if (!this.tocando) return
+    this.t += dt
+    while (this.proximo < this.eventos.length) {
+      const e = this.eventos[this.proximo]
+      if (!e || e.t > this.t) break
+      musica.nota(e.freq, e.forca, e.dur ?? 3.2)
+      this.proximo++
+    }
+    if (this.t >= this.duracao) {
+      this.t -= this.duracao
+      this.proximo = 0
+    }
+  }
+}

@@ -118,11 +118,14 @@ export const ELISA_CORTE: Line[] = [
   { speaker: 'Elisa', text: 'Liam.', style: 'speech' },
 ]
 
+/** O fecho, em três tempos. Cada linha ganha a tela sozinha. */
 export const EPILOGO: string[] = [
   'A paz da família sempre precisou adoecer alguém.',
+  'E alguém era sempre o mesmo.',
 ]
 
-export const DEMO_FIM = 'Fim da demo'
+export const EPILOGO_CREDITO = 'Fernando Rateke Neto  ·  Luana Lupi Vergara'
+export const DEMO_FIM = 'fim da demo'
 
 // --- A Mesa -----------------------------------------------------------------
 

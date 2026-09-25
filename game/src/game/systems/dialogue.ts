@@ -134,8 +134,11 @@ export class Dialogue {
   }
 }
 
-export const FONT_BODY = `'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif`
-export const FONT_TITLE = `'Cormorant Garamond', ui-serif, Georgia, serif`
+export const FONT_BODY = `'Spectral', ui-serif, Georgia, 'Times New Roman', serif`
+export const FONT_TITLE = `'Bodoni Moda', ui-serif, Didot, 'Playfair Display', Georgia, serif`
+
+/** Para rótulos curtos e interface: a mesma serifa, em corpo pequeno. */
+export const FONT_UI = `'Spectral', ui-serif, Georgia, serif`
 
 export function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
   const words = text.split(' ')

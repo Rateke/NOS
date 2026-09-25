@@ -93,7 +93,16 @@ console.log('\nverificações (somente mouse):')
   esperar('canvas preenche a janela', fit, true)
 }
 
-// Menu -> demo
+// O menu abre em preto: o primeiro toque acende tudo, e só então os itens
+// existem para serem clicados.
+await page.mouse.click(640, 400)
+for (let i = 0; i < 40; i++) {
+  const pronto = await page.evaluate(() => window.__nos?.scene?.fase === 'pronto')
+  if (pronto && (await caixas()).length > 0) break
+  await page.waitForTimeout(250)
+}
+esperar('o menu se monta após o primeiro toque', (await caixas()).length, 2)
+if (OUT) await page.screenshot({ path: `${OUT}/a0-menu.png` })
 {
   const c = await caixas()
   await page.mouse.click(c[0].x + c[0].w / 2, c[0].y + c[0].h / 2)
