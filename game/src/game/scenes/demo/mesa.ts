@@ -125,8 +125,12 @@ export class MesaScene implements Scene {
     }
 
     // Examinar o que estiver ao alcance
+    // Igual à casa: um clique vale como destino, não como usar o que está ao
+    // lado — senão clicar para andar examinaria o objeto embaixo dos pés.
+    const tap = ctx.input.consumeTap()
+    const confirmou = ctx.input.consumeConfirm()
     const perto = this.vestigioPerto()
-    if (perto && !this.achados.has(perto.id) && ctx.input.consumeConfirm()) {
+    if (!tap && confirmou && perto && !this.achados.has(perto.id)) {
       this.examinar(perto)
       return
     }
@@ -137,7 +141,6 @@ export class MesaScene implements Scene {
     let dx = eixo ? eixo.x : 0
     if (eixo) this.destino = null
 
-    const tap = ctx.input.consumeTap()
     if (tap) {
       const alvo = ctx.display.toWorldX(tap.x)
       // Clique em cima de um vestígio: anda até ele e examina ao chegar.

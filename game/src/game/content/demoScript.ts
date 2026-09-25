@@ -235,3 +235,39 @@ export const MESA_FECHO: Record<number, Line[]> = {
     { text: 'Só tem um lugar onde eu resolvo alguma coisa.' },
   ],
 }
+
+// --- A Casa -----------------------------------------------------------------
+
+export const CASA_ABERTURA: Line[] = [
+  { speaker: 'Adrian', text: 'Vai guardar suas coisas. Já está tarde.', style: 'speech' },
+  { text: 'A casa parece maior de noite.' },
+  { text: 'Ou eu que ando mais devagar.' },
+]
+
+/** Dito quando Liam chega ao fim do corredor e ele ainda não acabou. */
+export const CASA_CORREDOR: Line[][] = [
+  [{ text: 'Esse corredor é mais comprido do que eu lembro.' }],
+  [
+    { text: 'Eu já devia ter chegado na porta.' },
+    { text: 'Toda vez que eu olho, ela está mais longe.' },
+  ],
+  [
+    { text: 'A casa não é grande assim.' },
+    { text: 'A casa não pode ser grande assim.' },
+  ],
+]
+
+/** Objetivo mostrado no canto, que muda conforme ele explora. */
+export const CASA_OBJETIVO_INICIAL = 'guardar as coisas'
+export const CASA_OBJETIVO_COZINHA = 'ir até a cozinha'
+
+export const CASA_ANTES_DA_COZINHA: Line[] = [
+  { text: 'Tem voz na cozinha.' },
+  { text: 'Os dois ao mesmo tempo.' },
+]
+
+/** Quando ele já viu o bastante e decide descer. */
+export const CASA_PRONTO: Line[] = [
+  { text: 'Não tem quarto nenhum no fim daquele corredor.' },
+  { text: 'Então por que eu desenhei um?' },
+]

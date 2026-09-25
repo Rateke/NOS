@@ -10,7 +10,7 @@ import {
   PROLOGO_ABERTURA, PROLOGO_FRASES, PROLOGO_ACERTOU_FRASE, PROLOGO_ERRO,
   PROLOGO_ACERTO, PROLOGO_LIVRE, PROLOGO_FECHO,
 } from '../../content/demoScript'
-import { MesaScene } from './mesa'
+import { CasaScene } from './casa'
 
 type Fase = 'entrada' | 'escuta' | 'toca' | 'livre' | 'fecho' | 'saida'
 
@@ -176,7 +176,7 @@ export class PrologoScene implements Scene {
     this.calor = Math.max(0, 1 - this.saida / 3.5)
     if (this.saida > 4.5) {
       this.fase = 'entrada'
-      ctx.transition(new MesaScene(), 2.4, 2.0)
+      ctx.transition(new CasaScene(), 2.4, 2.0)
     }
   }
 

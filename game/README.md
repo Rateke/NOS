@@ -101,7 +101,18 @@ ferramenta, na mesma interface.
    No fim, toque à vontade. E aí vem o elogio, com a função dentro dele:
    `Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`
 
-2. **A Mesa.** Cozinha, porta trancada, malas no chão. Liam anda entre a mãe e
+2. **A Casa Grande Demais.** Quatro cômodos ligados por portas — sala,
+   corredor, quarto e cozinha — com câmera que acompanha. Você anda, atravessa
+   portas, e cada cômodo carrega. **O corredor cresce enquanto Liam caminha**,
+   de 470 para 1180 pixels: é a regra da obra virada espaço, e a porta do fim
+   nunca chega. Lá está a **porta que não abre** — e que Liam desenhou em
+   todas as plantas penduradas na parede do quarto dele. Pelo caminho há
+   vestígios: os retratos do corredor com um vazio do tamanho de uma pessoa,
+   as marcas de altura no batente com um terceiro nome que alguém tentou
+   apagar, e a caixa debaixo da cama com o botão, a passagem vencida, a pedra
+   pintada e a chave sem porta.
+
+3. **A Mesa.** Cozinha, porta trancada, malas no chão. Liam anda entre a mãe e
    o pai e é puxado pelos dois — **não existe ponto neutro**, e a tensão sobe
    mesmo parado. Enquanto isso há **quatro vestígios** para achar: a pulseira
    de hospital com outro sobrenome, o bilhete da tia marcando 23h, o telefone
@@ -109,7 +120,7 @@ ferramenta, na mesma interface.
    Nada disso muda o que vai acontecer. Muda o que ele sabe quando acontecer,
    e o fecho da cena reflete quanto você viu.
 
-3. **O Tear.** Seis fios, cada um pendurando uma relíquia de outra geração.
+4. **O Tear.** Seis fios, cada um pendurando uma relíquia de outra geração.
    O piano reaparece — apagado, torto, frio — e Adrian pergunta:
    `Você lembra da música?` Cada fio se abre tocando uma frase do tema. A cada
    fio o instrumento **desafina e abafa mais**, a imagem racha, o coração
@@ -132,6 +143,8 @@ ferramenta, na mesma interface.
 | **O tema musical** | `src/engine/musica.ts` (`TEMA`, em graus da escala) |
 | Timbre do piano e reverberação | `src/engine/musica.ts` |
 | Vestígios da cozinha | `src/game/content/demoScript.ts` (`MESA_VESTIGIOS`) |
+| **Cômodos da casa, portas e vestígios** | `src/game/world/casa.ts` |
+| Quanto o corredor estica | `src/game/world/casa.ts` (`CORREDOR_BASE`, `CORREDOR_MAX`) |
 | Personagens animados | `src/game/world/figura.ts` |
 
 Para escrever falas novas basta editar `script.ts`; nenhum outro arquivo

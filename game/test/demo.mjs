@@ -36,7 +36,7 @@ const estado = () => page.evaluate(() => {
   const s = window.__nos?.scene
   return {
     id: s?.id, fase: s?.fase, frase: s?.frase, passo: s?.passo, sel: s?.sel,
-    achados: s?.achados?.size, x: Math.round(s?.liam?.x ?? 0),
+    achados: s?.achados?.size, larg: s?.corredorLargura, x: Math.round(s?.liam?.x ?? 0),
     intensidade: s?.intensidade?.toFixed?.(2),
   }
 })
@@ -113,7 +113,60 @@ esperar('tema inteiro aprendido', (await estado()).fase, 'livre')
 if (OUT) await page.screenshot({ path: `${OUT}/b-livre.png` })
 
 // A Mesa e seus vestígios
-esperar('a sala dá lugar à cozinha', await esperarCena('demo-mesa'), true)
+// --- A Casa: quatro cômodos ligados por portas ---------------------------
+esperar('a sala vira casa explorável', await esperarCena('demo-casa'), true)
+await limpar()
+
+const comodo = () => page.evaluate(() => window.__nos?.scene?.comodoAtual)
+async function andarAte(alvo, ms = 25000) {
+  const ate = Date.now() + ms
+  while (Date.now() < ate) {
+    const st = await estado()
+    if (st.id !== 'demo-casa') return false
+    if (Math.abs(st.x - alvo) < 10) return true
+    const t = st.x < alvo ? 'ArrowRight' : 'ArrowLeft'
+    await page.keyboard.down(t)
+    await page.waitForTimeout(90)
+    await page.keyboard.up(t)
+  }
+  return false
+}
+async function usar() {
+  await page.keyboard.press('KeyE')
+  await page.waitForTimeout(380)
+  await limpar()
+}
+
+await andarAte(340); await usar()
+esperar('a porta da sala leva ao corredor', await comodo(), 'corredor')
+
+await andarAte(150); await usar()
+esperar('o corredor leva ao quarto', await comodo(), 'quarto')
+if (OUT) await page.screenshot({ path: `${OUT}/c1-quarto.png` })
+
+await andarAte(148); await usar()
+esperar('a caixa debaixo da cama foi aberta', (await estado()).achados >= 1, true)
+
+await andarAte(210); await usar()
+// Ir até o fundo faz o corredor se esticar, várias vezes.
+for (let i = 0; i < 8; i++) {
+  const st = await estado()
+  if (st.id !== 'demo-casa' || (await comodo()) !== 'corredor') break
+  if ((st.larg ?? 0) >= 1180) break
+  await andarAte((st.larg ?? 470) - 40, 14000)
+  await limpar()
+}
+esperar('o corredor se alongou enquanto Liam andava', (await estado()).larg, 1180)
+if (OUT) await page.screenshot({ path: `${OUT}/c2-corredor.png` })
+
+// A porta do fim não abre. Nunca abriu.
+await usar()
+esperar('a porta impossível continua fechada', await comodo(), 'corredor')
+
+// A cozinha encerra a exploração
+await andarAte(268); await usar(); await usar()
+
+esperar('a cozinha começa a noite', await esperarCena('demo-mesa'), true)
 await esperarFase('preso')
 await limpar()
 if (OUT) await page.screenshot({ path: `${OUT}/c-mesa.png` })

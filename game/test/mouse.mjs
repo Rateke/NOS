@@ -37,7 +37,7 @@ const estado = () => page.evaluate(() => {
   const s = window.__nos?.scene
   return {
     id: s?.id, fase: s?.fase, frase: s?.frase, passo: s?.passo, sel: s?.sel,
-    achados: s?.achados?.size, quais: s?.achados ? [...s.achados] : null, x: Math.round(s?.liam?.x ?? 0),
+    achados: s?.achados?.size, larg: s?.corredorLargura, quais: s?.achados ? [...s.achados] : null, x: Math.round(s?.liam?.x ?? 0),
     intensidade: s?.intensidade?.toFixed?.(2),
   }
 })
@@ -118,7 +118,46 @@ esperar('tema inteiro aprendido', (await estado()).fase, 'livre')
 if (OUT) await page.screenshot({ path: `${OUT}/b-livre.png` })
 
 // A Mesa e seus vestígios
-esperar('a sala dá lugar à cozinha', await esperarCena('demo-mesa'), true)
+// --- A Casa: quatro cômodos ligados por portas ---------------------------
+esperar('a sala vira casa explorável', await esperarCena('demo-casa'), true)
+await limpar()
+
+const comodo = () => page.evaluate(() => window.__nos?.scene?.comodoAtual)
+/**
+ * Clica num ponto do cômodo até acontecer o que se espera: Liam anda até lá
+ * e usa o que houver. Insiste, porque uma fala no meio do caminho interrompe
+ * a caminhada e é preciso clicar de novo.
+ */
+async function irEUsar(alvoMundo, pronto, tentativas = 10) {
+  for (let i = 0; i < tentativas; i++) {
+    if (await pronto()) return true
+    await limpar()
+    if (await pronto()) return true
+    const cam = await page.evaluate(() => window.__nos?.scene?.camX?.() ?? 0)
+    const pt = await page.evaluate((a) => window.__nos?.paraTela?.(a, 140), alvoMundo - cam)
+    if (!pt) return false
+    await page.mouse.click(pt.x, pt.y)
+    for (let k = 0; k < 45; k++) {
+      if (await pronto()) return true
+      if (await falando()) break
+      await page.waitForTimeout(150)
+    }
+  }
+  return await pronto()
+}
+
+const emComodo = (alvo) => async () => (await estado()).id !== 'demo-casa' || (await comodo()) === alvo
+const saiuDaCasa = async () => (await estado()).id !== 'demo-casa'
+const achou = (n) => async () => ((await estado()).achados ?? 0) >= n
+
+esperar('a porta da sala leva ao corredor', await irEUsar(340, emComodo('corredor')), true)
+esperar('o corredor leva ao quarto', await irEUsar(150, emComodo('quarto')), true)
+esperar('a caixa debaixo da cama foi aberta', await irEUsar(148, achou(1)), true)
+esperar('dá para voltar ao corredor', await irEUsar(210, emComodo('corredor')), true)
+// A cozinha pede dois usos: o primeiro avisa, o segundo desce.
+esperar('a cozinha encerra a exploração', await irEUsar(268, saiuDaCasa), true)
+
+esperar('a cozinha começa a noite', await esperarCena('demo-mesa'), true)
 await esperarFase('preso')
 await limpar()
 if (OUT) await page.screenshot({ path: `${OUT}/c-mesa.png` })
