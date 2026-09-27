@@ -122,18 +122,26 @@ ferramenta, na mesma interface.
    No fim, toque à vontade. E aí vem o elogio, com a função dentro dele:
    `Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`
 
-2. **A Casa Grande Demais.** Quatro cômodos ligados por portas — sala,
-   corredor, quarto e cozinha — com câmera que acompanha. Você anda, atravessa
-   portas, e cada cômodo carrega. **O corredor cresce enquanto Liam caminha**,
-   de 470 para 1180 pixels: é a regra da obra virada espaço, e a porta do fim
-   nunca chega. Lá está a **porta que não abre** — e que Liam desenhou em
-   todas as plantas penduradas na parede do quarto dele. Pelo caminho há
-   vestígios: os retratos do corredor com um vazio do tamanho de uma pessoa,
-   as marcas de altura no batente com um terceiro nome que alguém tentou
-   apagar, e a caixa debaixo da cama com o botão, a passagem vencida, a pedra
-   pintada e a chave sem porta.
+2. **A Casa Grande Demais.** Sala, corredor e quarto ligados por portas —
+   e a cozinha, que encerra a exploração. Câmera que acompanha, **paredes de
+   verdade** (Liam não sai do cômodo por onde não há porta) e **todo vestígio
+   em cima de uma coisa desenhada**: o piano da sala (que continua tocável),
+   os retratos, o cobertor no braço do sofá, o livro de receitas; no
+   corredor, a escova na gaveta do aparador, o retrato grande com o vazio do
+   tamanho de uma pessoa, o casaco que não serve em ninguém, as marcas de
+   altura no batente da rouparia; no quarto, a cabana de cobertor, a parede
+   de plantas (cada uma diferente, com árvores de giz de cera de outra mão),
+   a caixa debaixo da cama, o coelho de um olho só, o diário e o armário.
+   **O corredor cresce enquanto Liam caminha**, de 470 para 1180 pixels, o
+   papel de parede vira floresta e os retratos vão perdendo gente. No fim
+   está a **porta que não abre**.
 
-3. **A Mesa.** Cozinha, porta trancada, malas no chão. Liam anda entre a mãe e
+   A casa tem **oito segredos**, e nada no jogo avisa que existem — só o fecho
+   conta quantos você achou. (Spoiler, para quem for testar: olhar de novo o
+   que já foi visto; bater mais de uma vez; esperar no menu; contar os pratos;
+   e prestar atenção no que a voz diz dentro da cabana.)
+
+3. **A Mesa.** Cozinha, porta trancada, malas no chão, cinco pratos. Liam anda entre a mãe e
    o pai e é puxado pelos dois — **não existe ponto neutro**, e a tensão sobe
    mesmo parado. Enquanto isso há **quatro vestígios** para achar: a pulseira
    de hospital com outro sobrenome, o bilhete da tia marcando 23h, o telefone
@@ -166,6 +174,10 @@ ferramenta, na mesma interface.
 | Vestígios da cozinha | `src/game/content/demoScript.ts` (`MESA_VESTIGIOS`) |
 | **Cômodos da casa, portas e vestígios** | `src/game/world/casa.ts` |
 | Quanto o corredor estica | `src/game/world/casa.ts` (`CORREDOR_BASE`, `CORREDOR_MAX`) |
+| Sala (piano, retratos, sofá, estante) | `src/game/world/sala.ts` |
+| Texturas comuns (papel de parede, lambri, assoalho, portas, quadros) | `src/game/world/arte.ts` |
+| Lista dos segredos | `src/game/content/segredos.ts` |
+| O fecho (partículas, acorde final, contagem de segredos) | `src/game/scenes/demo/fim.ts` |
 | Personagens animados | `src/game/world/figura.ts` |
 
 Para escrever falas novas basta editar `script.ts`; nenhum outro arquivo
@@ -199,12 +211,14 @@ a janela é fria e **não anima**, porque a manhã lá fora está congelada.
 
 `?cena=<id>` começa direto numa cena, sem rejogar tudo — útil para conferir um
 trecho durante a produção. Os ids são `prologo`, `casa`, `mesa`, `tear` e
-`fim`. Nenhum dos dois tem efeito no jogo normal.
+`fim`. `?segredos=melodia,nome` começa com esses segredos achados (para
+conferir o fecho). Nenhum deles tem efeito no jogo normal.
 
 ## Limites conhecidos
 
-- Só o quarto de Liam existe. A porta leva ao cartão de capítulo, não à casa.
-- Sem trilha sonora: o ambiente é um drone sintetizado, base até existir áudio
-  de verdade.
-- Sem salvamento, sem menu de opções, sem suporte a controle ou toque.
-- As fontes vêm do Google Fonts; sem rede, caem para as do sistema.
+- Na Abertura só o quarto de Liam existe; a porta leva ao cartão de capítulo.
+- A música é toda sintetizada no navegador (piano por harmônicos, drone,
+  reverberação gerada); não há áudio gravado.
+- Sem salvamento, sem menu de opções, sem suporte a controle.
+- As fontes (Bodoni Moda, Spectral e Cormorant Garamond) vão embutidas no
+  arquivo; o jogo funciona sem rede.

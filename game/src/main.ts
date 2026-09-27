@@ -1,3 +1,4 @@
+import './fontes.css'
 import './style.css'
 import { Display } from './engine/display'
 import { Input } from './engine/input'
@@ -32,6 +33,12 @@ function cenaInicial(): Scene {
     case 'fim': return new FimScene()
     default: return new TitleScene()
   }
+}
+
+// `?segredos=a,b` já começa com esses segredos achados — para conferir o
+// fecho com e sem eles, sem caçar tudo de novo.
+for (const id of (new URLSearchParams(location.search).get('segredos') ?? '').split(',')) {
+  if (id) state.descobrir(id)
 }
 
 let scene: Scene = cenaInicial()
@@ -132,11 +139,29 @@ function loop(now: number): void {
   requestAnimationFrame(loop)
 }
 
+/**
+ * Canvas não dispara o carregamento de fonte: se desenhar antes dela chegar,
+ * usa a de reserva e fica com ela. Então cada face é pedida explicitamente,
+ * antes do primeiro quadro.
+ */
+const FACES = [
+  "400 32px 'Bodoni Moda'",
+  "500 32px 'Bodoni Moda'",
+  "italic 400 32px 'Bodoni Moda'",
+  "300 20px 'Spectral'",
+  "400 20px 'Spectral'",
+  "italic 300 20px 'Spectral'",
+  "italic 400 20px 'Spectral'",
+  "italic 400 32px 'Cormorant Garamond'",
+  "italic 500 32px 'Cormorant Garamond'",
+]
+
 async function boot(): Promise<void> {
   try {
+    await Promise.all(FACES.map((f) => document.fonts.load(f, 'Nós ÁÉÍÓÚ ãõç')))
     await document.fonts.ready
   } catch {
-    /* segue com as fontes de fallback */
+    /* segue com as fontes de reserva */
   }
   document.getElementById('loading')?.remove()
   requestAnimationFrame(loop)

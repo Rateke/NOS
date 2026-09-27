@@ -159,10 +159,27 @@ const emComodo = (alvo) => async () => (await estado()).id !== 'demo-casa' || (a
 const saiuDaCasa = async () => (await estado()).id !== 'demo-casa'
 const achou = (n) => async () => ((await estado()).achados ?? 0) >= n
 
-esperar('a porta da sala leva ao corredor', await irEUsar(340, emComodo('corredor')), true)
+// O piano da sala: clicar nele senta; clicar nas teclas toca; clicar fora levanta.
+const sentado = () => page.evaluate(() => !!window.__nos?.scene?.sentadoAoPiano)
+esperar('clicar no piano senta Liam no banco', await irEUsar(156, sentado), true)
+await page.waitForTimeout(500)
+for (const i of [0, 1, 2, 3, 4, 2, 0]) {
+  const r = (await caixas())[i]
+  if (r) await page.mouse.click(r.x + r.w / 2, r.y + r.h / 2)
+  await page.waitForTimeout(280)
+}
+await page.waitForTimeout(400)
+await limpar()
+const segredosM = await page.evaluate(() => [...(window.__nos?.state?.segredos ?? [])])
+esperar('as teclas respondem ao clique', segredosM.includes('melodia'), true)
+await page.mouse.click(640, 120)
+await page.waitForTimeout(400)
+esperar('clicar fora das teclas levanta', await sentado(), false)
+
+esperar('a porta da sala leva ao corredor', await irEUsar(484, emComodo('corredor')), true)
 esperar('o corredor leva ao quarto', await irEUsar(150, emComodo('quarto')), true)
-esperar('a caixa debaixo da cama foi aberta', await irEUsar(148, achou(1)), true)
-esperar('dá para voltar ao corredor', await irEUsar(210, emComodo('corredor')), true)
+esperar('a caixa debaixo da cama foi aberta', await irEUsar(214, achou(2)), true)
+esperar('dá para voltar ao corredor', await irEUsar(300, emComodo('corredor')), true)
 // A cozinha pede dois usos: o primeiro avisa, o segundo desce.
 esperar('a cozinha encerra a exploração', await irEUsar(268, saiuDaCasa), true)
 

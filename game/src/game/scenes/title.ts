@@ -12,6 +12,8 @@ type Fase = 'espera' | 'abrindo' | 'pronto' | 'saindo'
 /** Ponto de fuga do corredor do fundo. */
 const FUGA = { x: WORLD_W / 2, y: 104 }
 const ANEIS = 9
+/** Segundos parado no menu até a porta do fim abrir. */
+const ESPERA_PORTA = 40
 
 /**
  * Menu.
@@ -33,6 +35,11 @@ export class TitleScene implements Scene {
   private trilha = new Trilha()
   private po = new Particulas()
   caixas: { x: number; y: number; w: number; h: number }[] = []
+  /** Tempo sem tocar em nada com o menu aberto. */
+  private parado = 0
+  /** 0..1: a porta do fim abrindo para quem espera. */
+  private abertura = 0
+  private bateu = false
 
   private readonly itens = [
     { rotulo: 'Só mais um', nota: 'demo · a música, a casa e o Tear', cena: () => new PrologoScene() },
@@ -75,6 +82,17 @@ export class TitleScene implements Scene {
         this.desde = Math.max(this.desde, 4.2)
       }
       return
+    }
+
+    // Quem espera sem fazer nada vê a porta do fim abrir — e alguém nela.
+    if (ctx.input.consumeAny()) this.parado = 0
+    else this.parado += dt
+    const alvo = this.parado > ESPERA_PORTA ? 1 : 0
+    this.abertura += (alvo - this.abertura) * Math.min(1, dt * (alvo ? 0.5 : 3))
+    if (this.abertura > 0.6 && !this.bateu) {
+      this.bateu = true
+      audio.bater(3, 0)
+      if (ctx.state.descobrir('porta-menu')) window.setTimeout(() => audio.segredo(), 1400)
     }
 
     if (ctx.input.consumeKey('ArrowUp') || ctx.input.consumeKey('KeyW')) this.mover(-1)
@@ -182,11 +200,36 @@ export class TitleScene implements Scene {
       c.fillRect(bx, FUGA.y - lh * 0.55, lw * 0.16, lh * 1.55)
     }
 
-    // A porta do fim, sempre pequena e sempre acesa
-    c.fillStyle = `rgba(255,226,180,${0.5 * luz})`
-    c.fillRect(FUGA.x - 4, FUGA.y - 7, 8, 14)
-    c.fillStyle = `rgba(255,240,214,${0.7 * luz})`
-    c.fillRect(FUGA.x - 2, FUGA.y - 5, 4, 10)
+    // A porta do fim, sempre pequena e sempre acesa. Para quem espera, ela
+    // abre um pouco — e tem alguém parado no vão, mais alto que Liam.
+    const ab = this.abertura
+    const meia = 4 + ab * 3
+    c.fillStyle = `rgba(255,226,180,${(0.5 + ab * 0.3) * luz})`
+    c.fillRect(FUGA.x - meia, FUGA.y - 7 - ab * 2, meia * 2, 14 + ab * 2)
+    c.fillStyle = `rgba(255,240,214,${(0.7 + ab * 0.3) * luz})`
+    c.fillRect(FUGA.x - meia + 2, FUGA.y - 5 - ab * 2, meia * 2 - 4, 10 + ab * 2)
+    if (ab > 0.05) {
+      const a = Math.min(1, (ab - 0.05) * 1.6) * luz
+      c.fillStyle = `rgba(8,6,10,${a})`
+      c.fillRect(FUGA.x - 1, FUGA.y - 4, 3, 3)
+      c.fillRect(FUGA.x - 2, FUGA.y - 1, 5, 7)
+      c.fillRect(FUGA.x - 1, FUGA.y + 6, 1, 2)
+      c.fillRect(FUGA.x + 1, FUGA.y + 6, 1, 2)
+      // Cabelo comprido caindo nos ombros
+      c.fillRect(FUGA.x - 2, FUGA.y - 3, 1, 4)
+      c.fillRect(FUGA.x + 2, FUGA.y - 3, 1, 4)
+      // A sombra dela se esticando pelo chão do corredor, na direção da câmera
+      const sg = c.createLinearGradient(0, FUGA.y + 8, 0, FUGA.y + 60)
+      sg.addColorStop(0, `rgba(0,0,0,${0.5 * a})`)
+      sg.addColorStop(1, 'rgba(0,0,0,0)')
+      c.fillStyle = sg
+      c.beginPath()
+      c.moveTo(FUGA.x - 2, FUGA.y + 8)
+      c.lineTo(FUGA.x + 3, FUGA.y + 8)
+      c.lineTo(FUGA.x + 10, FUGA.y + 60)
+      c.lineTo(FUGA.x - 8, FUGA.y + 60)
+      c.fill()
+    }
   }
 
   /**

@@ -127,17 +127,35 @@ esperar('a sala vira casa explorável', await esperarCena('demo-casa'), true)
 await limpar()
 
 const comodo = () => page.evaluate(() => window.__nos?.scene?.comodoAtual)
-async function andarAte(alvo, ms = 25000) {
+/** Segura a seta até chegar perto: andar em toquinhos levava minutos. */
+async function andarAte(alvo, ms = 45000) {
   const ate = Date.now() + ms
+  let segurando = null
+  const soltar = async () => {
+    if (segurando) await page.keyboard.up(segurando)
+    segurando = null
+  }
   while (Date.now() < ate) {
     const st = await estado()
-    if (st.id !== 'demo-casa') return false
-    if (Math.abs(st.x - alvo) < 10) return true
+    if (st.id !== 'demo-casa') break
+    if (Math.abs(st.x - alvo) < 6) {
+      await soltar()
+      return true
+    }
     const t = st.x < alvo ? 'ArrowRight' : 'ArrowLeft'
-    await page.keyboard.down(t)
-    await page.waitForTimeout(90)
-    await page.keyboard.up(t)
+    if (segurando !== t) {
+      await soltar()
+      await page.keyboard.down(t)
+      segurando = t
+    }
+    // Uma fala no caminho para Liam: fecha e segue.
+    if (await falando()) {
+      await soltar()
+      await limpar()
+    }
+    await page.waitForTimeout(40)
   }
+  await soltar()
   return false
 }
 async function usar() {
@@ -146,17 +164,50 @@ async function usar() {
   await limpar()
 }
 
-await andarAte(340); await usar()
+const segredos = () => page.evaluate(() => [...(window.__nos?.state?.segredos ?? [])])
+const tecla = async (codigos) => {
+  for (const k of codigos) {
+    await page.keyboard.press(k)
+    await page.waitForTimeout(260)
+  }
+}
+
+// Parede: andar para a esquerda não tira Liam da sala.
+await andarAte(-200, 9000)
+esperar('a parede esquerda da sala segura Liam', (await estado()).x >= 20, true)
+
+// O piano da sala continua tocável. O tema ao contrário é um segredo.
+await andarAte(156); await page.keyboard.press('KeyE'); await page.waitForTimeout(300); await limpar()
+esperar('Liam senta ao piano da sala', await page.evaluate(() => window.__nos.scene.sentadoAoPiano), true)
+await tecla(['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyD', 'KeyA'])
+await page.waitForTimeout(400)
+await limpar()
+esperar('o tema subindo é um segredo', (await segredos()).includes('melodia'), true)
+await page.keyboard.press('Escape'); await page.waitForTimeout(300)
+esperar('Esc levanta do piano', await page.evaluate(() => window.__nos.scene.sentadoAoPiano), false)
+
+await andarAte(484); await usar()
 esperar('a porta da sala leva ao corredor', await comodo(), 'corredor')
+
+// As marcas de altura, vistas duas vezes, mostram o que a lixa não pegou.
+await andarAte(306); await usar(); await usar()
+esperar('olhar de novo as marcas acha um nome', (await segredos()).includes('nome'), true)
 
 await andarAte(150); await usar()
 esperar('o corredor leva ao quarto', await comodo(), 'quarto')
 if (OUT) await page.screenshot({ path: `${OUT}/c1-quarto.png` })
 
-await andarAte(148); await usar()
+await andarAte(214); await usar()
 esperar('a caixa debaixo da cama foi aberta', (await estado()).achados >= 1, true)
+await andarAte(342); await usar(); await usar()
+esperar('o diário tem um bilhete escondido', (await segredos()).includes('bilhete'), true)
+await andarAte(58); await usar(); await usar()
+esperar('a cabana guarda uma voz', (await segredos()).includes('cabana'), true)
+await andarAte(-100, 6000)
+esperar('a parede esquerda do quarto segura Liam', (await estado()).x >= 20, true)
 
-await andarAte(210); await usar()
+await andarAte(300); await usar()
+esperar('dá para voltar ao corredor', await comodo(), 'corredor')
 // Ir até o fundo faz o corredor se esticar, várias vezes.
 for (let i = 0; i < 8; i++) {
   const st = await estado()
@@ -168,9 +219,18 @@ for (let i = 0; i < 8; i++) {
 esperar('o corredor se alongou enquanto Liam andava', (await estado()).larg, 1180)
 if (OUT) await page.screenshot({ path: `${OUT}/c2-corredor.png` })
 
-// A porta do fim não abre. Nunca abriu.
-await usar()
+await andarAte(1180 - 112); await usar()
+esperar('o último retrato não tem ninguém', (await segredos()).includes('ninguem'), true)
+
+// A porta do fim não abre. Nunca abriu. Mas quem insiste ouve alguém.
+await andarAte(1180 - 46)
+await usar(); await usar(); await usar()
+await page.waitForTimeout(2400)
+await limpar()
 esperar('a porta impossível continua fechada', await comodo(), 'corredor')
+esperar('três batidas respondem do outro lado', (await segredos()).includes('bater'), true)
+await andarAte(5000, 5000)
+esperar('a parede do fim do corredor segura Liam', (await estado()).x <= 1180 - 20, true)
 
 // A cozinha encerra a exploração
 await andarAte(268); await usar(); await usar()

@@ -5,7 +5,7 @@ import { audio } from '../../../engine/audio'
 import { musica, TEMA } from '../../../engine/musica'
 import { Figura } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
-import { drawSalaFundo, drawSalaFrente, drawLuzSala, ABAJUR, ASSENTO_Y } from '../../world/sala'
+import { drawSalaFundo, drawSalaFrente, drawLuzSala, LUZ_PIANO, BANCO_Y, PIANO } from '../../world/sala'
 import {
   PROLOGO_ABERTURA, PROLOGO_FRASES, PROLOGO_ACERTOU_FRASE, PROLOGO_ERRO,
   PROLOGO_ACERTO, PROLOGO_LIVRE, PROLOGO_FECHO,
@@ -40,14 +40,16 @@ export class PrologoScene implements Scene {
   private erros = 0
   private livreAte = 0
 
+  // Os dois no banco do piano, de costas para a câmera. É uma cena de nuca e
+  // de mãos: o rosto só aparece quando alguém se vira para o outro.
   private adrian = new Figura({
-    x: 152, y: ASSENTO_Y, altura: 40,
-    cor: { roupa: '#2b2129', cabelo: '#171017', pele: '#6a4f48', sombra: 'rgba(0,0,0,0.42)' },
+    x: PIANO.cx - 11, y: BANCO_Y, altura: 40,
+    cor: { roupa: '#2b2129', cabelo: '#171017', pele: '#6a4f48', sombra: 'rgba(0,0,0,0)' },
     pose: 'sentado',
   })
   private liam = new Figura({
-    x: 200, y: ASSENTO_Y, altura: 31,
-    cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.42)' },
+    x: PIANO.cx + 15, y: BANCO_Y, altura: 31,
+    cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0)' },
     pose: 'sentado',
   })
   private po = new Particulas()
@@ -184,47 +186,60 @@ export class PrologoScene implements Scene {
     this.adrian.update(dt)
     this.liam.update(dt)
     this.po.update(dt)
-    if (Math.random() < dt * 22 * this.calor) {
-      this.po.poeira(ABAJUR.x - 42, ABAJUR.y + 6, 84, 70)
+    if (Math.random() < dt * 20 * this.calor) {
+      this.po.poeira(LUZ_PIANO.x - 40, LUZ_PIANO.y, 70, 60)
     }
     this.dedilhado = Math.max(0, this.dedilhado - dt * 3)
 
+    // Quem fala vira o rosto para o outro. O resto do tempo, os dois olham
+    // para o teclado — de costas para quem joga.
+    const falando = this.dialogue.active ? this.dialogue.falante : null
     const dele = this.fase === 'escuta'
-    this.adrian.braco = 0.5 + (dele ? this.dedilhado * 0.4 : 0.1)
-    this.adrian.olhar = dele ? -0.2 : 0.7
-    this.liam.olhar = -0.8
-    this.liam.braco = this.fase === 'toca' || this.fase === 'livre'
-      ? 0.5 + this.dedilhado * 0.35
-      : 0.12
+    const vezDoFilho = this.fase === 'toca' || this.fase === 'livre'
+
+    this.adrian.costas = falando !== 'Adrian'
+    this.adrian.olhar = falando === 'Adrian' ? 1 : 0
+    this.adrian.braco = dele ? 0.62 + this.dedilhado * 0.3 : 0.3
+
+    this.liam.costas = falando !== 'Adrian'
+    this.liam.olhar = falando === 'Adrian' ? -1 : 0
+    this.liam.braco = vezDoFilho ? 0.6 + this.dedilhado * 0.3 : 0.14
 
     if (this.fase === 'saida') {
-      this.adrian.olhar = 0
+      this.adrian.costas = true
+      this.liam.costas = true
       this.liam.curvatura = Math.min(0.5, this.saida * 0.14)
     }
   }
 
   render(ctx: SceneCtx): void {
     const w = ctx.display.beginWorld()
-    const k = this.calor
-    drawSalaFundo(w, k)
-    this.adrian.draw(w, ABAJUR.x)
-    this.liam.draw(w, ABAJUR.x)
-    this.drawPianoCena(w, k)
-    drawSalaFrente(w, k)
+    const estado = {
+      k: this.calor,
+      t: this.t,
+      tecla: this.dedilhado > 0.02 ? this.piano.ultimaTocada : -1,
+      brilhoTecla: this.dedilhado,
+    }
+    drawSalaFundo(w, estado)
+    this.adrian.draw(w, LUZ_PIANO.x, 'rgba(255,206,146,0.4)')
+    this.liam.draw(w, LUZ_PIANO.x, 'rgba(255,206,146,0.4)')
+    drawSalaFrente(w, estado)
     this.po.draw(w, true)
-    drawLuzSala(w, k, this.t)
+    drawLuzSala(w, estado, 'piano')
 
     ctx.display.applyGrain(0.045)
+    // A câmera fecha no piano enquanto ele ensina e recua quando o calor sai:
+    // no fim a sala volta a ficar grande demais.
     const entrada = Math.min(1, this.t / 26)
     const recuo = this.fase === 'saida' ? Math.min(1, this.saida / 4) : 0
     ctx.display.present({
       rgbSplit: 0, wave: 0, shake: 0,
-      zoom: 1.32 + entrada * 0.16 - recuo * 0.44,
-      alvoX: 176 + entrada * 6,
-      alvoY: 116 - recuo * 6,
+      zoom: 1.62 + entrada * 0.16 - recuo * 0.6,
+      alvoX: PIANO.cx + 2 + recuo * 40,
+      alvoY: 104 - recuo * 4,
       time: this.t,
     })
-    ctx.display.vignette(0.6 + (1 - k) * 0.26)
+    ctx.display.vignette(0.62 + (1 - this.calor) * 0.26)
 
     const mostrandoPiano = this.fase !== 'entrada' && this.fase !== 'saida'
     if (mostrandoPiano) {
@@ -243,20 +258,5 @@ export class PrologoScene implements Scene {
     }
 
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
-  }
-
-  /** O piano de parede na cena, atrás do sofá. */
-  private drawPianoCena(c: CanvasRenderingContext2D, k: number): void {
-    const x = this.adrian.x - 6
-    const y = ASSENTO_Y - 12
-    c.fillStyle = k > 0.5 ? '#3a2318' : '#20263a'
-    c.fillRect(x - 4, y, 34, 14)
-    c.fillStyle = k > 0.5 ? '#54331f' : '#2c3448'
-    c.fillRect(x - 4, y, 34, 2)
-    // Teclado em miniatura, acendendo junto com a nota
-    c.fillStyle = `rgba(232,224,206,${0.5 + this.dedilhado * 0.45})`
-    c.fillRect(x - 1, y + 4, 28, 4)
-    c.fillStyle = 'rgba(20,14,12,0.7)'
-    for (let i = 0; i < 7; i++) c.fillRect(x + 2 + i * 4, y + 4, 1, 3)
   }
 }

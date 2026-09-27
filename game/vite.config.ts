@@ -4,7 +4,8 @@ export default defineConfig({
   base: './',
   build: {
     target: 'es2022',
-    assetsInlineLimit: 0,
+    // Embute as fontes (cada woff2 tem ~20 kB) no próprio bundle.
+    assetsInlineLimit: 120_000,
     rollupOptions: {
       output: {
         // IIFE em vez de módulo ES: é o que permite o build de arquivo único

@@ -124,6 +124,9 @@ export const EPILOGO: string[] = [
   'E alguém era sempre o mesmo.',
 ]
 
+/** Só para quem achou a melodia ao contrário no piano da sala. */
+export const EPILOGO_SUBINDO = 'Mas alguém ensinou a música subindo.'
+
 export const EPILOGO_CREDITO = 'Fernando Rateke Neto  ·  Luana Lupi Vergara'
 export const DEMO_FIM = 'fim da demo'
 
@@ -223,6 +226,14 @@ export const MESA_VESTIGIOS: Vestigio[] = [
   },
 ]
 
+/** Os cinco pratos. Não é vestígio, não muda nada — só está ali. */
+export const MESA_PRATOS: Line[] = [
+  { text: 'Tem cinco pratos na mesa.' },
+  { text: 'Minha mãe pôs cinco. Eu vi ela contar.' },
+  { text: 'Somos quatro.' },
+  { text: 'Ela olhou pro quinto como quem esquece uma palavra no meio da frase.' },
+]
+
 /** O fecho muda conforme quanto ele viu. Nunca muda o que acontece. */
 export const MESA_FECHO: Record<number, Line[]> = {
   0: [{ text: 'Eu não consigo.' }, { text: 'Mas lá embaixo eu consigo.' }],
@@ -257,7 +268,36 @@ export const CASA_CORREDOR: Line[][] = [
   [
     { text: 'A casa não é grande assim.' },
     { text: 'A casa não pode ser grande assim.' },
+    { speaker: 'Voz', text: 'Lembra? Aqui era a floresta.', style: 'speech' },
   ],
+]
+
+/** A porta do fim, a cada vez que Liam insiste. Na terceira, alguém responde. */
+export const CASA_PORTA_FIM: Line[][] = [
+  [
+    { text: 'A maçaneta gira. A porta não abre.' },
+    { text: 'Nunca abriu.' },
+    { text: 'Eu desenhei um quarto aqui. Eu lembro de desenhar.' },
+  ],
+  [{ text: 'Eu bato.' }, { text: 'Nada.' }],
+  [
+    { text: 'Eu bato de novo. Três vezes curtas.' },
+    { text: 'Do jeito que alguém me ensinou.' },
+  ],
+  [{ text: 'A porta não abre.' }, { text: 'Mas agora eu sei que tem alguém ali.' }],
+]
+
+/** O tema de trás para a frente, no piano da sala. */
+export const CASA_MELODIA: Line[] = [
+  { speaker: 'Voz', text: 'Isso.', style: 'speech' },
+  { speaker: 'Voz', text: 'Ele te ensinou descendo. Eu te ensinei subindo.', style: 'speech' },
+  { text: 'Assim a música não termina no chão.' },
+]
+
+/** A frase do jeito que Adrian ensinou. */
+export const CASA_MELODIA_DELE: Line[] = [
+  { text: 'Do jeito que ele ensinou.' },
+  { text: 'Termina lá embaixo. Sempre termina lá embaixo.' },
 ]
 
 /** Objetivo mostrado no canto, que muda conforme ele explora. */

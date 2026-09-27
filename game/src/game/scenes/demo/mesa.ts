@@ -6,7 +6,7 @@ import { Figura } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import {
   MESA_ABERTURA, MESA_CONFRONTO, MESA_PENSAMENTO, MESA_FUGA, MESA_FECHO,
-  MESA_VESTIGIOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
+  MESA_VESTIGIOS, MESA_PRATOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
 } from '../../content/demoScript'
 import { TearScene } from './tear'
 
@@ -16,6 +16,9 @@ const LIMITE_DIR = 306
 const ALCAPAO = 214
 
 type Fase = 'abertura' | 'confronto' | 'preso' | 'fuga'
+
+/** Onde fica o quinto prato, na mesa da frente. */
+const PRATOS_X = 232
 
 /**
  * A Mesa.
@@ -60,6 +63,7 @@ export class MesaScene implements Scene {
   private idxPensamento = 0
   /** Vestígios já examinados. É a única coisa que o jogador muda aqui. */
   private achados = new Set<string>()
+  private pratosVistos = false
   private panoTirado = false
   /** Destino de um clique. Liam anda sozinho até lá. */
   private destino: number | null = null
@@ -132,6 +136,10 @@ export class MesaScene implements Scene {
     const perto = this.vestigioPerto()
     if (!tap && confirmou && perto && !this.achados.has(perto.id)) {
       this.examinar(perto)
+      return
+    }
+    if (!tap && confirmou && !perto && this.pratosPerto() && !this.pratosVistos) {
+      this.contarPratos(ctx)
       return
     }
 
@@ -217,6 +225,22 @@ export class MesaScene implements Scene {
     if (v.id === 'fogao') this.panoTirado = true
     audio.interact()
     this.dialogue.play(v.linhas)
+  }
+
+  /**
+   * Os pratos não contam como vestígio e não mudam o fecho. Estão ali para
+   * quem reparar: cinco pratos numa casa de quatro.
+   */
+  private contarPratos(ctx: SceneCtx): void {
+    this.pratosVistos = true
+    audio.interact()
+    this.dialogue.play(MESA_PRATOS, () => {
+      if (ctx.state.descobrir('pratos')) audio.segredo()
+    })
+  }
+
+  private pratosPerto(): boolean {
+    return Math.abs(PRATOS_X - this.liam.x) < 10
   }
 
   /** O vestígio ao alcance de Liam, se houver. */
@@ -340,6 +364,31 @@ export class MesaScene implements Scene {
     c.fillStyle = '#141a26'
     c.fillRect(130, 184, 6, 24)
     c.fillRect(254, 184, 6, 24)
+    // Toalha xadrez caindo na frente
+    for (let x = 122; x < 268; x += 6) {
+      c.fillStyle = (x / 6) % 2 < 1 ? 'rgba(120,52,52,0.5)' : 'rgba(200,190,176,0.18)'
+      c.fillRect(x, 178, 6, 6)
+    }
+    // Cinco pratos. Somos quatro.
+    for (const [i, px] of [134, 160, 186, 212, PRATOS_X + 6].entries()) {
+      c.fillStyle = '#7c8498'
+      c.fillRect(px - 6, 173, 13, 3)
+      c.fillStyle = '#a4acbe'
+      c.fillRect(px - 5, 173, 11, 1)
+      c.fillStyle = '#5a6276'
+      c.fillRect(px - 3, 174, 7, 1)
+      // Talheres
+      c.fillStyle = '#8e96a8'
+      c.fillRect(px - 8, 172, 1, 4)
+      c.fillRect(px + 8, 172, 1, 4)
+      // O quinto tem um copo virado para baixo: ninguém bebe nele.
+      if (i === 4) {
+        c.fillStyle = '#6a7a92'
+        c.fillRect(px + 11, 169, 4, 6)
+        c.fillStyle = '#8a9ab4'
+        c.fillRect(px + 11, 169, 4, 1)
+      }
+    }
     // Batente
     c.fillStyle = '#04060a'
     c.fillRect(0, 0, 10, WORLD_H)
@@ -369,10 +418,11 @@ export class MesaScene implements Scene {
     c.font = `${s}px ${FONT_BODY}`
 
     const perto = this.vestigioPerto()
-    if (perto && !this.achados.has(perto.id)) {
+    const pratos = !perto && this.pratosPerto() && !this.pratosVistos
+    if ((perto && !this.achados.has(perto.id)) || pratos) {
       const sx = ctx.display.toScreenX(this.liam.x)
       const sy = ctx.display.toScreenY(this.liam.y - 40)
-      const txt = perto.rotulo
+      const txt = perto ? perto.rotulo : 'Contar os pratos'
       const w = c.measureText(txt).width + s * 3.2
       c.fillStyle = 'rgba(4,6,11,0.82)'
       c.fillRect(sx - w / 2, sy - s, w, s * 1.9)

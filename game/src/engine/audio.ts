@@ -236,6 +236,19 @@ export class Audio {
     }
   }
 
+  /** Dois sinos altos e fracos: o som de ter achado algo que não se via. */
+  segredo(): void {
+    musica.nota(1174.66, 0.32, 3.4)
+    window.setTimeout(() => musica.nota(1760, 0.24, 3.8), 170)
+  }
+
+  /** Três batidas de dedo numa porta, do outro lado. */
+  bater(vezes = 3, depois = 0): void {
+    for (let i = 0; i < vezes; i++) {
+      window.setTimeout(() => this.thud(92 - i * 3, 0.2), depois + i * 330)
+    }
+  }
+
   reveal(): void {
     this.ping(196, 1.5, 0.07, 'sine')
     window.setTimeout(() => this.ping(294, 1.8, 0.05, 'sine'), 180)

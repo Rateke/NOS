@@ -23,6 +23,11 @@ export class Dialogue {
     return this.current !== null || this.queue.length > 0
   }
 
+  /** Quem está falando agora, ou null se é pensamento. */
+  get falante(): string | null {
+    return this.current?.speaker ?? null
+  }
+
   /**
    * `auto` faz as falas correrem sozinhas, sem toque. Usado nos clímaxes:
    * tirar o controle da mão do jogador é parte da direção.
@@ -138,6 +143,8 @@ export const FONT_BODY = `'Spectral', ui-serif, Georgia, 'Times New Roman', seri
 export const FONT_TITLE = `'Bodoni Moda', ui-serif, Didot, 'Playfair Display', Georgia, serif`
 
 /** Para rótulos curtos e interface: a mesma serifa, em corpo pequeno. */
+/** Só o fecho: itálico caligráfico para as frases finais. */
+export const FONT_FIM = `'Cormorant Garamond', 'Spectral', ui-serif, Georgia, serif`
 export const FONT_UI = `'Spectral', ui-serif, Georgia, serif`
 
 export function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {

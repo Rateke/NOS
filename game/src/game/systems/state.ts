@@ -15,6 +15,8 @@ export class GameState {
   readonly inventory: Keepsake[] = []
   diaryRead = false
   doorAttempts = 0
+  /** Segredos achados, na demo inteira. Ver content/segredos.ts. */
+  readonly segredos = new Set<string>()
   private chores = new Set<string>()
 
   registerChore(id: string): void {
@@ -43,6 +45,13 @@ export class GameState {
 
   get tidy(): boolean {
     return this.choresLeft() === 0
+  }
+
+  /** Marca um segredo. Devolve true só na primeira vez. */
+  descobrir(id: string): boolean {
+    if (this.segredos.has(id)) return false
+    this.segredos.add(id)
+    return true
   }
 
   addKeepsake(k: Keepsake): void {
