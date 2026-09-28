@@ -8,7 +8,7 @@ import { Particulas } from '../../world/particulas'
 import { drawSalaFundo, drawSalaFrente, drawLuzSala, LUZ_PIANO, BANCO_Y, PIANO } from '../../world/sala'
 import {
   PROLOGO_ABERTURA, PROLOGO_FRASES, PROLOGO_ACERTOU_FRASE, PROLOGO_ERRO,
-  PROLOGO_ACERTO, PROLOGO_LIVRE, PROLOGO_FECHO,
+  PROLOGO_ACERTO, PROLOGO_LIVRE, PROLOGO_FECHO, PROLOGO_SUBINDO,
 } from '../../content/demoScript'
 import { CasaScene } from './casa'
 
@@ -39,6 +39,9 @@ export class PrologoScene implements Scene {
   private proxNota = 0
   private erros = 0
   private livreAte = 0
+  /** As últimas notas do momento livre, para reconhecer o tema ao contrário. */
+  private ultimas: number[] = []
+  private ouviuSubindo = false
 
   // Os dois no banco do piano, de costas para a câmera. É uma cena de nuca e
   // de mãos: o rosto só aparece quando alguém se vira para o outro.
@@ -158,9 +161,18 @@ export class PrologoScene implements Scene {
 
   /** Momento livre: o jogador toca o que quiser. É dele agora. */
   private livre(ctx: SceneCtx): void {
-    if (this.piano.ler(ctx.input, ctx.display) !== null) {
+    const nota = this.piano.ler(ctx.input, ctx.display)
+    if (nota !== null) {
       this.dedilhado = 1
       this.livreAte = Math.max(this.livreAte, this.t + 5)
+      this.ultimas = [...this.ultimas, nota].slice(-7)
+      // Quem já sabe tocar a frase subindo — não aprendeu com ele.
+      const subindo = [0, 1, 2, 3, 4, 2, 0]
+      if (!this.ouviuSubindo && subindo.every((n, i) => this.ultimas[i] === n)) {
+        this.ouviuSubindo = true
+        this.livreAte = this.t + 8
+        this.dialogue.play(PROLOGO_SUBINDO)
+      }
     }
     if (this.t > this.livreAte && !this.dialogue.active) {
       this.fase = 'fecho'

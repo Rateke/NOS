@@ -6,24 +6,33 @@
  * câmara do Tear (o mesmo afeto virando instrumento).
  */
 import type { Line } from '../world/types'
+import type { Documento } from '../systems/leitor'
+import { DOC_BILHETE_FERNANDA } from './documentos'
 
 // --- Prólogo: A Música ------------------------------------------------------
 
 export const PROLOGO_ABERTURA: Line[] = [
-  { speaker: 'Adrian', text: 'Senta aqui. Deixa eu te mostrar uma coisa.', style: 'speech' },
-  { speaker: 'Adrian', text: 'Escuta primeiro. Depois você faz.', style: 'speech' },
+  { text: 'A sala é o único lugar quente da casa. Principalmente quando ele está de bom humor.' },
+  { speaker: 'Adrian', text: 'Senta aqui. Não, mais perto. Assim.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Meu avô tocava isso pra minha mãe dormir. Ninguém nunca me ensinou direito — eu aprendi escutando atrás da porta.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Então escuta primeiro. Depois você faz.', style: 'speech' },
 ]
 
 /** Uma linha por frase do tema, dita antes de Adrian tocá-la. */
 export const PROLOGO_FRASES: Line[][] = [
-  [{ speaker: 'Adrian', text: 'Essa é a primeira parte.', style: 'speech' }],
-  [{ speaker: 'Adrian', text: 'Agora cresce. Presta atenção no fim.', style: 'speech' }],
-  [{ speaker: 'Adrian', text: 'E essa desce tudo. Até onde começou.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Essa é a primeira parte. Ela sobe e para, como quem vai perguntar alguma coisa.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Agora ela cresce. Presta atenção no fim: ela não fecha.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'E essa desce tudo, até onde começou. É aqui que ela descansa.', style: 'speech' }],
 ]
 
 export const PROLOGO_ACERTOU_FRASE: Line[][] = [
-  [{ speaker: 'Adrian', text: 'Isso. Sem pressa.', style: 'speech' }],
-  [{ speaker: 'Adrian', text: 'Você pega rápido.', style: 'speech' }],
+  [
+    { speaker: 'Adrian', text: 'Isso. Sem pressa.', style: 'speech' },
+    { text: 'A mão dele no meu ombro. Leve.' },
+  ],
+  [
+    { speaker: 'Adrian', text: 'Você pega rápido. Mais rápido que eu, na sua idade.', style: 'speech' },
+  ],
   [{ speaker: 'Adrian', text: 'Inteira. Na primeira noite.', style: 'speech' }],
 ]
 
@@ -36,7 +45,8 @@ export const PROLOGO_ERRO: Line[][] = [
 /** O elogio e a função instalada na mesma frase. */
 export const PROLOGO_ACERTO: Line[] = [
   { speaker: 'Adrian', text: 'Pronto. Agora é sua.', style: 'speech' },
-  { speaker: 'Adrian', text: 'Sua mãe não tem paciência pra isso. Você tem.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Sabe o que eu gosto em você? Você escuta. Ninguém mais nessa casa escuta.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Sua mãe não tem paciência pra isso. A Lia não tem. Você tem.', style: 'speech' },
   { speaker: 'Adrian', text: 'Por isso eu conto com você.', style: 'speech' },
 ]
 
@@ -44,7 +54,15 @@ export const PROLOGO_LIVRE = 'toque à vontade'
 
 export const PROLOGO_FECHO: Line[] = [
   { text: 'Eu gostava quando ele falava assim.' },
+  { text: 'Como se eu fosse a única pessoa da casa que entendia.' },
   { text: 'Eu ainda gosto.' },
+]
+
+/** Se o jogador toca o tema de trás para a frente no prólogo. */
+export const PROLOGO_SUBINDO: Line[] = [
+  { speaker: 'Adrian', text: '...Onde você aprendeu isso?', style: 'speech' },
+  { text: 'Não sei. Estava na minha mão.' },
+  { speaker: 'Adrian', text: 'Não é assim. Ela desce. Toca do jeito certo.', style: 'speech' },
 ]
 
 // --- O Tear -----------------------------------------------------------------
@@ -89,6 +107,8 @@ export const ADRIAN_INSISTE: string[] = [
   'Não para agora.',
   'Você quer que ela vá embora?',
   'Olha pra mim. Só mais um.',
+  'Sua bisavó fazia isso. Segurava todo mundo. Era um dom.',
+  'Escuta lá em cima. Tá vendo? Por sua causa.',
 ]
 
 export const CORPO: string[] = [
@@ -98,8 +118,16 @@ export const CORPO: string[] = [
   'eu não estava lá',
 ]
 
+/** Antes do piano: o caderno aberto no chão, perto das velas. */
+export const TEAR_CADERNO: Line[] = [
+  { text: 'Perto das velas tem uma pilha de cadernos. Um está aberto.' },
+  { text: 'A letra é antiga, inclinada. Na capa, a lápis: Amélia.' },
+]
+
 export const TEAR_FIM: Line[] = [
   { speaker: 'Liam', text: 'Pai...', style: 'speech' },
+  { speaker: 'Liam', text: 'Eu não quero.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Você consegue fazer o que ninguém mais consegue.', style: 'speech' },
   { speaker: 'Adrian', text: 'Eu sei. Depois passa.', style: 'speech' },
 ]
 
@@ -123,16 +151,22 @@ export const DEMO_FIM = 'fim da demo'
 
 export const MESA_ABERTURA: Line[] = [
   { text: 'As malas estão no chão da cozinha.' },
+  { text: 'Ninguém serviu o jantar. O rádio continua tocando uma música alegre, sozinho.' },
+  { text: 'A Lia está de mochila nas costas. A mãe, de uniforme, como se fosse trabalhar.' },
   { text: 'Se eu ficar no meio, eles param.' },
   { text: 'Sempre para.' },
 ]
 
-/** As quatro falas da noite, na ordem em que o roteiro as fixa. */
+/** As falas da noite: primeiro os dois, depois Lia, depois a função de Liam. */
 export const MESA_CONFRONTO: Line[] = [
   { speaker: 'Adrian', text: 'Ninguém vai sair antes de a gente conversar.', style: 'speech' },
   { speaker: 'Evelyn', text: 'Eu não estou pedindo.', style: 'speech' },
   { speaker: 'Adrian', text: 'Você está levando meus filhos.', style: 'speech' },
   { speaker: 'Evelyn', text: 'Eu estou levando os meus para fora daqui.', style: 'speech' },
+  { speaker: 'Lia', text: 'Fala a verdade pelo menos uma vez. Fala por que a porta tá trancada.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Liam. Explica pra sua irmã por que a gente precisa ficar junto.', style: 'speech' },
+  { text: 'Ele olha pra mim como se eu soubesse a resposta.' },
+  { text: 'Eu sempre sei a resposta.' },
 ]
 
 /** Quando Liam se aproxima da mãe, o pai puxa. E vice-versa. */
@@ -177,6 +211,9 @@ export interface Vestigio {
   x: number
   rotulo: string
   linhas: Line[]
+  /** Papel para ler de verdade, aberto depois de `linhas`. */
+  documento?: Documento
+  depois?: Line[]
 }
 
 export const MESA_VESTIGIOS: Vestigio[] = [
@@ -191,10 +228,14 @@ export const MESA_VESTIGIOS: Vestigio[] = [
   {
     id: 'bilhete', x: 158, rotulo: 'Ler',
     linhas: [
-      { text: 'Um bilhete dobrado no bolso do casaco dela.' },
-      { text: 'É a letra da tia Fernanda.', style: 'read' },
-      { text: '23h. Estarei na esquina. Não precisa explicar nada.', style: 'read' },
-      { text: 'Ela ia mesmo.' },
+      { text: 'O casaco da minha mãe, na cadeira. Tem um papel saindo do bolso.' },
+      { text: 'É a letra da tia Fernanda. Faz anos que elas não se falam.' },
+    ],
+    documento: DOC_BILHETE_FERNANDA,
+    depois: [
+      { text: 'Ela ia mesmo. Hoje.' },
+      { text: '"Ela perguntou de você." Ela quem?' },
+      { text: 'E que chave?' },
     ],
   },
   {
@@ -245,6 +286,8 @@ export const CASA_ABERTURA: Line[] = [
   { speaker: 'Adrian', text: 'Vai guardar suas coisas. Já está tarde.', style: 'speech' },
   { text: 'A casa parece maior de noite.' },
   { text: 'Ou eu que ando mais devagar.' },
+  { text: 'Da cozinha vem o barulho da panela e o rádio baixinho. Ninguém está falando.' },
+  { text: 'Isso é pior do que quando falam.' },
 ]
 
 /** Dito quando Liam chega ao fim do corredor e ele ainda não acabou. */
@@ -295,7 +338,9 @@ export const CASA_OBJETIVO_COZINHA = 'ir até a cozinha'
 
 export const CASA_ANTES_DA_COZINHA: Line[] = [
   { text: 'Tem voz na cozinha.' },
-  { text: 'Os dois ao mesmo tempo.' },
+  { text: 'Os dois ao mesmo tempo, baixinho, do jeito que eles acham que a gente não escuta.' },
+  { text: 'Se eu entrar agora, eles param. Sempre param.' },
+  { text: 'Ainda dá tempo de olhar o resto da casa.' },
 ]
 
 /** Quando ele já viu o bastante e decide descer. */

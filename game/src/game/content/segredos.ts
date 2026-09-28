@@ -15,6 +15,9 @@ export const SEGREDOS = [
   'cabana',       // entrar na cabana de cobertor do quarto
   'bilhete',      // ler de novo o diário
   'pratos',       // reparar nos pratos da mesa da cozinha
+  'cruzadas',     // ler o jornal até as palavras cruzadas
+  'receita',      // abrir de novo o livro de receitas e contar as letras
+  'caderno',      // esperar na última página, em branco, do caderno de Amélia
 ] as const
 
 export type Segredo = (typeof SEGREDOS)[number]

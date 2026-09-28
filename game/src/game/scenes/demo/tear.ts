@@ -4,8 +4,11 @@ import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
 import { audio } from '../../../engine/audio'
 import {
   TEAR_CHEGADA, ADRIAN_DURANTE, ADRIAN_INSISTE, CORPO,
-  TEAR_FIM, ELISA_CORTE, TEAR_PIANO, TEAR_ERRO,
+  TEAR_FIM, ELISA_CORTE, TEAR_PIANO, TEAR_ERRO, TEAR_CADERNO,
 } from '../../content/demoScript'
+import { DOC_CADERNO_AMELIA } from '../../content/documentos'
+import { Leitor } from '../../systems/leitor'
+import type { GameState } from '../../systems/state'
 import { FimScene } from './fim'
 import { Figura } from '../../world/figura'
 import { Piano } from '../../systems/piano'
@@ -53,6 +56,8 @@ export class TearScene implements Scene {
   readonly id = 'demo-tear'
 
   private dialogue = new Dialogue()
+  private leitor = new Leitor()
+  private jogo: GameState | null = null
   private fase: Fase = 'chegada'
   private t = 0
   private fios: FioTear[] = []
@@ -119,7 +124,13 @@ export class TearScene implements Scene {
     return TEMA[indice % TEMA.length] ?? []
   }
 
-  enter(): void {
+  /** Um documento aberto na tela. */
+  get lendo(): boolean {
+    return this.leitor.aberto
+  }
+
+  enter(ctx: SceneCtx): void {
+    this.jogo = ctx.state
     const cores = ['#7a90b4', '#9a78b0', '#b88a70', '#78a890', '#b07a90', '#8a98b0']
     this.fios = cores.map((cor, i) => ({
       cor,
@@ -141,9 +152,19 @@ export class TearScene implements Scene {
     musica.desafinado = -0.35
     musica.abafado = 0.45
     musica.setPad(0.35, 3)
+    // Chegada, o caderno da bisavó, e só então o piano.
     this.dialogue.play(TEAR_CHEGADA, () => {
-      this.dialogue.play(TEAR_PIANO, () => {
-        this.fase = 'absorvendo'
+      this.dialogue.play(TEAR_CADERNO, () => {
+        this.leitor.abrir(DOC_CADERNO_AMELIA, {
+          onSegredo: (id) => {
+            if (this.jogo?.descobrir(id)) audio.segredo()
+          },
+          onFechar: () => {
+            this.dialogue.play(TEAR_PIANO, () => {
+              this.fase = 'absorvendo'
+            })
+          },
+        })
       })
     })
   }
@@ -154,6 +175,11 @@ export class TearScene implements Scene {
     this.ecos = this.ecos.filter((e) => (e.vida -= dt) > 0)
     this.baterCoracao()
     this.animar(dt)
+
+    if (this.leitor.aberto) {
+      this.leitor.update(dt, ctx.input)
+      return
+    }
 
     if (this.lembranca) {
       this.lembrar(dt, ctx)
@@ -375,7 +401,8 @@ export class TearScene implements Scene {
     this.tPico += dt
     this.intensidade = Math.min(1.5, 1 + this.tPico * 0.22)
     audio.setArgument(0, 1)
-    if (this.tPico > 2.6 && this.fase === 'pico') {
+    // Ela só corta quando ele termina de dizer que não quer.
+    if (this.tPico > 2.6 && !this.dialogue.active && this.fase === 'pico') {
       this.fase = 'corte'
       this.tCorte = 0
       this.dialogue.play(ELISA_CORTE, () => {
@@ -472,6 +499,7 @@ export class TearScene implements Scene {
     if (this.lembranca) this.desenharFalaLembranca(ctx, m)
     else this.desenharAdrian(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+    this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
 
   /** Entra depressa, sai devagar. */

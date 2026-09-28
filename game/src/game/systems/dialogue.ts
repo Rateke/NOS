@@ -87,9 +87,9 @@ export class Dialogue {
     if (!line) return
 
     const pad = Math.max(16, Math.min(cssW, cssH) * 0.04)
-    const boxW = Math.min(cssW - pad * 2, 900)
-    const fontSize = Math.max(15, Math.round(Math.min(cssW / 46, 26)))
-    const lineH = fontSize * 1.55
+    const boxW = Math.min(cssW - pad * 2, 1000)
+    const fontSize = Math.max(17, Math.round(Math.min(cssW / 40, 30)))
+    const lineH = fontSize * 1.5
     const boxX = (cssW - boxW) / 2
 
     const style = line.style ?? 'thought'

@@ -297,7 +297,11 @@ function drawMesinha(c: CanvasRenderingContext2D, k: number): void {
   ret(c, x + 18, y - 7, 7, 7, rgb(louca))
   ret(c, x + 25, y - 5, 2, 3, rgb(louca))
   ret(c, x + 34, y - 6, 6, 6, rgb(louca))
-  ret(c, x + 56, y - 2, 18, 2, 'rgba(214,206,186,0.55)')
+  // O jornal de hoje, dobrado, com uma mancha de café na capa
+  ret(c, x + 48, y - 3, 24, 3, 'rgba(206,202,190,0.75)')
+  ret(c, x + 48, y - 3, 24, 1, 'rgba(236,232,220,0.8)')
+  ret(c, x + 52, y - 2, 10, 1, 'rgba(40,40,50,0.5)')
+  ret(c, x + 64, y - 2, 5, 1, 'rgba(120,80,40,0.5)')
 }
 
 /**

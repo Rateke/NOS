@@ -8,6 +8,8 @@ import { PIANO, BANCO_Y } from '../../world/sala'
 import type { Line } from '../../world/types'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
+import { Leitor } from '../../systems/leitor'
+import type { Documento } from '../../systems/leitor'
 import { Figura } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { PAL, WORLD_W } from '../../../engine/constants'
@@ -59,6 +61,7 @@ export class CasaScene implements Scene {
   })
   private po = new Particulas()
   private piano = new Piano()
+  private leitor = new Leitor()
 
   /** Quanto o corredor já se esticou. */
   private corredorLargura = CORREDOR_BASE
@@ -97,6 +100,11 @@ export class CasaScene implements Scene {
     return this.tocando
   }
 
+  /** Um documento aberto na tela. */
+  get lendo(): boolean {
+    return this.leitor.aberto
+  }
+
   enter(ctx: SceneCtx): void {
     this.jogo = ctx.state
     this.montar()
@@ -130,6 +138,13 @@ export class CasaScene implements Scene {
     this.sinal = Math.max(0, this.sinal - dt * 0.35)
     this.estrela = Math.max(0, this.estrela - dt * 0.3)
     this.zoomPiano += ((this.tocando ? 1 : 0) - this.zoomPiano) * Math.min(1, dt * 3)
+
+    // Lendo: o papel fica com a entrada toda, e Liam fica parado olhando.
+    if (this.leitor.aberto) {
+      this.liam.andando = 0
+      this.leitor.update(dt, ctx.input)
+      return
+    }
 
     if (this.dialogue.active) {
       this.liam.andando = 0
@@ -253,6 +268,11 @@ export class CasaScene implements Scene {
         this.dialogue.play(v.linhas, () => this.sentar())
         return
       }
+      const doc = v.documento
+      if (doc) {
+        this.dialogue.play(v.linhas, () => this.ler(doc, v.depois))
+        return
+      }
       this.dialogue.play(v.linhas)
       return
     }
@@ -267,13 +287,30 @@ export class CasaScene implements Scene {
       this.achados.add(`${v.id}+`)
       audio.interact()
       if (v.acao === 'cabana') this.escondido = true
+      const outro = v.documentoDeNovo
       this.dialogue.play(v.deNovo, () => {
         if (v.segredo) this.segredo(v.segredo)
+        if (outro) this.ler(outro)
       })
+      return
+    }
+    // Papel se relê quantas vezes quiser — sempre a versão mais completa.
+    const doc = this.achados.has(`${v.id}+`) ? v.documentoDeNovo ?? v.documento : v.documento
+    if (doc) {
+      this.ler(doc)
       return
     }
     const ultima = (v.deNovo ?? v.linhas).at(-1)
     if (ultima) this.dialogue.play([ultima])
+  }
+
+  private ler(doc: Documento, depois?: Line[]): void {
+    this.leitor.abrir(doc, {
+      onSegredo: (id) => this.segredo(id),
+      onFechar: () => {
+        if (depois) this.dialogue.play(depois)
+      },
+    })
   }
 
   /** Guardado para os segredos que chegam por callback de fala. */
@@ -474,11 +511,12 @@ export class CasaScene implements Scene {
     if (this.tocando) {
       this.piano.draw(ctx.display, {})
       this.piano.drawDica(ctx.display, 'toque o que quiser  ·  A S D F G H J K  ·  E ou Esc levanta')
-    } else {
+    } else if (!this.leitor.aberto) {
       this.drawInterface(ctx, cam)
     }
     this.drawEstrela(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+    this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
 
   private drawInterface(ctx: SceneCtx, cam: number): void {

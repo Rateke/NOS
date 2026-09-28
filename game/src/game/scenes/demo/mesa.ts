@@ -4,6 +4,7 @@ import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio } from '../../../engine/audio'
 import { Figura } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
+import { Leitor } from '../../systems/leitor'
 import {
   MESA_ABERTURA, MESA_CONFRONTO, MESA_PENSAMENTO, MESA_FUGA, MESA_FECHO,
   MESA_VESTIGIOS, MESA_PRATOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
@@ -37,6 +38,7 @@ export class MesaScene implements Scene {
   readonly id = 'demo-mesa'
 
   private dialogue = new Dialogue()
+  private leitor = new Leitor()
   private fase: Fase = 'abertura'
   private t = 0
   private tensao = 0
@@ -100,6 +102,12 @@ export class MesaScene implements Scene {
     if (Math.random() < dt * (this.panoTirado ? 3 : 6)) this.po.poeira(PANELA.x - 4, PANELA.y - 8, 8, 3, 'rgba(170,166,176,')
 
     this.encarar()
+
+    // Lendo o bilhete, o mundo espera. É o único respiro da cena.
+    if (this.leitor.aberto) {
+      this.leitor.update(dt, ctx.input)
+      return
+    }
 
     const cinematico = this.fase === 'confronto' || this.fase === 'fuga'
     if (this.dialogue.active) {
@@ -232,7 +240,20 @@ export class MesaScene implements Scene {
     this.achados.add(v.id)
     if (v.id === 'fogao') this.panoTirado = true
     audio.interact()
+    const doc = v.documento
+    if (doc) {
+      const depois = v.depois
+      this.dialogue.play(v.linhas, () => {
+        this.leitor.abrir(doc, { onFechar: () => { if (depois) this.dialogue.play(depois) } })
+      })
+      return
+    }
     this.dialogue.play(v.linhas)
+  }
+
+  /** Um documento aberto na tela. */
+  get lendo(): boolean {
+    return this.leitor.aberto
   }
 
   /**
@@ -300,6 +321,7 @@ export class MesaScene implements Scene {
     this.drawAviso(ctx)
     this.drawPuxao(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+    this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
 
   private get estadoCozinha(): EstadoCozinha {
@@ -308,7 +330,7 @@ export class MesaScene implements Scene {
 
   /** Aviso de que há algo ao alcance, e quantos ele já viu. */
   private drawAviso(ctx: SceneCtx): void {
-    if (this.fase !== 'preso') return
+    if (this.fase !== 'preso' || this.leitor.aberto) return
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
     const s = Math.max(12, Math.min(cssW / 70, 17))

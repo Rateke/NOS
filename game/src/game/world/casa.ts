@@ -1,5 +1,9 @@
 import { WORLD_H } from '../../engine/constants'
 import type { Line } from './types'
+import type { Documento } from '../systems/leitor'
+import {
+  DOC_DIARIO, DOC_DIARIO_CONTRACAPA, DOC_RECEITAS, DOC_JORNAL, DOC_CARTA_ESCOLA,
+} from '../content/documentos'
 import type { RGB } from './arte'
 import {
   rgb, clarear, ret, sorteio, papelDeParede, lambri, assoalho, porta, quadro, cantos,
@@ -49,6 +53,12 @@ export interface VestigioCasa {
   acao?: 'piano' | 'cabana'
   /** Só existe quando o corredor já esticou até este comprimento. */
   minLargura?: number
+  /** Algo para ler de verdade: abre o leitor depois de `linhas`. */
+  documento?: Documento
+  /** Na segunda leitura, depois de `deNovo`, abre esta versão. */
+  documentoDeNovo?: Documento
+  /** Dito ao fechar o documento, na primeira leitura. */
+  depois?: Line[]
 }
 
 /** O que muda de quadro para quadro e o desenho precisa saber. */
@@ -173,13 +183,36 @@ export function comodoSala(): Comodo {
         ],
       },
       {
+        id: 'jornal', x: 320, rotulo: 'Ler',
+        linhas: [
+          { text: 'O jornal de hoje, dobrado na mesinha. Ele sempre lê primeiro.' },
+          { text: 'Tem café derramado na primeira página.' },
+        ],
+        documento: DOC_JORNAL,
+        depois: [
+          { text: 'Alguém circulou um anúncio a caneta. A letra é da minha mãe.' },
+          { text: 'E alguém respondeu uma palavra das cruzadas a lápis.' },
+          { text: 'Não fui eu.' },
+        ],
+      },
+      {
         id: 'livro', x: 438, rotulo: 'Abrir',
         linhas: [
           { text: 'O livro de receitas. Minha mãe guarda as contas dentro dele.' },
-          { text: 'Na página do bolo de fubá tem três letras: a dela, a minha e a da Lia.' },
-          { text: 'Deu tudo errado naquele dia.' },
-          { text: 'Ninguém precisou ser corrigido.' },
         ],
+        documento: DOC_RECEITAS,
+        depois: [
+          { text: 'Na página do bolo tem três letras: a dela, a minha e a da Lia.' },
+          { text: 'Deu tudo errado naquele dia. Ninguém precisou ser corrigido.' },
+        ],
+        deNovo: [
+          { text: 'Abro de novo na página do bolo.' },
+          { text: 'Eu sempre disse que ali tinha três letras.' },
+          { text: 'Tem quatro.' },
+          { text: '"e canela por cima!!" — a lápis roxo, letra redonda, de criança.' },
+          { text: 'Ninguém nesta casa escreve assim.' },
+        ],
+        segredo: 'receita',
       },
     ],
     desenharFundo(c, e) {
@@ -226,11 +259,23 @@ export function comodoCorredor(largura: number): Comodo {
     ],
     vestigios: [
       {
-        id: 'escova', x: 100, rotulo: 'Abrir a gaveta',
+        id: 'escova', x: 86, rotulo: 'Abrir a gaveta',
         linhas: [
           { text: 'Na gaveta do aparador, uma escova de cabelo pequena.' },
           { text: 'Tem fios presos nela. Compridos e claros.' },
           { text: 'Ninguém nesta casa tem cabelo claro.' },
+        ],
+      },
+      {
+        id: 'cartas', x: 118, rotulo: 'Ler',
+        linhas: [
+          { text: 'Cartas em cima do aparador. A de cima já foi aberta.' },
+          { text: 'É da minha escola.' },
+        ],
+        documento: DOC_CARTA_ESCOLA,
+        depois: [
+          { text: 'Eu rasguei a autorização. Alguém guardou mesmo assim.' },
+          { text: 'E desenhou no verso.' },
         ],
       },
       {
@@ -419,8 +464,8 @@ function aparador(c: CanvasRenderingContext2D, x: number): void {
   const m: RGB = [48, 40, 42]
   ret(c, x, CHAO - 32, 56, 5, rgb(clarear(m, 10)))
   ret(c, x + 2, CHAO - 27, 52, 11, rgb(m))
-  ret(c, x + 20, CHAO - 24, 16, 6, rgb(clarear(m, -8)))
-  ret(c, x + 26, CHAO - 22, 4, 1, '#b8964e')
+  ret(c, x + 6, CHAO - 24, 16, 6, rgb(clarear(m, -8)))
+  ret(c, x + 12, CHAO - 22, 4, 1, '#b8964e')
   ret(c, x + 4, CHAO - 16, 3, 16, rgb(clarear(m, -10)))
   ret(c, x + 49, CHAO - 16, 3, 16, rgb(clarear(m, -10)))
   // Vaso com flores secas
@@ -432,9 +477,15 @@ function aparador(c: CanvasRenderingContext2D, x: number): void {
     ret(c, x + 10 + (dx ?? 0), CHAO - 43 - (h ?? 0), 3, 2, '#7a5a44')
   }
   // Tigela com as chaves: falta uma.
-  ret(c, x + 34, CHAO - 36, 14, 4, '#56607a')
-  ret(c, x + 36, CHAO - 38, 3, 2, '#c2a45e')
-  ret(c, x + 41, CHAO - 38, 2, 3, '#a8a8b8')
+  ret(c, x + 22, CHAO - 36, 12, 4, '#56607a')
+  ret(c, x + 24, CHAO - 38, 3, 2, '#c2a45e')
+  ret(c, x + 29, CHAO - 38, 2, 3, '#a8a8b8')
+  // Cartas empilhadas; a de cima, aberta, com o timbre da escola
+  ret(c, x + 38, CHAO - 34, 14, 2, '#c8c2b0')
+  ret(c, x + 39, CHAO - 36, 13, 2, '#dcd6c4')
+  ret(c, x + 40, CHAO - 38, 12, 2, '#ece6d4')
+  ret(c, x + 41, CHAO - 38, 3, 1, '#3a5a8a')
+  ret(c, x + 46, CHAO - 39, 5, 1, '#ece6d4')
   // Espelho oval por cima
   ret(c, x + 18, 48, 20, 28, '#3e3a38')
   ret(c, x + 20, 50, 16, 24, '#1c2436')
@@ -613,19 +664,19 @@ export function comodoQuarto(): Comodo {
       {
         id: 'diario', x: 342, rotulo: 'Ler',
         linhas: [
-          { text: 'Meu diário, aberto na última página.' },
-          { text: 'Preciso arrumar meu quarto antes que Adrian chegue.', style: 'read' },
-          { text: 'Se eu ficar quieto, eles não brigam.', style: 'read' },
-          { text: 'Preciso ser melhor.', style: 'read' },
+          { text: 'Meu diário. Eu escrevo com a letra mais bonita que eu consigo.' },
+          { text: 'Pra ninguém achar que eu estava nervoso.' },
+        ],
+        documento: DOC_DIARIO,
+        depois: [
+          { text: 'Eu não lembro de ter escrito metade disso.' },
+          { text: 'Mas a letra é minha.' },
         ],
         deNovo: [
-          { text: 'Tem um papel dobrado preso na contracapa.' },
-          { text: 'Não é a minha letra.' },
-          { text: 'Você não precisa ser melhor. Você já é.', style: 'read' },
-          { text: '— E.', style: 'read' },
-          { text: 'Eu nunca tinha visto isso aqui.' },
+          { text: 'A contracapa está mais grossa do que devia.' },
+          { text: 'Tem alguma coisa colada por dentro.' },
         ],
-        segredo: 'bilhete',
+        documentoDeNovo: DOC_DIARIO_CONTRACAPA,
       },
       {
         id: 'armario', x: 392, rotulo: 'Abrir',

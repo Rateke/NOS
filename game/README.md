@@ -136,10 +136,18 @@ ferramenta, na mesma interface.
    papel de parede vira floresta e os retratos vão perdendo gente. No fim
    está a **porta que não abre**.
 
-   A casa tem **oito segredos**, e nada no jogo avisa que existem — só o fecho
-   conta quantos você achou. (Spoiler, para quem for testar: olhar de novo o
-   que já foi visto; bater mais de uma vez; esperar no menu; contar os pratos;
-   e prestar atenção no que a voz diz dentro da cabana.)
+   **Papéis para ler de verdade**, com páginas: o diário de Liam, o livro de
+   receitas onde Evelyn guarda as contas, a carta do concurso de desenho com
+   a autorização rasgada, o jornal do dia (classificados e palavras
+   cruzadas), o bilhete da tia Fernanda na cozinha e, no porão, o caderno de
+   Amélia. Cada pessoa da família tem a sua letra — e uma quarta letra, a
+   lápis roxo, aparece onde não devia.
+
+   A demo tem **onze segredos**, e nada no jogo avisa que existem — só o fecho
+   conta quantos você achou. (Spoiler, para quem for testar: olhar e ler de
+   novo o que já foi visto; bater mais de uma vez; esperar no menu; contar os
+   pratos; ler o jornal até o fim; ficar parado na última página do caderno
+   da bisavó; e prestar atenção no que a voz diz dentro da cabana.)
 
 3. **A Mesa.** A cozinha da noite da fuga: fogão de quatro bocas com a
    panela no fogo e o pano de prato apoiado na tampa, pia com a torneira
@@ -190,6 +198,8 @@ ferramenta, na mesma interface.
 | Sala (piano, retratos, sofá, estante) | `src/game/world/sala.ts` |
 | Texturas comuns (papel de parede, lambri, assoalho, portas, quadros) | `src/game/world/arte.ts` |
 | Lista dos segredos | `src/game/content/segredos.ts` |
+| **Diários, cartas, jornal, caderno** (o texto das páginas) | `src/game/content/documentos.ts` |
+| Leitor de páginas (papel, letras de cada pessoa) | `src/game/systems/leitor.ts` |
 | O fecho (partículas, acorde final, contagem de segredos) | `src/game/scenes/demo/fim.ts` |
 | Cozinha (fogão, pia, rádio, telefone, mesa) | `src/game/world/cozinha.ts` |
 | O Tear e a câmara | `src/game/world/camara.ts` |

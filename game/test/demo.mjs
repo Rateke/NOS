@@ -40,7 +40,11 @@ const estado = () => page.evaluate(() => {
     intensidade: s?.intensidade?.toFixed?.(2),
   }
 })
-const falando = () => page.evaluate(() => !!window.__nos?.scene?.dialogue?.active)
+// Falando ou lendo: os dois pedem um toque para seguir.
+const falando = () => page.evaluate(() => {
+  const s = window.__nos?.scene
+  return !!(s?.dialogue?.active || s?.lendo)
+})
 const caixas = () => page.evaluate(() => window.__nos?.scene?.caixas ?? [])
 
 async function limpar(max = 14) {

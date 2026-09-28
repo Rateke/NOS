@@ -104,6 +104,31 @@ export class Audio {
     this.ping(392, 0.16, 0.06, 'triangle')
   }
 
+  /** Folha virando: um sopro de ruído, filtrado, que abre e fecha rápido. */
+  folha(): void {
+    if (!this.ctx || !this.master) return
+    const ctx = this.ctx
+    const t = ctx.currentTime
+    const dur = 0.22
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < d.length; i++) {
+      const k = i / d.length
+      d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * k) * (0.6 + Math.random() * 0.4)
+    }
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.setValueAtTime(1800, t)
+    bp.frequency.linearRampToValueAtTime(3600, t + dur)
+    bp.Q.value = 0.8
+    const g = ctx.createGain()
+    g.gain.value = 0.09
+    src.connect(bp).connect(g).connect(this.master)
+    src.start(t)
+  }
+
   pickup(): void {
     this.ping(523.25, 0.13, 0.055, 'triangle')
     window.setTimeout(() => this.ping(784, 0.2, 0.04, 'triangle'), 70)
