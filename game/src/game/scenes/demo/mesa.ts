@@ -1,6 +1,6 @@
 import type { Scene, SceneCtx } from '../types'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
-import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
+import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio } from '../../../engine/audio'
 import { Figura } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
@@ -9,6 +9,10 @@ import {
   MESA_VESTIGIOS, MESA_PRATOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
 } from '../../content/demoScript'
 import { TearScene } from './tear'
+import type { EstadoCozinha } from '../../world/cozinha'
+import {
+  drawCozinhaFundo, drawCozinhaFrente, drawCozinhaLuz, COZ_CHAO, LAMPADA, PANELA,
+} from '../../world/cozinha'
 
 const CHAO = 160
 const LIMITE_ESQ = 84
@@ -42,17 +46,21 @@ export class MesaScene implements Scene {
     x: 232, y: CHAO, altura: 31,
     cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' },
   })
+  // Evelyn: uniforme do trabalho, cabelo comprido solto. O casaco está na
+  // cadeira — pronto para sair.
   private evelyn = new Figura({
-    x: 132, y: CHAO, altura: 38,
-    cor: { roupa: '#33405a', cabelo: '#1a1720', pele: '#6b5148', sombra: 'rgba(0,0,0,0.5)' },
+    x: 132, y: CHAO, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
+    cor: { roupa: '#3e5664', cabelo: '#2a1a16', pele: '#7a5a4e', sombra: 'rgba(0,0,0,0.5)' },
   })
+  // Adrian: o mais alto, barba, camisa escura de gola clara. Calmo.
   private adrian = new Figura({
-    x: 292, y: CHAO, altura: 41,
-    cor: { roupa: '#2b2129', cabelo: '#171017', pele: '#6a4f48', sombra: 'rgba(0,0,0,0.5)' },
+    x: 292, y: CHAO, altura: 42, barba: true, gola: '#d4ccc0',
+    cor: { roupa: '#2e2430', cabelo: '#16100f', pele: '#7a584c', sombra: 'rgba(0,0,0,0.5)' },
   })
+  // Lia: quatorze anos, rabo de cavalo, moletom vinho e a mochila nas costas.
   private lia = new Figura({
-    x: 92, y: CHAO, altura: 31,
-    cor: { roupa: '#3d2f3a', cabelo: '#140f16', pele: '#705a4f', sombra: 'rgba(0,0,0,0.5)' },
+    x: 92, y: CHAO, altura: 32, cabelo: 'rabo', mochila: '#2e3e56',
+    cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
   })
 
   private puxao = ''
@@ -89,7 +97,7 @@ export class MesaScene implements Scene {
     for (const f of [this.liam, this.evelyn, this.adrian, this.lia]) f.update(dt)
 
     // Fumaça fina saindo da panela esquecida no fogo. Ninguém olha.
-    if (!this.panoTirado && Math.random() < dt * 5) this.po.poeira(198, 90, 7, 3, 'rgba(150,146,152,')
+    if (Math.random() < dt * (this.panoTirado ? 3 : 6)) this.po.poeira(PANELA.x - 4, PANELA.y - 8, 8, 3, 'rgba(170,166,176,')
 
     this.encarar()
 
@@ -261,14 +269,20 @@ export class MesaScene implements Scene {
 
   render(ctx: SceneCtx): void {
     const w = ctx.display.beginWorld()
-    this.drawCozinha(w)
-    this.lia.draw(w, 200, 'rgba(150,170,210,0.22)')
-    this.evelyn.draw(w, 200, 'rgba(150,170,210,0.22)')
-    this.adrian.draw(w, 200, 'rgba(210,170,130,0.26)')
-    this.liam.draw(w, 200, 'rgba(180,180,210,0.24)')
-    this.drawFrente(w)
+    const e = this.estadoCozinha
+    drawCozinhaFundo(w, e)
+    this.lia.draw(w, LAMPADA.x, 'rgba(220,190,160,0.3)')
+    this.evelyn.draw(w, LAMPADA.x, 'rgba(220,190,160,0.3)')
+    this.adrian.draw(w, LAMPADA.x, 'rgba(220,190,160,0.3)')
+    // A chave da porta no bolso dele. Brilha de vez em quando.
+    if (Math.sin(this.t * 1.7) > 0.93) {
+      w.fillStyle = 'rgba(236,200,120,0.9)'
+      w.fillRect(Math.round(this.adrian.x) + 3, COZ_CHAO - 15, 1, 1)
+    }
+    this.liam.draw(w, LAMPADA.x, 'rgba(220,200,180,0.3)')
     this.po.draw(w, false)
-    this.drawLuz(w)
+    drawCozinhaLuz(w, e)
+    drawCozinhaFrente(w, PRATOS_X)
 
     ctx.display.applyGrain(0.05 + this.tensao * 0.04)
     // As paredes fecham conforme a tensão: o cômodo encolhe em volta dele.
@@ -288,123 +302,8 @@ export class MesaScene implements Scene {
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
 
-  private drawCozinha(c: CanvasRenderingContext2D): void {
-    c.fillStyle = '#0c1018'
-    c.fillRect(0, 0, WORLD_W, WORLD_H)
-    c.fillStyle = '#141a26'
-    c.fillRect(0, 0, WORLD_W, CHAO)
-    // Azulejo até a metade
-    c.fillStyle = '#19202e'
-    c.fillRect(0, 64, WORLD_W, CHAO - 64)
-    c.fillStyle = 'rgba(0,0,0,0.16)'
-    for (let x = 0; x < WORLD_W; x += 12) c.fillRect(x, 64, 1, CHAO - 64)
-    for (let y = 64; y < CHAO; y += 12) c.fillRect(0, y, WORLD_W, 1)
-
-    // Bancada com fogão, panela e o pano na tampa
-    c.fillStyle = '#212a3a'
-    c.fillRect(160, 104, 96, 8)
-    c.fillStyle = '#1a212e'
-    c.fillRect(160, 112, 96, 30)
-    c.fillStyle = '#2c3748'
-    c.fillRect(186, 96, 22, 9)                       // panela
-    c.fillStyle = '#3a4256'
-    c.fillRect(184, 94, 26, 3)                       // tampa
-    if (!this.panoTirado) {
-      c.fillStyle = '#5c4f58'
-      c.fillRect(196, 90, 13, 4)                     // o pano na tampa
-    }
-    c.fillStyle = 'rgba(226,120,60,0.5)'
-    c.fillRect(190, 105, 14, 2)                      // a chama
-
-    // Rádio, ligado
-    c.fillStyle = '#2a3346'
-    c.fillRect(272, 92, 22, 13)
-    c.fillStyle = '#404c66'
-    c.fillRect(275, 95, 9, 7)
-    c.fillStyle = `rgba(226,178,110,${0.4 + Math.sin(this.t * 7) * 0.2})`
-    c.fillRect(287, 96, 3, 3)
-
-    // Porta trancada, à direita
-    c.fillStyle = '#10151f'
-    c.fillRect(336, 56, 34, CHAO - 56)
-    c.fillStyle = '#1b2230'
-    c.fillRect(340, 60, 26, CHAO - 64)
-    c.fillStyle = PAL.accent
-    c.fillRect(342, 112, 3, 4)
-
-    // Alçapão do porão, no chão à direita do centro
-    c.fillStyle = '#0a0d14'
-    c.fillRect(ALCAPAO - 14, CHAO + 4, 28, 10)
-    c.fillStyle = '#161d29'
-    c.fillRect(ALCAPAO - 12, CHAO + 6, 24, 6)
-
-    // Chão
-    c.fillStyle = '#161c28'
-    c.fillRect(0, CHAO, WORLD_W, WORLD_H - CHAO)
-    c.fillStyle = 'rgba(0,0,0,0.3)'
-    c.fillRect(0, CHAO, WORLD_W, 2)
-
-    // As malas
-    c.fillStyle = '#1d2634'
-    c.fillRect(106, CHAO - 11, 20, 11)
-    c.fillRect(148, CHAO - 8, 15, 8)
-    c.fillStyle = '#28344a'
-    c.fillRect(106, CHAO - 11, 20, 2)
-    c.fillRect(148, CHAO - 8, 15, 2)
-    c.fillStyle = '#39445e'
-    c.fillRect(113, CHAO - 13, 6, 2)
-  }
-
-  private drawFrente(c: CanvasRenderingContext2D): void {
-    // Mesa em primeiro plano, cortando a cena ao meio
-    c.fillStyle = '#1d2534'
-    c.fillRect(120, 176, 150, 8)
-    c.fillStyle = '#26303f'
-    c.fillRect(120, 176, 150, 2)
-    c.fillStyle = '#141a26'
-    c.fillRect(130, 184, 6, 24)
-    c.fillRect(254, 184, 6, 24)
-    // Toalha xadrez caindo na frente
-    for (let x = 122; x < 268; x += 6) {
-      c.fillStyle = (x / 6) % 2 < 1 ? 'rgba(120,52,52,0.5)' : 'rgba(200,190,176,0.18)'
-      c.fillRect(x, 178, 6, 6)
-    }
-    // Cinco pratos. Somos quatro.
-    for (const [i, px] of [134, 160, 186, 212, PRATOS_X + 6].entries()) {
-      c.fillStyle = '#7c8498'
-      c.fillRect(px - 6, 173, 13, 3)
-      c.fillStyle = '#a4acbe'
-      c.fillRect(px - 5, 173, 11, 1)
-      c.fillStyle = '#5a6276'
-      c.fillRect(px - 3, 174, 7, 1)
-      // Talheres
-      c.fillStyle = '#8e96a8'
-      c.fillRect(px - 8, 172, 1, 4)
-      c.fillRect(px + 8, 172, 1, 4)
-      // O quinto tem um copo virado para baixo: ninguém bebe nele.
-      if (i === 4) {
-        c.fillStyle = '#6a7a92'
-        c.fillRect(px + 11, 169, 4, 6)
-        c.fillStyle = '#8a9ab4'
-        c.fillRect(px + 11, 169, 4, 1)
-      }
-    }
-    // Batente
-    c.fillStyle = '#04060a'
-    c.fillRect(0, 0, 10, WORLD_H)
-    c.fillRect(WORLD_W - 10, 0, 10, WORLD_H)
-  }
-
-  private drawLuz(c: CanvasRenderingContext2D): void {
-    c.save()
-    c.globalCompositeOperation = 'multiply'
-    const g = c.createRadialGradient(192, 96, 30, 192, 96, 220)
-    g.addColorStop(0, '#ffffff')
-    g.addColorStop(0.5, '#9aa2b6')
-    g.addColorStop(1, '#3f4658')
-    c.fillStyle = g
-    c.fillRect(0, 0, WORLD_W, WORLD_H)
-    c.restore()
+  private get estadoCozinha(): EstadoCozinha {
+    return { t: this.t, tensao: this.tensao, panoTirado: this.panoTirado }
   }
 
   /** Aviso de que há algo ao alcance, e quantos ele já viu. */

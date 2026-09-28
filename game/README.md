@@ -141,20 +141,33 @@ ferramenta, na mesma interface.
    que já foi visto; bater mais de uma vez; esperar no menu; contar os pratos;
    e prestar atenção no que a voz diz dentro da cabana.)
 
-3. **A Mesa.** Cozinha, porta trancada, malas no chão, cinco pratos. Liam anda entre a mãe e
-   o pai e é puxado pelos dois — **não existe ponto neutro**, e a tensão sobe
-   mesmo parado. Enquanto isso há **quatro vestígios** para achar: a pulseira
-   de hospital com outro sobrenome, o bilhete da tia marcando 23h, o telefone
-   fora do gancho, e o pano esquecido na tampa da panela — que você pode tirar.
-   Nada disso muda o que vai acontecer. Muda o que ele sabe quando acontecer,
-   e o fecho da cena reflete quanto você viu.
+3. **A Mesa.** A cozinha da noite da fuga: fogão de quatro bocas com a
+   panela no fogo e o pano de prato apoiado na tampa, pia com a torneira
+   pingando embaixo da janela de chuva, rádio ligado, telefone de parede com o
+   fone pendurado pelo fio, geladeira com o desenho MAMÃE E EU, relógio
+   marcando quase 23h, o chaveiro com o gancho vazio (a chave está no bolso de
+   Adrian) e a porta da frente trancada. Evelyn de uniforme e cabelo solto,
+   Lia de rabo de cavalo e mochila, Adrian de barba e gola clara. Liam anda
+   entre a mãe e o pai e é puxado pelos dois — **não existe ponto neutro**, e
+   a tensão sobe mesmo parado. Há **quatro vestígios** (as malas, o bilhete
+   da tia no bolso do casaco na cadeira, o pano na panela, o telefone fora do
+   gancho) e os cinco pratos. Nada disso muda o que vai acontecer; muda o que
+   ele sabe quando acontecer.
 
-4. **O Tear.** Seis fios, cada um pendurando uma relíquia de outra geração.
-   O piano reaparece — apagado, torto, frio — e Adrian pergunta:
-   `Você lembra da música?` Cada fio se abre tocando uma frase do tema. A cada
-   fio o instrumento **desafina e abafa mais**, a imagem racha, o coração
-   acelera, e entra em Liam uma lembrança que não é dele. Errar uma nota faz o
-   fio chicotear de volta. Não há tela de fracasso e ninguém manda parar.
+4. **O Tear.** Um tear de verdade, embaixo da cozinha: moldura de madeira,
+   urdidura esticada, liços, pente, lançadeira e seis carretéis, cada um com
+   uma relíquia pendurada. Adrian desce atrás e fica ao pé da escada:
+   `Você lembra da música?` Cada nota certa passa a lançadeira e bate o pente,
+   e a tapeçaria da família cresce de baixo para cima — uma casa, cinco
+   figuras de mãos dadas. Cada fio completo prende mais um fio no peito de
+   Liam e abre uma **lembrança que não é dele**, indo de geração em geração:
+   o pai e o prato quebrado, Lia gritando para uma porta, Evelyn na primeira
+   fuga com uma menina pela mão, a avó endireitando o retrato, Amélia
+   tecendo à luz de vela (*"Toda paz que lhes dei acordou dentro de mim"*) e,
+   por último, **a figura preta**: alguém na porta do quarto, contra a luz,
+   cortando o próprio fio para que nada chegasse nele. Quando o tecido fica
+   pronto, o desenho mostra o que faltava — um buraco do tamanho de uma
+   pessoa, ao lado de Liam — e ela aparece ali, no escuro, e corta.
 
 **Abertura** — o quarto de Liam, o diário e a porta que nunca esteve trancada.
 
@@ -178,7 +191,10 @@ ferramenta, na mesma interface.
 | Texturas comuns (papel de parede, lambri, assoalho, portas, quadros) | `src/game/world/arte.ts` |
 | Lista dos segredos | `src/game/content/segredos.ts` |
 | O fecho (partículas, acorde final, contagem de segredos) | `src/game/scenes/demo/fim.ts` |
-| Personagens animados | `src/game/world/figura.ts` |
+| Cozinha (fogão, pia, rádio, telefone, mesa) | `src/game/world/cozinha.ts` |
+| O Tear e a câmara | `src/game/world/camara.ts` |
+| As lembranças do Tear | `src/game/world/lembrancas.ts` |
+| Personagens animados (cabelo, barba, mochila, silhueta) | `src/game/world/figura.ts` |
 
 Para escrever falas novas basta editar `script.ts`; nenhum outro arquivo
 precisa ser aberto.

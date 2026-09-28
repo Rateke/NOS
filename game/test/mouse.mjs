@@ -220,7 +220,12 @@ for (let i = 0; i < 6; i++) {
   const st = await estado()
   if (st.fase !== 'absorvendo') break
   await tocar(TEMA[(st.sel ?? 0) % 3])
-  await page.waitForTimeout(500)
+  // Cada fio tecido abre uma lembrança; a entrada volta quando ela acaba.
+  for (let k = 0; k < 60; k++) {
+    if (!(await page.evaluate(() => !!window.__nos?.scene?.lembrando))) break
+    await page.waitForTimeout(250)
+  }
+  await page.waitForTimeout(300)
   await limpar(3)
   if (i === 2 && OUT) await page.screenshot({ path: `${OUT}/f-tear-meio.png` })
 }

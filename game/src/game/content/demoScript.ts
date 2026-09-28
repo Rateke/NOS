@@ -50,8 +50,11 @@ export const PROLOGO_FECHO: Line[] = [
 // --- O Tear -----------------------------------------------------------------
 
 export const TEAR_CHEGADA: Line[] = [
-  { text: 'A discussão atravessa o assoalho.' },
-  { text: 'Se eu juntar os fios, eles param.' },
+  { text: 'Embaixo da cozinha tem um tear.' },
+  { text: 'Seis carretéis. Em cada um, amarrada, uma coisa de alguém.' },
+  { text: 'Um fio da urdidura está cortado. Alguém cortou.' },
+  { text: 'A discussão atravessa as tábuas.' },
+  { text: 'Se eu tecer os fios, eles param.' },
   { text: 'Sempre para.' },
 ]
 
@@ -77,7 +80,7 @@ export const ADRIAN_DURANTE: string[] = [
   'Tá ouvindo? Já está mais calmo lá em cima.',
   'Ninguém mais nessa casa faz isso.',
   'Só mais um. Junta todos.',
-  'Eu sei. Depois passa.',
+  'Pronto. Escuta. Silêncio lá em cima.',
 ]
 
 /** Quando o jogador para de absorver, a pressão sobe em vez de aliviar. */
@@ -86,20 +89,6 @@ export const ADRIAN_INSISTE: string[] = [
   'Não para agora.',
   'Você quer que ela vá embora?',
   'Olha pra mim. Só mais um.',
-]
-
-/**
- * O que entra em Liam a cada fio. Nunca é sentimento dele — é de outra
- * pessoa, e vem sem contexto. É isso que o jogador deve sentir: lembrança
- * sem dono.
- */
-export const FRAGMENTOS: { fala: string; dono: string }[] = [
-  { fala: 'você prometeu', dono: 'medo' },
-  { fala: 'não na frente das crianças', dono: 'vergonha' },
-  { fala: 'eu não aguento mais', dono: 'cansaço' },
-  { fala: 'olha o que você me fez fazer', dono: 'culpa' },
-  { fala: 'eu devia ter saído antes', dono: 'raiva' },
-  { fala: 'a culpa é minha a culpa é minha', dono: 'culpa' },
 ]
 
 export const CORPO: string[] = [
