@@ -61,6 +61,26 @@ construir (`npm run build`) e o que publicar (`game/dist`). O
 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD` está ligado ali para o build não baixar um
 navegador por causa de uma dependência que só serve aos testes.
 
+**Se um push não virou deploy**, confira nesta ordem:
+
+1. **O projeto existe na Vercel?** Em vercel.com/new o repositório
+   `Rateke/NOS` tem que aparecer como importado. Se aparecer "Import", ele
+   nunca foi ligado.
+2. **O branch de produção.** O repositório só tem um branch,
+   `claude/nos-roteiro-narrativo-lz8r6r`. Em Vercel > projeto > Settings >
+   Git > Production Branch, tem que estar esse nome; se estiver `main`, os
+   pushes viram só *Preview*, e o endereço principal não muda.
+3. **Commit bloqueado.** No plano gratuito a Vercel só publica commits cujo
+   autor é o dono da conta. Commit assinado por outra pessoa (ou pelo
+   Claude) aparece em Deployments como *Blocked*, ou nem aparece. Os commits
+   deste repositório saem com o seu nome e e-mail por isso.
+
+**Reserva, sem depender da integração:** o workflow
+`.github/workflows/vercel.yml` publica pela linha de comando da Vercel a
+cada push. Ele só precisa do segredo `VERCEL_TOKEN` no GitHub (o passo a
+passo está no topo do arquivo). Sem o segredo, ele não faz nada e termina
+verde.
+
 ### Publicar no GitHub Pages
 
 Também configurado. Basta ligar uma vez, no GitHub:

@@ -1,0 +1,67 @@
+# Publica o jogo na Vercel a cada push, pela linha de comando da Vercel.
+#
+# É o caminho reserva para quando a integração da Vercel com o GitHub não
+# publica sozinha (projeto não importado, commit bloqueado, branch errado).
+# Precisa de um segredo, uma única vez:
+#
+#   1. vercel.com/account/tokens > Create Token (escopo: a sua conta).
+#   2. No GitHub: Settings > Secrets and variables > Actions >
+#      New repository secret > nome VERCEL_TOKEN, valor = o token.
+#
+# Opcional, para publicar num projeto que já existe com outro nome: os
+# segredos VERCEL_ORG_ID e VERCEL_PROJECT_ID (Vercel > projeto > Settings >
+# General). Sem eles, o projeto se chama "nos" e é criado na primeira vez.
+#
+# Sem o VERCEL_TOKEN o workflow só deixa um aviso e termina verde.
+name: Publicar o jogo na Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - claude/nos-roteiro-narrativo-lz8r6r
+  workflow_dispatch:
+
+# Um push novo cancela o deploy anterior que ainda não terminou.
+concurrency:
+  group: vercel
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Sem token, sem deploy por aqui
+        if: env.VERCEL_TOKEN == ''
+        run: |
+          echo "::notice title=Vercel::Sem o segredo VERCEL_TOKEN este workflow não publica. Veja o comentário no topo de .github/workflows/vercel.yml."
+
+      - uses: actions/checkout@v4
+        if: env.VERCEL_TOKEN != ''
+
+      - uses: actions/setup-node@v4
+        if: env.VERCEL_TOKEN != ''
+        with:
+          node-version: '20'
+
+      - name: Publicar em produção
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          # Os dois IDs só valem juntos; com um só, a Vercel recusa.
+          if [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            unset VERCEL_ORG_ID VERCEL_PROJECT_ID
+          fi
+          # A Vercel constrói do lado dela, com o vercel.json da raiz
+          # (npm run build, publicando game/dist).
+          url=$(npx --yes vercel@latest deploy --prod --yes --token="$VERCEL_TOKEN")
+          echo "Publicado em $url"
+          echo "### Publicado na Vercel: $url" >> "$GITHUB_STEP_SUMMARY"
