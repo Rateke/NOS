@@ -10,6 +10,8 @@ interface Lembrado {
   viuEvelyn?: boolean
   /** Terminou a demo pelo menos uma vez. */
   terminou?: boolean
+  /** Já passou pela escolha do Tear (a mãe ou a Lia). */
+  viuEscolha?: boolean
 }
 
 function ler(): Lembrado {
@@ -35,6 +37,12 @@ export const memoria = {
   },
   marcarEvelyn(): void {
     gravar({ ...ler(), viuEvelyn: true })
+  },
+  get viuEscolha(): boolean {
+    return ler().viuEscolha === true
+  },
+  marcarEscolha(): void {
+    gravar({ ...ler(), viuEscolha: true })
   },
   get terminou(): boolean {
     return ler().terminou === true

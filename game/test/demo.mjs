@@ -200,6 +200,25 @@ esperar('olhar de novo as marcas acha um nome', (await segredos()).includes('nom
 esperar('na primeira vez, a frase do pai sai da boca do Liam',
   await page.evaluate(() => window.__nos.scene.falouPeloPai), true)
 
+// O caderno da Lia: ler tem consequência. Os passos do pai chegam, e há
+// dois segundos e pouco para esconder (E). Quem esconde a tempo escapa.
+await andarAte(176)
+await page.keyboard.press('KeyE')
+await page.waitForTimeout(380)
+const cutscene = () => page.evaluate(() => window.__nos?.scene?.cutsceneAtual ?? null)
+for (let i = 0; i < 80; i++) {
+  if ((await cutscene()) === 'passos') break
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(260)
+}
+esperar('depois de ler o caderno da Lia, os passos vêm', await cutscene(), 'passos')
+if (OUT) await page.screenshot({ path: `${OUT}/c0-passos.png` })
+await page.waitForTimeout(500)
+await page.keyboard.press('KeyE')
+await page.waitForTimeout(200)
+esperar('esconder a tempo', await page.evaluate(() => window.__nos.scene.passosResultado), 'escondeu')
+await limpar()
+
 await andarAte(150); await usar()
 esperar('o corredor leva ao quarto', await comodo(), 'quarto')
 if (OUT) await page.screenshot({ path: `${OUT}/c1-quarto.png` })
@@ -248,21 +267,81 @@ await esperarFase('preso')
 await limpar()
 if (OUT) await page.screenshot({ path: `${OUT}/c-mesa.png` })
 
-for (const alvo of [116, 158, 200, 262]) {
-  for (let i = 0; i < 150; i++) {
-    const st = await estado()
-    if (st.id !== 'demo-mesa' || Math.abs(st.x - alvo) < 12) break
-    const t = st.x < alvo ? 'ArrowRight' : 'ArrowLeft'
-    await page.keyboard.down(t)
-    await page.waitForTimeout(70)
-    await page.keyboard.up(t)
+const mesa = () => page.evaluate(() => {
+  const s = window.__nos?.scene
+  return {
+    prato: s?.pratoNoAr ?? null, alvoX: s?.arremesso?.alvoX ?? null,
+    noLiam: s?.pratosNoLiam ?? 0, nelas: s?.pratosNelas ?? 0,
   }
-  await page.keyboard.press('KeyE')
-  await page.waitForTimeout(320)
-  await limpar()
+})
+// O primeiro prato: o pai mira na mãe, e quem corre até ela leva no lugar.
+for (let i = 0; i < 120; i++) {
+  if ((await mesa()).prato) break
+  await limpar(1)
+  await page.waitForTimeout(100)
+}
+{
+  const m = await mesa()
+  esperar('o pai arma um prato', m.prato, 'aviso')
+  if (OUT) await page.screenshot({ path: `${OUT}/c1-prato-aviso.png` })
+  let segurando = null
+  let fotografou = false
+  for (const ate = Date.now() + 20000; Date.now() < ate;) {
+    const st = await estado()
+    const p = await mesa()
+    if (!p.prato) break
+    if (p.prato === 'voo' && OUT && !fotografou) {
+      fotografou = true
+      await page.screenshot({ path: `${OUT}/c2-prato-voo.png` })
+    }
+    const t = Math.abs(st.x - (p.alvoX ?? st.x)) < 4 ? null : st.x < p.alvoX ? 'ArrowRight' : 'ArrowLeft'
+    if (t !== segurando) {
+      if (segurando) await page.keyboard.up(segurando)
+      if (t) await page.keyboard.down(t)
+      segurando = t
+    }
+    await page.waitForTimeout(40)
+  }
+  if (segurando) await page.keyboard.up(segurando)
+}
+esperar('Liam entra na frente do prato', (await mesa()).noLiam, 1)
+await limpar()
+
+// Os vestígios, entre um prato e outro. Um prato no ar engole o E: insiste.
+for (const alvo of [116, 158, 200, 262]) {
+  const antes = (await estado()).achados ?? 0
+  for (let tentativa = 0; tentativa < 6; tentativa++) {
+    if ((await estado()).id !== 'demo-mesa' || ((await estado()).achados ?? 0) > antes) break
+    for (let i = 0; i < 150; i++) {
+      const st = await estado()
+      if (st.id !== 'demo-mesa' || Math.abs(st.x - alvo) < 12) break
+      if ((await mesa()).prato || (await falando())) { await limpar(1); await page.waitForTimeout(120); continue }
+      const t = st.x < alvo ? 'ArrowRight' : 'ArrowLeft'
+      await page.keyboard.down(t)
+      await page.waitForTimeout(70)
+      await page.keyboard.up(t)
+    }
+    await page.keyboard.press('KeyE')
+    await page.waitForTimeout(320)
+    await limpar()
+  }
 }
 esperar('os quatro vestígios foram encontrados', (await estado()).achados, 4)
 if (OUT) await page.screenshot({ path: `${OUT}/d-achados.png` })
+
+// O fundo do poço é em voz: o pai sobe, Liam sobe pedindo para parar, e as
+// falas se empilham até a tela cortar para o preto.
+esperar('a tensão vira gritaria', await esperarFase('gritaria', 60000), true)
+await page.waitForTimeout(4200)
+if (OUT) await page.screenshot({ path: `${OUT}/d2-gritaria.png` })
+{
+  let viu = false
+  for (let i = 0; i < 60 && !viu; i++) {
+    viu = ['fundo', 'fuga'].includes((await estado()).fase)
+    await page.waitForTimeout(150)
+  }
+  esperar('a gritaria acaba no preto', viu, true)
+}
 
 // A câmara: o mesmo tema abre os fios
 esperar('a Mesa empurra Liam para o porão', await esperarCena('demo-tear'), true)
@@ -297,31 +376,82 @@ esperar('o pico corta para dentro da cabeça', await esperarFase('dentro', 30000
 await page.waitForTimeout(500)
 const montagem = () => page.evaluate(() => {
   const m = window.__nos?.scene?.montagem
-  return m ? { arrumados: m.arrumados, fase: m.faseAtual } : null
+  return m ? { arrumados: m.arrumados, fase: m.faseAtual, fila: m.dialogue.fila, completa: m.dialogue.completa } : null
 })
-for (let i = 0; i < 4; i++) {
-  // O primeiro toque termina a frase da sombra; o segundo arruma.
+// Cada recorte é uma conversa sobre a mãe; os toques passam as falas, e o
+// toque depois da última arruma.
+for (let i = 0; i < 400; i++) {
+  if (((await montagem())?.arrumados ?? 0) >= 6) break
   await page.keyboard.press('Space')
-  await page.waitForTimeout(450)
-  await page.keyboard.press('Space')
-  await page.waitForTimeout(900)
+  await page.waitForTimeout(200)
 }
-esperar('quatro recortes arrumados', (await montagem())?.arrumados, 4)
+esperar('seis recortes arrumados', (await montagem())?.arrumados, 6)
 if (OUT) await page.screenshot({ path: `${OUT}/g2-dentro.png` })
-// Parar de arrumar: a sombra aparece inteira e faz a oferta.
+// Lê o recorte da chave até a última fala, e para de arrumar.
 for (let i = 0; i < 40; i++) {
+  const m = await montagem()
+  if (!m || m.fila === 0) break
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(320)
+}
+for (let i = 0; i < 80; i++) {
   if ((await montagem())?.fase !== 'cortes') break
   await page.waitForTimeout(400)
 }
 esperar('parar de arrumar encerra a montagem', (await montagem())?.fase, 'parou')
+esperar('parar não arruma mais nada', (await montagem())?.arrumados, 6)
+
+// --- A lei do pai, e a escolha --------------------------------------------
+const tear = () => page.evaluate(() => {
+  const s = window.__nos?.scene
+  return { fase: s?.faseAtual, resultado: s?.escolhaResultado ?? null, travada: s?.escolhaTravada }
+})
+for (let i = 0; i < 120; i++) {
+  if ((await tear()).fase === 'escolha') break
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(250)
+}
+esperar('o pai monta a escolha', (await tear()).fase, 'escolha')
+esperar('na primeira vez as mãos não obedecem', (await tear()).travada, true)
+await page.waitForTimeout(1500)
+await page.keyboard.press('ArrowLeft')
+await page.waitForTimeout(300)
+if (OUT) await page.screenshot({ path: `${OUT}/g3-escolha.png` })
+esperar('a mão não vai até a mãe', [(await tear()).fase, (await tear()).resultado], ['escolha', null])
+for (let i = 0; i < 100; i++) {
+  if ((await tear()).fase === 'fogo') break
+  await page.waitForTimeout(250)
+}
+esperar('o tempo acaba e o fogo sobe', (await tear()).fase, 'fogo')
+esperar('ninguém foi escolhido: as duas queimam', (await tear()).resultado, 'nenhuma')
+await page.waitForTimeout(1600)
+if (OUT) await page.screenshot({ path: `${OUT}/g4-fogo.png` })
+
+// --- Dentro, de novo: a conversa inteira com a sombra ---------------------
+for (let i = 0; i < 80; i++) {
+  if ((await tear()).fase === 'dentro2') break
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(250)
+}
+esperar('depois do fogo, a conversa', (await tear()).fase, 'dentro2')
+esperar('nenhuma fala ficou com marcador por trocar', await page.evaluate(() =>
+  window.__nos.scene.conversa.passos.some((p) => p.linhas.some((l) => l.text.includes('{')))), false)
+for (let i = 0; i < 500; i++) {
+  const f = (await tear()).fase
+  if (f !== 'dentro2') break
+  if (i === 60 && OUT) await page.screenshot({ path: `${OUT}/g5-dentro2.png` })
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(160)
+}
+esperar('a conversa devolve Liam ao Tear', ['volta', 'grito'].includes((await tear()).fase), true)
 for (let i = 0; i < 60; i++) {
   const f = (await estado()).fase
   if (f === 'grito') break
-  if (f === 'volta') await limpar(3)
-  else { await page.keyboard.press('Space'); await page.waitForTimeout(450) }
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(300)
 }
 esperar('aceitar a sombra é gritar', (await estado()).fase, 'grito')
-if (OUT) await page.screenshot({ path: `${OUT}/g3-grito.png` })
+if (OUT) await page.screenshot({ path: `${OUT}/g6-grito.png` })
 // Soltar cedo é engolir: o grito volta a zero.
 await page.keyboard.down('Space'); await page.waitForTimeout(700); await page.keyboard.up('Space')
 await page.waitForTimeout(300)

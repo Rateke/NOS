@@ -182,6 +182,27 @@ await page.waitForTimeout(400)
 esperar('clicar fora das teclas levanta', await sentado(), false)
 
 esperar('a porta da sala leva ao corredor', await irEUsar(484, emComodo('corredor')), true)
+
+// O caderno da Lia, lido no corredor. Quem só clica para ler e não esconde
+// a tempo é pego: o pai aparece na porta e rasga a página.
+const cutscene = () => page.evaluate(() => window.__nos?.scene?.cutsceneAtual ?? null)
+const lendoCaderno = () => page.evaluate(() => !!window.__nos?.scene?.lendo || !!window.__nos?.scene?.dialogue?.active)
+esperar('clicar no caderno da Lia pega o caderno', await irEUsar(176, lendoCaderno), true)
+for (let i = 0; i < 80; i++) {
+  if ((await cutscene()) === 'passos') break
+  await page.mouse.click(640, 120)
+  await page.waitForTimeout(260)
+}
+esperar('depois de ler, os passos vêm', await cutscene(), 'passos')
+await page.waitForTimeout(3600)
+esperar('sem esconder, o pai pega', await page.evaluate(() => window.__nos.scene.passosResultado), 'pego')
+if (OUT) await page.screenshot({ path: `${OUT}/c0-pego.png` })
+for (let i = 0; i < 80; i++) {
+  if ((await cutscene()) === null) break
+  if (await page.evaluate(() => !!window.__nos?.scene?.dialogue?.active)) await page.mouse.click(640, 120)
+  await page.waitForTimeout(260)
+}
+esperar('a página rasgada fica no caderno de Liam', await page.evaluate(() => window.__nos.state.sabe.has('caderno-rasgado')), true)
 esperar('o corredor leva ao quarto', await irEUsar(150, emComodo('quarto')), true)
 esperar('na primeira vez, a frase do pai sai da boca do Liam',
   await page.evaluate(() => window.__nos.scene.falouPeloPai), true)
@@ -216,6 +237,8 @@ for (const [alvo, id] of [[116, 'malas'], [158, 'bilhete'], [200, 'fogao'], [262
 }
 esperar('os quatro vestígios foram encontrados', (await estado()).achados, 4)
 if (OUT) await page.screenshot({ path: `${OUT}/d-achados.png` })
+esperar('a tensão vira gritaria', await esperarFase('gritaria', 60000), true)
+esperar('os três pratos voaram', await page.evaluate(() => window.__nos.scene.pratosNoLiam + window.__nos.scene.pratosNelas), 3)
 
 // A câmara: o mesmo tema abre os fios
 esperar('a Mesa empurra Liam para o porão', await esperarCena('demo-tear'), true)
@@ -252,29 +275,53 @@ const montagem = () => page.evaluate(() => {
   const m = window.__nos?.scene?.montagem
   return m ? { arrumados: m.arrumados, fase: m.faseAtual } : null
 })
-for (let i = 0; i < 4; i++) {
-  // O primeiro toque termina a frase da sombra; o segundo arruma.
-  await page.mouse.click(640, 300)
-  await page.waitForTimeout(450)
-  await page.mouse.click(640, 300)
-  await page.waitForTimeout(900)
-}
-esperar('quatro recortes arrumados', (await montagem())?.arrumados, 4)
-if (OUT) await page.screenshot({ path: `${OUT}/g2-dentro.png` })
-// Parar de arrumar: a sombra aparece inteira e faz a oferta.
-for (let i = 0; i < 40; i++) {
+// Quem não para de arrumar arruma tudo, até o último recorte.
+for (let i = 0; i < 600; i++) {
   if ((await montagem())?.fase !== 'cortes') break
-  await page.waitForTimeout(400)
+  await page.mouse.click(640, 300)
+  await page.waitForTimeout(200)
 }
-esperar('parar de arrumar encerra a montagem', (await montagem())?.fase, 'parou')
+esperar('os oito recortes arrumados', (await montagem())?.arrumados, 8)
+esperar('arrumar até o fim também acaba', (await montagem())?.fase, 'parou')
+if (OUT) await page.screenshot({ path: `${OUT}/g2-dentro.png` })
+
+// --- A lei do pai, e a escolha --------------------------------------------
+const tear = () => page.evaluate(() => {
+  const s = window.__nos?.scene
+  return { fase: s?.faseAtual, resultado: s?.escolhaResultado ?? null, travada: s?.escolhaTravada }
+})
+for (let i = 0; i < 120; i++) {
+  if ((await tear()).fase === 'escolha') break
+  await page.mouse.click(640, 300)
+  await page.waitForTimeout(250)
+}
+esperar('o pai monta a escolha', (await tear()).fase, 'escolha')
+esperar('na primeira vez as mãos não obedecem', (await tear()).travada, true)
+await page.waitForTimeout(1500)
+await page.mouse.click(1000, 360)
+await page.waitForTimeout(300)
+esperar('o clique do lado da Lia não vai', [(await tear()).fase, (await tear()).resultado], ['escolha', null])
+for (let i = 0; i < 100; i++) {
+  if ((await tear()).fase === 'fogo') break
+  await page.waitForTimeout(250)
+}
+esperar('ninguém foi escolhido: as duas queimam', [(await tear()).fase, (await tear()).resultado], ['fogo', 'nenhuma'])
+
+for (let i = 0; i < 600; i++) {
+  const f = (await tear()).fase
+  if (f === 'volta' || f === 'grito') break
+  await page.mouse.click(640, 300)
+  await page.waitForTimeout(160)
+}
+esperar('a conversa devolve Liam ao Tear', ['volta', 'grito'].includes((await tear()).fase), true)
 for (let i = 0; i < 60; i++) {
   const f = (await estado()).fase
   if (f === 'grito') break
-  if (f === 'volta') await limpar(3)
-  else { await page.mouse.click(640, 300); await page.waitForTimeout(450) }
+  await page.mouse.click(640, 300)
+  await page.waitForTimeout(300)
 }
 esperar('aceitar a sombra é gritar', (await estado()).fase, 'grito')
-if (OUT) await page.screenshot({ path: `${OUT}/g3-grito.png` })
+if (OUT) await page.screenshot({ path: `${OUT}/g6-grito.png` })
 // Soltar cedo é engolir: o grito volta a zero.
 await page.mouse.move(640, 300); await page.mouse.down(); await page.waitForTimeout(700); await page.mouse.up()
 await page.waitForTimeout(300)

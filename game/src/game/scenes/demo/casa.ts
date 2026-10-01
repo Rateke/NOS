@@ -25,6 +25,7 @@ import {
   LIAM_DEPOIS_ECO, SOMBRA_REFLEXO, DEPOIS_ABERTURA, DEPOIS_LIA, DEPOIS_RECADO,
   DEPOIS_RECADO_FIM,
 } from '../../content/demoScript'
+import { CASA_PASSOS_ESCONDEU, CASA_PASSOS_PEGO } from '../../content/noite'
 import { Etiquetas } from '../../ui/etiqueta'
 import { Camada } from '../../ui/camada'
 import { CadernoUI } from '../../ui/cadernoUI'
@@ -34,7 +35,10 @@ import { MesaScene } from './mesa'
 import { FimScene } from './fim'
 
 /** Cenas que o jogador assiste: Liam não obedece às setas enquanto duram. */
-type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado'
+type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado' | 'passos'
+
+/** Quanto tempo Liam tem para esconder o caderno antes de o pai abrir a porta. */
+const JANELA_PASSOS = 2.8
 
 const COR_LIAM = { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' }
 /** Depois do grito, a sombra de Liam no chão fica branca e não volta. */
@@ -102,6 +106,18 @@ export class CasaScene implements Scene {
   })
   private liaVisivel = 1
   private liaFeita = false
+  // O pai, no corredor, só quando os passos chegam a tempo de ver.
+  private adrian = new Figura({
+    ...VISUAL.adrian,
+    x: 268, y: 167, altura: 42, barba: true, gola: '#d4ccc0',
+    cor: { roupa: '#2e2430', cabelo: '#16100f', pele: '#7a584c', sombra: 'rgba(0,0,0,0.5)' },
+  })
+  private adrianVisivel = 0
+  /** Como acabou o susto do caderno: escondido a tempo, ou não. */
+  passosResultado: 'escondeu' | 'pego' | null = null
+  private proxPassoSom = 0
+  private rasgou = false
+  private jolt = 0
   private reflexo = 0
   private proxTique = 0
   private comodos = new Map<string, Comodo>()
@@ -230,6 +246,7 @@ export class CasaScene implements Scene {
     if (this.cutscene && !this.leitor.aberto) {
       this.liam.andando = 0
       if (this.dialogue.active && ctx.input.consumeConfirm()) this.dialogue.confirm()
+      this.adrian.update(dt)
       this.rodarCutscene(dt, ctx)
       return
     }
@@ -378,7 +395,9 @@ export class CasaScene implements Scene {
       }
       const doc = v.documento
       if (doc) {
-        this.dialogue.play(v.linhas, () => this.ler(doc, v.depois))
+        // Ler o caderno da Lia tem consequência: alguém vem vindo.
+        const susto = v.id === 'caderno-lia' && !this.depois ? () => this.iniciarPassos() : undefined
+        this.dialogue.play(v.linhas, () => this.ler(doc, v.depois, susto))
         return
       }
       this.dialogue.play(v.linhas)
@@ -412,13 +431,106 @@ export class CasaScene implements Scene {
     if (ultima) this.dialogue.play([ultima])
   }
 
-  private ler(doc: Documento, depois?: Line[]): void {
+  private ler(doc: Documento, depois?: Line[], aoFim?: () => void): void {
     this.leitor.abrir(doc, {
       onSegredo: (id) => this.segredo(id),
       onFechar: () => {
-        if (depois) this.dialogue.play(depois)
+        if (depois) this.dialogue.play(depois, aoFim)
+        else aoFim?.()
       },
     })
+  }
+
+  /**
+   * A casa estava calma. Aí vêm os passos da cozinha, cada vez mais perto, e
+   * o caderno da Lia ainda está na mão dele. Dois segundos e pouco para
+   * esconder. Ninguém avisa isso antes.
+   */
+  private iniciarPassos(): void {
+    this.cutscene = 'passos'
+    this.tCut = 0
+    this.passoCut = 0
+    this.proxPassoSom = 0
+    this.destino = null
+    this.liam.olhar = 1
+    this.jolt = 0.4
+  }
+
+  private cutPassos(dt: number, ctx: SceneCtx): void {
+    this.jolt = Math.max(0, this.jolt - dt * 2)
+    if (this.passoCut === 0) {
+      // Os passos apertam: cada um mais perto e mais forte que o anterior.
+      if (this.tCut >= this.proxPassoSom) {
+        const k = this.tCut / JANELA_PASSOS
+        sons.passo(0, 0.5 + k * 0.7)
+        this.proxPassoSom = this.tCut + Math.max(0.28, 0.6 - k * 0.32)
+        audio.heartbeat(0.12 + k * 0.12)
+      }
+      const escondeu = ctx.input.consumeConfirm() || ctx.input.consumeTap() !== null
+      if (escondeu && this.tCut > 0.25) {
+        this.passoCut = 1
+        this.passosResultado = 'escondeu'
+        audio.interact()
+        this.liam.olhar = -1
+        this.dialogue.play(CASA_PASSOS_ESCONDEU, () => {
+          this.cutscene = null
+        })
+        return
+      }
+      if (this.tCut >= JANELA_PASSOS) {
+        this.passoCut = 2
+        this.passosResultado = 'pego'
+        this.jogo?.aprender('caderno-rasgado')
+        this.adrian.x = 268
+        this.adrian.y = this.atual.passoY
+        this.adrian.olhar = -1
+        this.jolt = 1
+        sons.chave()
+      }
+      return
+    }
+    if (this.passoCut === 2) {
+      // Ele aparece na porta e vem até Liam.
+      this.adrianVisivel = Math.min(1, this.adrianVisivel + dt * 2.5)
+      const alvo = this.liam.x + 22
+      if (Math.abs(this.adrian.x - alvo) > 1) {
+        this.adrian.x += Math.sign(alvo - this.adrian.x) * 50 * dt
+        this.adrian.andando = 1
+        return
+      }
+      this.adrian.andando = 0
+      this.passoCut = 3
+      this.dialogue.play(CASA_PASSOS_PEGO, () => {
+        this.passoCut = 4
+      })
+      return
+    }
+    if (this.passoCut === 3) {
+      // A página rasga na fala dele, não antes.
+      const linha = this.dialogue.atual?.text ?? ''
+      if (linha.startsWith('É isso') && !this.rasgou) {
+        this.rasgou = true
+        sons.rasgar()
+        this.jolt = 1
+        this.po.poeira(this.liam.x + 6, this.liam.y - 26, 18, 10, 'rgba(236,230,214,')
+      }
+      return
+    }
+    if (this.passoCut === 4) {
+      // Ele volta para a cozinha e fecha a porta.
+      const alvo = 268
+      this.adrian.olhar = 1
+      if (Math.abs(this.adrian.x - alvo) > 1) {
+        this.adrian.x += Math.sign(alvo - this.adrian.x) * 46 * dt
+        this.adrian.andando = 1
+        return
+      }
+      this.adrianVisivel = Math.max(0, this.adrianVisivel - dt * 2)
+      if (this.adrianVisivel <= 0) {
+        this.adrian.andando = 0
+        this.cutscene = null
+      }
+    }
   }
 
   /** Guardado para os segredos que chegam por callback de fala. */
@@ -441,6 +553,7 @@ export class CasaScene implements Scene {
     else if (this.cutscene === 'evelyn') this.cutEvelyn(dt, ctx)
     else if (this.cutscene === 'reflexo') this.reflexo = 1
     else if (this.cutscene === 'lia') this.cutLia(dt)
+    else if (this.cutscene === 'passos') this.cutPassos(dt, ctx)
   }
 
   /** O que dispara uma cena só de andar até certo ponto. */
@@ -829,8 +942,12 @@ export class CasaScene implements Scene {
     const z = ZOOM + this.zoomPiano * 0.42
     const focoX = WORLD_W / 2 + (PIANO.cx - cam - WORLD_W / 2) * this.zoomPiano
     const focoY = 108 + (112 - 108) * this.zoomPiano
-    ctx.display.present({ rgbSplit: 0, wave: 0, shake: 0, zoom: z, alvoX: focoX, alvoY: focoY, time: this.t })
-    ctx.display.vignette(0.6)
+    const susto = this.cutscene === 'passos' && this.passoCut === 0 ? Math.min(1, this.tCut / JANELA_PASSOS) : 0
+    ctx.display.present({
+      rgbSplit: this.jolt * 2 + susto * 1.4, wave: 0, shake: this.jolt * 2.4 + susto * 0.8,
+      zoom: z + susto * 0.12, alvoX: focoX, alvoY: focoY, time: this.t,
+    })
+    ctx.display.vignette(0.6 + susto * 0.3)
 
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
@@ -849,12 +966,49 @@ export class CasaScene implements Scene {
     this.camada.draw(c, cssW, cssH)
     this.drawEstrela(ctx)
     this.escolha.draw(c, cssW, cssH)
+    if (susto > 0) this.drawPassos(c, cssW, cssH, susto)
     this.dialogue.render(c, cssW, cssH)
     this.leitor.render(c, cssW, cssH)
   }
 
+  /** O aviso dos passos: sem enfeite, só o que fazer e o tempo acabando. */
+  private drawPassos(c: CanvasRenderingContext2D, cssW: number, cssH: number, k: number): void {
+    const s = Math.max(18, Math.min(cssW / 36, 34))
+    c.save()
+    c.fillStyle = `rgba(120,10,10,${(0.12 + k * 0.16).toFixed(3)})`
+    c.fillRect(0, 0, cssW, cssH)
+    c.textAlign = 'center'
+    c.globalAlpha = 0.75
+    c.fillStyle = PAL.inkDim
+    c.font = `italic ${s * 0.72}px ${FONT_BODY}`
+    c.fillText('Passos. Vindo da cozinha.', cssW / 2, cssH * 0.3)
+    const tremor = s * 0.04 * k
+    c.globalAlpha = 1
+    c.font = `600 ${s}px ${FONT_BODY}`
+    c.letterSpacing = '0.16em'
+    c.fillStyle = '#ffe2da'
+    const toque = 'ontouchstart' in window ? 'TOQUE' : 'E'
+    c.fillText(`${toque}  ·  ESCONDE O CADERNO`, cssW / 2 + (Math.random() - 0.5) * tremor, cssH * 0.38)
+    c.letterSpacing = '0em'
+    const larg = cssW * 0.3
+    c.fillStyle = 'rgba(255,255,255,0.15)'
+    c.fillRect(cssW / 2 - larg / 2, cssH * 0.42, larg, 3)
+    c.fillStyle = k > 0.7 ? '#ff5a5a' : PAL.ink
+    c.fillRect(cssW / 2 - (larg * (1 - k)) / 2, cssH * 0.42, larg * (1 - k), 3)
+    c.restore()
+  }
+
   /** A mãe (antes) e a Lia (depois), no corredor; e o reflexo no retrato. */
   private desenharGente(w: CanvasRenderingContext2D): void {
+    if (this.adrianVisivel > 0) {
+      w.save()
+      w.globalAlpha = this.adrianVisivel
+      this.adrian.draw(w, this.atual.luzX, 'rgba(220,190,160,0.3)')
+      w.restore()
+      // A luz da cozinha escapando pela porta aberta
+      w.fillStyle = `rgba(236,176,112,${(0.18 * this.adrianVisivel).toFixed(3)})`
+      w.fillRect(253, 60, 30, 110)
+    }
     if (this.reflexo > 0 && !this.depois) {
       w.save()
       w.fillStyle = `rgba(0,0,0,${0.3 * this.reflexo})`

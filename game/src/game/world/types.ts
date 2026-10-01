@@ -29,6 +29,11 @@ export interface Line {
   fio?: string
   /** De onde vem a voz, quando não se vê quem fala ("da cozinha"). */
   onde?: string
+  /**
+   * Gritado: a letra cresce e treme, e a cena que estiver ouvindo sacode a
+   * tela no começo da fala. A tela tem de acompanhar o que se diz.
+   */
+  grito?: boolean
 }
 
 export interface Interactable {

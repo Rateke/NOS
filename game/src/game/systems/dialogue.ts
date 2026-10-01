@@ -59,6 +59,22 @@ export class Dialogue {
     return this.current?.speaker ?? null
   }
 
+  /** Quantas falas ainda esperam depois da atual. */
+  get fila(): number {
+    return this.queue.length
+  }
+
+  /** A linha na tela agora. */
+  get atual(): Line | null {
+    return this.current
+  }
+
+  /**
+   * Sobe a cada linha nova. Quem precisa reagir ao começo de uma fala (a
+   * tela que sacode num grito) compara com o valor da última vez.
+   */
+  linhaNum = 0
+
   /**
    * `auto` faz as falas correrem sozinhas, sem toque. Usado nos clímaxes:
    * tirar o controle da mão do jogador é parte da direção.
@@ -80,6 +96,7 @@ export class Dialogue {
       return
     }
     this.current = next
+    this.linhaNum++
     this.revealed = 0
     this.elapsed = 0
     this.paradoDesde = 0
@@ -125,7 +142,8 @@ export class Dialogue {
 
     const pad = Math.max(16, Math.min(cssW, cssH) * 0.04)
     const boxW = Math.min(cssW - pad * 2, 1000)
-    const fontSize = Math.max(17, Math.round(Math.min(cssW / 40, 30)))
+    const grito = line.grito === true
+    const fontSize = Math.round(Math.max(17, Math.min(cssW / 40, 30)) * (grito ? 1.16 : 1))
     const lineH = fontSize * 1.5
     const boxX = (cssW - boxW) / 2
 
@@ -178,8 +196,22 @@ export class Dialogue {
       ctx.shadowColor = 'rgba(244,244,250,0.45)'
       ctx.shadowBlur = fontSize * 0.5
     }
+    // Gritado: a letra treme e se desdobra em vermelho e azul, como a tela.
+    const tremor = grito ? Math.max(1, fontSize * 0.06) : 0
     for (const l of shownLines) {
-      ctx.fillText(l, boxX + pad, ty)
+      if (grito) {
+        const corTexto: string | CanvasGradient | CanvasPattern = ctx.fillStyle
+        ctx.globalAlpha = 0.35
+        ctx.fillStyle = '#ff5a6e'
+        ctx.fillText(l, boxX + pad - tremor, ty)
+        ctx.fillStyle = '#5ad9ff'
+        ctx.fillText(l, boxX + pad + tremor, ty)
+        ctx.globalAlpha = 1
+        ctx.fillStyle = corTexto
+        ctx.fillText(l, boxX + pad + (Math.random() - 0.5) * tremor, ty + (Math.random() - 0.5) * tremor)
+      } else {
+        ctx.fillText(l, boxX + pad, ty)
+      }
       ty += lineH
     }
     ctx.shadowBlur = 0

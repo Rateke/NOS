@@ -1,13 +1,19 @@
 import type { Scene, SceneCtx } from '../types'
-import { Dialogue, FONT_BODY, FONT_FIM } from '../../systems/dialogue'
+import { Dialogue, FONT_BODY, FONT_FIM, FIO } from '../../systems/dialogue'
 import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
 import { principal } from '../../../engine/principal'
 import {
-  TEAR_CHEGADA, ADRIAN_DURANTE, ADRIAN_INSISTE, CORPO,
-  TEAR_FIM, TEAR_PIANO, TEAR_ERRO, TEAR_CADERNO, TEAR_VOLTA, TEAR_ENGOLIU, TEAR_GRITO,
+  TEAR_CHEGADA, ADRIAN_DURANTE, CORPO,
+  TEAR_FIM, TEAR_PIANO, TEAR_ERRO, TEAR_CADERNO, TEAR_ENGOLIU, TEAR_GRITO,
 } from '../../content/demoScript'
-import { Montagem } from '../../world/dentro'
+import {
+  TEAR_CONTAR, PRESSAO_ADRIAN, TEAR_LEI, ESCOLHA_ARMADILHA, ESCOLHA_GRITOS, ESCOLHA_ME_QUEIMA,
+  ESCOLHA_DEPOIS, DENTRO_2_ABRE, DENTRO_2_ESE, DENTRO_2, TEAR_VOLTA_DEPOIS,
+} from '../../content/noite'
+import type { PassoDentro } from '../../content/noite'
+import { Montagem, Conversa } from '../../world/dentro'
+import { memoria } from '../../systems/memoria'
 import { HospitalScene } from './hospital'
 import { DOC_CADERNO_AMELIA } from '../../content/documentos'
 import { Leitor } from '../../systems/leitor'
@@ -35,9 +41,19 @@ interface Eco {
   vida: number
   total: number
   escala: number
+  /** Cor da voz e de quem é (na escolha, as três vozes se sobrepõem). */
+  cor?: string
+  quem?: string
 }
 
-type Fase = 'chegada' | 'absorvendo' | 'pico' | 'dentro' | 'volta' | 'grito' | 'onda' | 'silencio'
+type Fase =
+  | 'chegada' | 'absorvendo' | 'pico' | 'dentro'
+  | 'lei' | 'escolha' | 'fogo' | 'dentro2'
+  | 'volta' | 'grito' | 'onda' | 'silencio'
+
+/** Quanto dura a escolha, em segundos. Parece meia hora; é isso. */
+const ESCOLHA_DUR = 13
+type Resultado = 'nenhuma' | 'mae' | 'lia'
 
 /**
  * A câmara do Tear.
@@ -85,6 +101,35 @@ export class TearScene implements Scene {
   private passo = 0
   private errosFio = 0
   private jolt = 0
+  /** 0..1: o quanto o pai já apertou. Ele chega mais perto e fala mais alto. */
+  private pressao = 0
+  private ultimaLinha = 0
+
+  // A lei do pai e a escolha
+  private conversa: Conversa | null = null
+  /** 0..1: as duas aparecendo, presas a ele por um fio cada. */
+  private elas = 0
+  private escolhaT = 0
+  private idxGritoEscolha = 0
+  private proxGritoEscolha = 0
+  private travada = false
+  private escolhaFalada = false
+  private resultado: Resultado | null = null
+  private queima = { mae: 0, lia: 0 }
+  private queimando: ('mae' | 'lia')[] = []
+  private tFogo = 0
+  private depoisFalado = false
+  private recusa = { mae: 0, lia: 0 }
+  private mae = new Figura({
+    ...VISUAL.evelyn,
+    x: 104, y: LIAM_CAMARA.y, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
+    cor: { roupa: '#3e5664', cabelo: '#2a1a16', pele: '#7a5a4e', sombra: 'rgba(0,0,0,0.5)' },
+  })
+  private irma = new Figura({
+    ...VISUAL.lia,
+    x: 282, y: LIAM_CAMARA.y, altura: 32, cabelo: 'rabo', mochila: '#2e3e56',
+    cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
+  })
 
   // O tear em si
   private tecido = TECIDO_INICIAL
@@ -134,6 +179,19 @@ export class TearScene implements Scene {
     return this.leitor.aberto
   }
 
+  /** Para os testes: a fase, o que saiu da escolha e se as mãos obedeciam. */
+  get faseAtual(): Fase {
+    return this.fase
+  }
+
+  get escolhaResultado(): Resultado | null {
+    return this.resultado
+  }
+
+  get escolhaTravada(): boolean {
+    return this.travada
+  }
+
   enter(ctx: SceneCtx): void {
     this.jogo = ctx.state
     ctx.state.aprender('tear')
@@ -165,7 +223,7 @@ export class TearScene implements Scene {
           },
           onFechar: () => {
             this.jogo?.aprender('caderno-amelia')
-            this.dialogue.play(TEAR_PIANO, () => {
+            this.dialogue.play([...TEAR_PIANO, ...TEAR_CONTAR], () => {
               this.fase = 'absorvendo'
             })
           },
@@ -193,8 +251,22 @@ export class TearScene implements Scene {
 
     if (this.fase === 'dentro' && this.montagem) {
       this.montagem.update(dt, ctx.input)
-      if (this.montagem.done) this.voltar()
+      if (this.montagem.done) this.lei()
       return
+    }
+    if (this.fase === 'dentro2' && this.conversa) {
+      this.conversa.update(dt, ctx.input)
+      if (this.conversa.done) this.voltar()
+      return
+    }
+
+    // Toda fala gritada sacode a câmara no começo.
+    if (this.dialogue.linhaNum !== this.ultimaLinha) {
+      this.ultimaLinha = this.dialogue.linhaNum
+      if (this.dialogue.atual?.grito) {
+        this.jolt = Math.max(this.jolt, 1)
+        audio.heartbeat(0.22)
+      }
     }
     if (this.fase === 'grito') {
       this.gritar(dt, ctx)
@@ -206,7 +278,7 @@ export class TearScene implements Scene {
     }
 
     if (this.dialogue.active) {
-      const cinematico = this.fase === 'pico'
+      const cinematico = this.fase === 'pico' || this.fase === 'escolha'
       if (!cinematico && ctx.input.consumeConfirm()) this.dialogue.confirm()
       // Nos clímaxes a fala corre sozinha, e a cena continua por baixo.
       if (!cinematico && this.fase !== 'absorvendo') return
@@ -214,6 +286,8 @@ export class TearScene implements Scene {
 
     if (this.fase === 'absorvendo') this.absorver(dt, ctx)
     else if (this.fase === 'pico') this.pico(dt, ctx)
+    else if (this.fase === 'escolha') this.escolher(dt, ctx)
+    else if (this.fase === 'fogo') this.arder(dt)
   }
 
   /** Vida da cena fora da interação: tear, corpo, poeira, brasas. */
@@ -241,7 +315,17 @@ export class TearScene implements Scene {
       }
     }
 
-    for (const f of [this.liam, this.adrian]) f.update(dt)
+    for (const f of [this.liam, this.adrian, this.mae, this.irma]) f.update(dt)
+    // O pai chega perto: no Tear, conforme aperta; na escolha, do lado dele.
+    const perto = this.fase === 'lei' || this.fase === 'escolha' || this.fase === 'fogo'
+    const alvoAdrian = perto ? 152 : this.fase === 'absorvendo' ? 40 + this.pressao * 74 : 40
+    this.adrian.x += (alvoAdrian - this.adrian.x) * Math.min(1, dt * 1.5)
+    this.adrian.olhar = 1
+    this.elas += ((perto ? 1 : 0) - this.elas) * Math.min(1, dt * 1.2)
+    this.mae.olhar = 1
+    this.irma.olhar = -1
+    this.recusa.mae = Math.max(0, this.recusa.mae - dt * 3)
+    this.recusa.lia = Math.max(0, this.recusa.lia - dt * 3)
     this.onda = Math.max(0, this.onda - dt * 0.4)
     this.liam.ofego = 1 + i * 3.4
     this.liam.curvatura = Math.min(0.8, i * 0.7)
@@ -300,18 +384,28 @@ export class TearScene implements Scene {
     const frase = this.fraseDoFio(this.sel)
     const tocada = this.piano.ler(ctx.input, ctx.display)
     if (tocada === null) {
+      // Arco 1: ele não deixa pensar. Parou dois segundos, ele fala; parou
+      // de novo, ele chega mais perto e fala mais alto.
       this.ocioso += dt
-      if (this.ocioso > 5.5) {
+      if (this.ocioso > (this.idxInsiste === 0 ? 2.6 : 2.1)) {
         this.ocioso = 0
-        const fala = ADRIAN_INSISTE[this.idxInsiste % ADRIAN_INSISTE.length]
+        const n = PRESSAO_ADRIAN.length
+        const i = this.idxInsiste < n ? this.idxInsiste : 3 + ((this.idxInsiste - 3) % (n - 3))
+        const fala = PRESSAO_ADRIAN[i] ?? ''
         this.idxInsiste++
-        this.dizer(fala ?? '', 3.2)
-        audio.setArgument(0.3 + this.intensidade * 0.3 + 0.1, 1)
+        this.pressao = Math.min(1, this.pressao + 0.17)
+        this.dizer(fala, 2.4)
+        const gritou = fala === fala.toUpperCase()
+        this.jolt = Math.max(this.jolt, gritou ? 1 : 0.4)
+        audio.heartbeat(gritou ? 0.26 : 0.16)
+        audio.setArgument(0.3 + this.intensidade * 0.3 + this.pressao * 0.3, 0.4)
       }
       return
     }
 
     this.ocioso = 0
+    // Tocando, ele recua um pouco. Só um pouco.
+    this.pressao = Math.max(0, this.pressao - 0.05)
     if (frase[this.passo] === tocada) {
       this.passo++
       fio.puxado = this.passo / Math.max(1, frase.length)
@@ -432,17 +526,167 @@ export class TearScene implements Scene {
     }
   }
 
-  /** De volta ao Tear, logo depois da oferta: o pai pede mais um. */
+  /**
+   * Arco 5: a sombra plantou a culpa; agora o pai dá a filosofia e monta a
+   * situação que vai provar as duas coisas. Arco 6: as duas aparecem, cada
+   * uma presa a Liam por um fio, e ele acende a vela.
+   */
+  private lei(): void {
+    this.fase = 'lei'
+    this.montagem = null
+    // Calmo de propósito: ele fala baixo antes de pedir o pior.
+    this.intensidade = 0.3
+    this.liam.costas = false
+    this.liam.olhar = -1
+    audio.setArgument(0, 1)
+    this.dialogue.play([...TEAR_LEI, ...ESCOLHA_ARMADILHA], () => this.comecarEscolha())
+  }
+
+  private comecarEscolha(): void {
+    this.fase = 'escolha'
+    this.escolhaT = 0
+    this.idxGritoEscolha = 0
+    this.proxGritoEscolha = 0.2
+    this.escolhaFalada = false
+    // Na primeira vez, as mãos não obedecem: todo mundo vive o não escolher.
+    this.travada = !memoria.viuEscolha
+    sons.iniciarFogo()
+    sons.fogo(0.06, 1)
+  }
+
+  /** Arco 6: treze segundos, três vozes, duas setas. */
+  private escolher(dt: number, ctx: SceneCtx): void {
+    this.escolhaT += dt
+    const calor = Math.min(1, this.escolhaT / ESCOLHA_DUR)
+    this.intensidade = 0.3 + calor * 0.45
+    sons.fogo(0.06 + calor * 0.22, 0.3)
+    audio.setArgument(0.2 + calor * 0.5, 0.3)
+
+    // As vozes por cima umas das outras, cada vez mais rápido.
+    if (this.escolhaT >= this.proxGritoEscolha && this.idxGritoEscolha < ESCOLHA_GRITOS.length && !this.escolhaFalada) {
+      const g = ESCOLHA_GRITOS[this.idxGritoEscolha]
+      if (g) {
+        const pos = g.quem === 'Adrian' ? { x: 0.5, y: 0.2 } : g.quem === 'Evelyn' ? { x: 0.2, y: 0.34 } : { x: 0.8, y: 0.34 }
+        const cor = FIO[g.quem] ?? PAL.ink
+        this.ecos.push({
+          texto: g.texto, x: pos.x + (Math.random() - 0.5) * 0.08, y: pos.y + (Math.random() - 0.5) * 0.1,
+          vida: 1.9, total: 1.9, escala: 0.9 + this.idxGritoEscolha * 0.04, cor, quem: g.quem,
+        })
+        if (g.texto === g.texto.toUpperCase()) this.jolt = Math.max(this.jolt, 0.7)
+      }
+      this.idxGritoEscolha++
+      this.proxGritoEscolha = this.escolhaT + Math.max(0.55, 1.05 - this.idxGritoEscolha * 0.05)
+    }
+
+    if (this.escolhaFalada) {
+      ctx.input.consumeConfirm()
+      ctx.input.consumeTap()
+      return
+    }
+
+    // Seta, A/D, ou um toque na metade da tela de quem ele quer salvar.
+    let lado: 'mae' | 'lia' | null = null
+    if (ctx.input.consumeKey('ArrowLeft') || ctx.input.consumeKey('KeyA')) lado = 'mae'
+    if (ctx.input.consumeKey('ArrowRight') || ctx.input.consumeKey('KeyD')) lado = 'lia'
+    const tap = ctx.input.consumeTap()
+    if (tap) lado = tap.x < ctx.display.cssW / 2 ? 'mae' : 'lia'
+    ctx.input.consumeConfirm()
+    if (lado) {
+      if (this.travada) {
+        // A mão não vai. O corpo dele não deixa escolher ninguém.
+        this.recusa[lado] = 1
+        this.jolt = Math.max(this.jolt, 0.5)
+        audio.refuse()
+      } else {
+        this.resultado = lado
+        this.queimar()
+        return
+      }
+    }
+
+    if (this.escolhaT >= ESCOLHA_DUR - 2.6) {
+      this.escolhaFalada = true
+      this.dialogue.play(ESCOLHA_ME_QUEIMA, () => {
+        this.resultado = 'nenhuma'
+        this.queimar()
+      }, 0.85)
+    }
+  }
+
+  /** O fogo sobe pelos fios de quem não foi salva. */
+  private queimar(): void {
+    const r = this.resultado ?? 'nenhuma'
+    this.fase = 'fogo'
+    this.tFogo = 0
+    this.depoisFalado = false
+    this.ecos = []
+    memoria.marcarEscolha()
+    this.jogo?.aprender('escolha')
+    this.jogo?.aprender(`escolha-${r}`)
+    this.queimando = r === 'mae' ? ['lia'] : r === 'lia' ? ['mae'] : ['mae', 'lia']
+    sons.fogo(0.42, 0.4)
+    this.clarao = 0.5
+    this.jolt = 1
+  }
+
+  private arder(dt: number): void {
+    this.tFogo += dt
+    for (const k of this.queimando) this.queima[k] = Math.min(1, this.tFogo / 2.6)
+    for (const k of this.queimando) {
+      if (this.queima[k] >= 1) continue
+      const p = this.pontoDoFio(k, this.queima[k])
+      for (let i = 0; i < 3; i++) this.po.brasa(p.x, p.y, 'rgba(255,170,90,')
+    }
+    if (this.tFogo > 3.3 && !this.depoisFalado) {
+      this.depoisFalado = true
+      sons.fogo(0.04, 2)
+      this.dialogue.play(ESCOLHA_DEPOIS[this.resultado ?? 'nenhuma'], () => this.dentro2())
+    }
+  }
+
+  /** Arcos 6 a 10: a conversa inteira com a sombra, depois do fogo. */
+  private dentro2(): void {
+    const r = this.resultado ?? 'nenhuma'
+    const ese = DENTRO_2_ESE[r]
+    const passos: PassoDentro[] = [
+      { mostrar: ['cinzas'], linhas: DENTRO_2_ABRE[r] },
+      ...DENTRO_2.map((p) => ({
+        ...p,
+        linhas: p.linhas.map((l) => ({ ...l, text: l.text.replace('{ESE}', ese) })),
+      })),
+    ]
+    this.fase = 'dentro2'
+    sons.fogo(0, 0.6)
+    this.conversa = new Conversa(passos)
+    this.conversa.comecar()
+  }
+
+  /** Arco 11: de volta ao Tear. O "só mais um" era a corda; agora é dele. */
   private voltar(): void {
     this.fase = 'volta'
     this.montagem = null
+    this.conversa = null
     this.intensidade = 1
     this.liam.costas = false
     this.liam.olhar = -1
-    this.dialogue.play(TEAR_VOLTA, () => {
+    this.dialogue.play(TEAR_VOLTA_DEPOIS, () => {
       this.fase = 'grito'
       sons.iniciarGrito()
     })
+  }
+
+  /** Um ponto do fio de uma delas: 0 é nela, 1 é no peito de Liam. */
+  private pontoDoFio(quem: 'mae' | 'lia', t: number): { x: number; y: number } {
+    const f = quem === 'mae' ? this.mae : this.irma
+    const p0 = { x: f.x, y: f.y - f.altura * 0.62 }
+    const p1 = { x: LIAM_CAMARA.x, y: LIAM_CAMARA.y - 22 }
+    const cx = (p0.x + p1.x) / 2
+    const cy = Math.min(p0.y, p1.y) - 22
+    const u = 1 - t
+    return {
+      x: u * u * p0.x + 2 * u * t * cx + t * t * p1.x,
+      y: u * u * p0.y + 2 * u * t * cy + t * t * p1.y,
+    }
   }
 
   /**
@@ -543,11 +787,22 @@ export class TearScene implements Scene {
       this.montagem.renderUI(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
       return
     }
+    if (this.fase === 'dentro2' && this.conversa) {
+      this.conversa.render(w)
+      const j = this.conversa.jolt
+      ctx.display.applyGrain(0.07 + j * 0.05)
+      ctx.display.present({ rgbSplit: j * 2.4, wave: 0, shake: j * 2.6, zoom: 1, alvoX: WORLD_W / 2, alvoY: WORLD_H / 2, time: this.t })
+      ctx.display.vignette(0.8)
+      this.conversa.renderUI(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+      return
+    }
     const e = this.estadoTear
     drawCamara(w, e)
     drawTear(w, e)
 
+    this.desenharElas(w)
     this.adrian.draw(w, WORLD_W / 2, 'rgba(196,170,236,0.35)')
+    this.desenharVela(w)
     drawAmarras(w, e, LIAM_CAMARA.y - 22)
     this.liam.draw(w, WORLD_W / 2 + 40, `rgba(196,170,236,${0.3 + this.intensidade * 0.4})`)
     this.desenharOnda(w)
@@ -577,6 +832,7 @@ export class TearScene implements Scene {
     ctx.display.vignette(0.66 + i * 0.22)
 
     this.desenharEcos(ctx)
+    if (this.fase === 'escolha') this.desenharEscolha(ctx)
     if (this.fase === 'absorvendo' && !this.lembranca) {
       this.piano.draw(ctx.display, { fantasma: true })
       const frase = this.fraseDoFio(this.sel)
@@ -590,6 +846,110 @@ export class TearScene implements Scene {
     if (this.fase === 'grito' || this.fase === 'onda') this.desenharGrito(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
     this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+  }
+
+  /**
+   * A mãe à esquerda, a Lia à direita, cada uma presa ao peito de Liam por
+   * um fio da cor dela. Na escolha os fios esquentam; no fogo, o de quem não
+   * foi salva queima dela até ele, e ela vira cinza.
+   */
+  private desenharElas(w: CanvasRenderingContext2D): void {
+    if (this.elas <= 0.02) return
+    const calor = this.fase === 'escolha' ? Math.min(1, this.escolhaT / ESCOLHA_DUR) : this.fase === 'fogo' ? 1 : 0
+    for (const [quem, f, cor] of [['mae', this.mae, FIO.Evelyn], ['lia', this.irma, FIO.Lia]] as const) {
+      const q = this.queima[quem]
+      // Ela: some conforme o fogo chega nela primeiro.
+      const a = this.elas * (1 - Math.min(1, q * 1.8))
+      if (a > 0.02) {
+        w.save()
+        w.globalAlpha = a
+        const dx = this.recusa[quem] > 0 ? Math.round((Math.random() - 0.5) * 3 * this.recusa[quem]) : 0
+        f.x += dx
+        f.draw(w, WORLD_W / 2, 'rgba(255,190,140,0.3)')
+        f.x -= dx
+        w.restore()
+      }
+      // O fio, de q até 1 (o que sobrou sem queimar)
+      w.save()
+      w.globalAlpha = this.elas
+      const pulso = 0.6 + Math.sin(this.t * (4 + calor * 10)) * 0.25
+      w.strokeStyle = calor > 0 ? misturar(cor, '#ff8a3a', calor * 0.7) : cor
+      w.lineWidth = 1
+      w.globalAlpha = this.elas * pulso
+      w.beginPath()
+      const passos = 24
+      for (let i = 0; i <= passos; i++) {
+        const t = q + (1 - q) * (i / passos)
+        const p = this.pontoDoFio(quem, t)
+        if (i === 0) w.moveTo(p.x, p.y)
+        else w.lineTo(p.x, p.y)
+      }
+      if (q < 1) w.stroke()
+      // A chama na frente do fogo
+      if (q > 0 && q < 1) {
+        const p = this.pontoDoFio(quem, q)
+        w.globalAlpha = 1
+        w.fillStyle = '#ffd27a'
+        w.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 3, 2, 3)
+        w.fillStyle = '#ff7a2a'
+        w.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 3, 2)
+      }
+      w.restore()
+    }
+  }
+
+  /** A vela na mão do pai, enquanto ele espera a resposta. */
+  private desenharVela(w: CanvasRenderingContext2D): void {
+    if (this.elas <= 0.05 || this.fase === 'dentro2') return
+    const x = Math.round(this.adrian.x + 5)
+    const y = Math.round(this.adrian.y - this.adrian.altura * 0.55)
+    w.save()
+    w.globalAlpha = this.elas
+    w.fillStyle = '#e8dcc4'
+    w.fillRect(x, y, 2, 5)
+    const tremula = Math.sin(this.t * 23) > 0 ? 1 : 0
+    w.fillStyle = '#ffd27a'
+    w.fillRect(x, y - 3 - tremula, 2, 3)
+    w.globalCompositeOperation = 'lighter'
+    const g = w.createRadialGradient(x + 1, y - 2, 1, x + 1, y - 2, 22)
+    g.addColorStop(0, 'rgba(255,190,110,0.35)')
+    g.addColorStop(1, 'rgba(255,190,110,0)')
+    w.fillStyle = g
+    w.fillRect(x - 22, y - 24, 44, 44)
+    w.restore()
+  }
+
+  /** As duas setas, o tempo acabando. */
+  private desenharEscolha(ctx: SceneCtx): void {
+    const c = ctx.display.ctx
+    const { cssW, cssH } = ctx.display
+    const s = Math.max(18, Math.min(cssW / 34, 36))
+    const resta = Math.max(0, 1 - this.escolhaT / ESCOLHA_DUR)
+    c.save()
+    c.textAlign = 'center'
+    c.font = `600 ${s}px ${FONT_BODY}`
+    c.letterSpacing = '0.18em'
+    for (const [quem, rotulo, x, cor] of [
+      ['mae', '←  MÃE', cssW * 0.2, FIO.Evelyn],
+      ['lia', 'LIA  →', cssW * 0.8, FIO.Lia],
+    ] as const) {
+      const r = this.recusa[quem]
+      const dx = r > 0 ? (Math.random() - 0.5) * s * 0.5 * r : 0
+      c.globalAlpha = this.escolhaFalada ? 0.25 : 0.55 + Math.sin(this.t * 6) * 0.25
+      c.fillStyle = cor
+      c.fillText(rotulo, x + dx, cssH * 0.64)
+    }
+    c.letterSpacing = '0em'
+    // A barra do tempo, no meio, vermelha no fim
+    const larg = cssW * 0.36
+    const y = cssH * 0.7
+    c.globalAlpha = 0.5
+    c.fillStyle = 'rgba(255,255,255,0.15)'
+    c.fillRect(cssW / 2 - larg / 2, y, larg, 3)
+    c.globalAlpha = 0.9
+    c.fillStyle = resta < 0.3 ? '#ff5a5a' : PAL.ink
+    c.fillRect(cssW / 2 - (larg * resta) / 2, y, larg * resta, 3)
+    c.restore()
   }
 
   /** Entra depressa, sai devagar. */
@@ -718,6 +1078,12 @@ export class TearScene implements Scene {
       const a = p > 0.8 ? (1 - p) / 0.2 : p / 0.8
       const size = Math.max(14, Math.min(cssW / 30, 42)) * e.escala
       c.font = `${size}px ${FONT_BODY}`
+      // Cabe na tela: frase comprida anda para dentro.
+      const meia = c.measureText(e.texto).width / 2 + cssW * 0.03
+      const ex = Math.max(meia, Math.min(cssW - meia, cssW * e.x)) / cssW
+      e.x = ex
+      c.shadowColor = 'rgba(0,0,0,0.9)'
+      c.shadowBlur = size * 0.4
       const jitter = (1 - p) * this.intensidade * 4
       c.globalAlpha = a * 0.16
       c.fillStyle = '#ff5a6e'
@@ -725,32 +1091,63 @@ export class TearScene implements Scene {
       c.fillStyle = '#5ad9ff'
       c.fillText(e.texto, cssW * e.x + jitter, cssH * e.y)
       c.globalAlpha = a * 0.82
-      c.fillStyle = PAL.ink
+      c.fillStyle = e.cor ?? PAL.ink
       c.fillText(e.texto, cssW * e.x, cssH * e.y)
+      if (e.quem) {
+        c.globalAlpha = a * 0.5
+        c.font = `${Math.max(10, size * 0.4)}px ${FONT_BODY}`
+        c.letterSpacing = '0.2em'
+        c.fillText(e.quem.toUpperCase(), cssW * e.x, cssH * e.y - size * 0.95)
+        c.letterSpacing = '0em'
+      }
+      c.shadowBlur = 0
     }
     c.restore()
   }
 
-  /** Adrian nunca grita. Fica ao pé da escada, em voz baixa, e é pior assim. */
+  /**
+   * Adrian, no Tear. Começa baixo, ao pé da escada; cada vez que Liam para,
+   * ele chega mais perto e a letra cresce. Em maiúsculas, ele gritou.
+   */
   private desenharAdrian(ctx: SceneCtx): void {
     if (this.t > this.falaAdrianAte || !this.falaAdrian) return
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
-    const size = Math.max(15, Math.min(cssW / 44, 27))
+    const gritou = this.falaAdrian === this.falaAdrian.toUpperCase() && /[A-Z]/.test(this.falaAdrian)
+    const size = Math.max(15, Math.min(cssW / 44, 27)) * (1 + this.pressao * 0.55) * (gritou ? 1.2 : 1)
     const restante = this.falaAdrianAte - this.t
+    const tremor = gritou ? size * 0.05 : 0
     c.save()
     c.globalAlpha = Math.min(1, restante / 0.7)
     c.fillStyle = PAL.accent
     c.textAlign = 'left'
-    c.font = `${size * 0.8}px ${FONT_BODY}`
+    c.font = `${Math.max(12, size * 0.6)}px ${FONT_BODY}`
     c.letterSpacing = '0.14em'
     c.fillText('ADRIAN', cssW * 0.06, cssH * 0.1)
     c.letterSpacing = '0em'
-    c.fillStyle = PAL.ink
-    c.font = `${size}px ${FONT_BODY}`
-    c.fillText(this.falaAdrian, cssW * 0.06, cssH * 0.1 + size * 1.7)
+    c.font = `${gritou ? 600 : 400} ${size}px ${FONT_BODY}`
+    const y = cssH * 0.1 + size * 1.5
+    if (gritou) {
+      const a0 = c.globalAlpha
+      c.globalAlpha = a0 * 0.3
+      c.fillStyle = '#ff5a6e'
+      c.fillText(this.falaAdrian, cssW * 0.06 - tremor, y)
+      c.fillStyle = '#5ad9ff'
+      c.fillText(this.falaAdrian, cssW * 0.06 + tremor, y)
+      c.globalAlpha = a0
+    }
+    c.fillStyle = gritou ? '#ffe2da' : PAL.ink
+    c.fillText(this.falaAdrian, cssW * 0.06 + (Math.random() - 0.5) * tremor, y)
     c.restore()
   }
+}
+
+/** Mistura duas cores '#rrggbb'; k=0 é a primeira, k=1 a segunda. */
+function misturar(a: string, b: string, k: number): string {
+  const pa = parseInt(a.slice(1), 16)
+  const pb = parseInt(b.slice(1), 16)
+  const canal = (sh: number) => Math.round(((pa >> sh) & 255) * (1 - k) + ((pb >> sh) & 255) * k)
+  return `rgb(${canal(16)},${canal(8)},${canal(0)})`
 }
 
 /** '#rrggbb' para o prefixo 'rgba(r,g,b,' que as partículas esperam. */

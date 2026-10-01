@@ -7,7 +7,11 @@ import { Dialogue, FONT_FIM, FONT_BODY } from '../systems/dialogue'
 import type { Line } from './types'
 import { Figura, criarSombraBranca, VISUAL } from './figura'
 import { Camada } from '../ui/camada'
-import { DENTRO_SOMBRA, DENTRO_CONTA, DENTRO_PAROU, DENTRO_OFERTA } from '../content/demoScript'
+import { DENTRO_CONTA } from '../content/demoScript'
+import {
+  DENTRO_RECORTES, DENTRO_PRATOS_NA_FRENTE, DENTRO_1_PAROU, DENTRO_1_ACABOU,
+} from '../content/noite'
+import type { FiguraDentro, PassoDentro } from '../content/noite'
 
 /**
  * Dentro: a cabeça de Liam, por baixo da casa.
@@ -18,8 +22,11 @@ import { DENTRO_SOMBRA, DENTRO_CONTA, DENTRO_PAROU, DENTRO_OFERTA } from '../con
  * o próximo recorte chegar; é o ritual de Liam, e o jogador o executa sem
  * pensar.
  *
- * A saída é parar de arrumar. Quando ele para, a sombra branca aparece
- * inteira, de frente para ele, e faz a oferta: soltar o que não é dele.
+ * Em cada recorte a sombra conversa com ele sobre a mãe (os Arcos 2 e 4):
+ * pergunta, ele responde, a lembrança fala, e só então dá para arrumar. Ela
+ * termina no golpe — "e a culpa é toda sua" — e Liam pode parar de arrumar.
+ * Parando ou não, o pai desce a escada: o resto é no Tear, e depois na
+ * Conversa, mais abaixo neste arquivo.
  */
 type Recorte = 'pratos' | 'partitura' | 'sapatos' | 'uniforme' | 'mochila' | 'chave'
 
@@ -47,8 +54,11 @@ const CORTES: Corte[] = [
   { tipo: 'pratos', pratos: 3, torto: 0.5, conta: DENTRO_CONTA[2] },
 ]
 
-/** A partir de qual recorte parar de arrumar já conta como parar. */
-const PODE_PARAR = 3
+/**
+ * A partir de qual recorte parar de arrumar já conta como parar. Antes
+ * disso a conversa sobre a mãe ainda não chegou no golpe.
+ */
+const PODE_PARAR = 6
 /** Quanto tempo parado, depois de ler, para valer como ter parado. */
 const PARADO = 4.5
 
@@ -80,6 +90,7 @@ export class Montagem {
   private antes = { desafinado: 0, abafado: 0 }
   /** Quantos recortes o jogador arrumou (para os testes). */
   arrumados = 0
+  private estado: GameState | null = null
 
   constructor() {
     this.evelyn.silhueta = true
@@ -94,6 +105,7 @@ export class Montagem {
   }
 
   comecar(state: GameState): void {
+    this.estado = state
     this.camada.mostrar(state, 'dentro')
     this.antes = { desafinado: musica.desafinado, abafado: musica.abafado }
     musica.desafinado = 0
@@ -114,8 +126,15 @@ export class Montagem {
     const graus = TEMA.flat()
     const f = ESCALA[graus[i % graus.length] ?? 0]
     if (f) musica.nota(f / 2, 0.55, 4)
-    const fala = DENTRO_SOMBRA[i]
-    if (fala) this.dialogue.play([{ sombra: true, text: fala, style: 'speech' }])
+    const falas = [...(DENTRO_RECORTES[i] ?? [])]
+    // Quem entrou na frente do prato na cozinha ouve isso no recorte da mãe.
+    if (i === 3 && this.estado?.sabe.has('prato-na-frente')) falas.push(DENTRO_PRATOS_NA_FRENTE)
+    if (falas.length > 0) this.dialogue.play(falas)
+  }
+
+  /** A conversa do recorte acabou: só falta a última linha sair da tela. */
+  private get conversou(): boolean {
+    return this.dialogue.completa && this.dialogue.fila === 0
   }
 
   private parar(acabou: boolean): void {
@@ -124,10 +143,8 @@ export class Montagem {
     audio.bater(1, 0)
     this.sombra.x = 236
     this.liam.x = 150
-    const falas: Line[] = acabou
-      ? [{ sombra: true, text: 'Acabaram as coisas fora do lugar. E lá em cima eles continuam brigando. Viu? Nunca foi o garfo.', style: 'speech' }]
-      : DENTRO_PAROU
-    this.dialogue.play([...falas, ...DENTRO_OFERTA], () => {
+    const falas: Line[] = acabou ? DENTRO_1_ACABOU : DENTRO_1_PAROU
+    this.dialogue.play(falas, () => {
       this.fase = 'fim'
       this.done = true
       musica.desafinado = this.antes.desafinado
@@ -165,11 +182,12 @@ export class Montagem {
 
     const tocou = input.consumeConfirm() || input.consumeTap() !== null
     if (tocou && this.tCorte > 0.25) {
-      // Primeiro toque termina de escrever a frase; o seguinte arruma.
-      if (!this.dialogue.completa) {
+      // Os toques passam a conversa; só depois da última fala, arruma.
+      if (!this.conversou) {
         this.dialogue.confirm()
         return
       }
+      if (this.dialogue.active) this.dialogue.confirm()
       this.arrumou = true
       this.arrumando = 0
       this.tCorte = 0
@@ -178,7 +196,7 @@ export class Montagem {
       return
     }
 
-    if (this.dialogue.completa) this.parado += dt
+    if (this.conversou) this.parado += dt
     if (this.corte >= PODE_PARAR && this.parado > PARADO) this.parar(false)
   }
 
@@ -212,60 +230,12 @@ export class Montagem {
     }
   }
 
-  /** A toalha xadrez da mesa da cozinha, do tamanho do chão inteiro. */
   private toalha(c: CanvasRenderingContext2D): void {
-    const topo = 80
-    const linhas = 9
-    const colunas = 14
-    for (let r = 0; r < linhas; r++) {
-      const v0 = r / linhas
-      const v1 = (r + 1) / linhas
-      const y0 = topo + Math.pow(v0, 1.3) * (WORLD_H - topo)
-      const y1 = topo + Math.pow(v1, 1.3) * (WORLD_H - topo)
-      const l0 = 128 - v0 * 170
-      const r0 = 256 + v0 * 170
-      const l1 = 128 - v1 * 170
-      const r1 = 256 + v1 * 170
-      for (let k = 0; k < colunas; k++) {
-        const u0 = k / colunas
-        const u1 = (k + 1) / colunas
-        const escuro = (r + k) % 2 === 0
-        c.fillStyle = escuro ? '#3a3638' : '#a8a29a'
-        c.beginPath()
-        c.moveTo(l0 + (r0 - l0) * u0, y0)
-        c.lineTo(l0 + (r0 - l0) * u1, y0)
-        c.lineTo(l1 + (r1 - l1) * u1, y1)
-        c.lineTo(l1 + (r1 - l1) * u0, y1)
-        c.closePath()
-        c.fill()
-      }
-    }
-    // A borda some no escuro
-    const g = c.createLinearGradient(0, topo, 0, topo + 40)
-    g.addColorStop(0, 'rgba(2,2,3,1)')
-    g.addColorStop(1, 'rgba(2,2,3,0)')
-    c.fillStyle = g
-    c.fillRect(0, topo, WORLD_W, 40)
+    desenharToalha(c)
   }
 
-  /** Uma luz só, de cima, em cone. */
   private luz(c: CanvasRenderingContext2D): void {
-    c.save()
-    c.globalCompositeOperation = 'lighter'
-    const g = c.createRadialGradient(192, 118, 4, 192, 118, 120)
-    g.addColorStop(0, 'rgba(255,248,236,0.16)')
-    g.addColorStop(1, 'rgba(255,248,236,0)')
-    c.fillStyle = g
-    c.fillRect(0, 0, WORLD_W, WORLD_H)
-    c.fillStyle = 'rgba(255,248,236,0.035)'
-    c.beginPath()
-    c.moveTo(176, 0)
-    c.lineTo(208, 0)
-    c.lineTo(270, 150)
-    c.lineTo(114, 150)
-    c.closePath()
-    c.fill()
-    c.restore()
+    desenharLuzDentro(c)
   }
 
   private recorte(c: CanvasRenderingContext2D, corte: Corte): void {
@@ -452,6 +422,209 @@ export class Montagem {
     }
     this.dialogue.render(c, cssW, cssH)
   }
+}
+
+/**
+ * Dentro 2: depois do fogo.
+ *
+ * O mesmo vácuo, a mesma toalha. Agora não há nada para arrumar: só a
+ * sombra falando, inteira, e quem ela chama aparecendo no escuro em volta —
+ * as cinzas do que queimou, a figura preta que cortou o próprio fio, a Lia
+ * ao longe, a mãe no meio. São os Arcos 6 a 10: a culpa, os "e se", o
+ * desmonte da mãe e a decisão. Termina quando Liam diz que não é o nó.
+ */
+export class Conversa {
+  done = false
+  /** 0..1, para quem desenha a tela sacudir junto com os gritos. */
+  jolt = 0
+  private dialogue = new Dialogue()
+  private t = 0
+  private idx = -1
+  private passos: PassoDentro[]
+  private ultimaLinha = 0
+  /** Opacidade de cada figura, indo atrás do que o passo pede. */
+  private alfa: Record<FiguraDentro, number> = { evelyn: 0, lia: 0, eli: 0, cinzas: 0 }
+  private alvo = new Set<FiguraDentro>()
+  private cinzas: { x: number; y: number; vy: number; vx: number; tam: number }[] = []
+  private liam = new Figura({
+    ...VISUAL.liam,
+    x: 150, y: 176, altura: 31,
+    cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' },
+  })
+  private sombra = criarSombraBranca(236, 176, 35)
+  private evelyn = new Figura({
+    x: 192, y: 160, altura: 30, cabelo: 'longo',
+    cor: { roupa: '#e2a95e', cabelo: '#e2a95e', pele: '#e2a95e', sombra: 'rgba(0,0,0,0)' },
+  })
+  private lia = new Figura({
+    x: 334, y: 168, altura: 26, cabelo: 'rabo',
+    cor: { roupa: '#d06e80', cabelo: '#d06e80', pele: '#d06e80', sombra: 'rgba(0,0,0,0)' },
+  })
+  private eli = new Figura({
+    x: 52, y: 168, altura: 30, cabelo: 'longo',
+    cor: { roupa: '#000', cabelo: '#000', pele: '#000', sombra: 'rgba(0,0,0,0)' },
+  })
+
+  constructor(passos: PassoDentro[]) {
+    this.passos = passos
+    this.liam.olhar = 1
+    this.sombra.olhar = -1
+    for (const f of [this.evelyn, this.lia]) {
+      f.silhueta = true
+      f.silhuetaCor = { ...f.cor }
+    }
+    this.eli.silhueta = true
+    this.eli.silhuetaCor = { roupa: '#050506', cabelo: '#050506', pele: '#050506', sombra: 'rgba(0,0,0,0)' }
+    this.lia.olhar = -1
+    this.eli.olhar = 1
+  }
+
+  comecar(): void {
+    audio.setAmbient(0.1, 0.3)
+    this.proximo()
+  }
+
+  private proximo(): void {
+    this.idx++
+    const p = this.passos[this.idx]
+    if (!p) {
+      this.done = true
+      return
+    }
+    this.alvo = new Set(p.mostrar ?? [])
+    audio.bater(1, 0)
+    this.dialogue.play(p.linhas, () => this.proximo(), p.auto ?? 0)
+  }
+
+  update(dt: number, input: Input): void {
+    this.t += dt
+    this.jolt = Math.max(0, this.jolt - dt * 2.4)
+    this.dialogue.update(dt)
+    for (const f of [this.liam, this.sombra, this.evelyn, this.lia, this.eli]) f.update(dt)
+    for (const k of Object.keys(this.alfa) as FiguraDentro[]) {
+      const quer = this.alvo.has(k) ? 1 : 0
+      this.alfa[k] += (quer - this.alfa[k]) * Math.min(1, dt * 1.6)
+    }
+    this.liam.tremor = this.jolt * 1.5
+
+    if (this.dialogue.linhaNum !== this.ultimaLinha) {
+      this.ultimaLinha = this.dialogue.linhaNum
+      if (this.dialogue.atual?.grito) {
+        this.jolt = 1
+        audio.heartbeat(0.22)
+      }
+    }
+
+    // Cinza caindo devagar, do alto do vácuo.
+    if (this.alfa.cinzas > 0.05 && Math.random() < dt * 30 * this.alfa.cinzas) {
+      this.cinzas.push({
+        x: Math.random() * WORLD_W, y: -4, vy: 6 + Math.random() * 10,
+        vx: (Math.random() - 0.5) * 4, tam: Math.random() < 0.7 ? 1 : 2,
+      })
+    }
+    for (const k of this.cinzas) {
+      k.y += k.vy * dt
+      k.x += k.vx * dt + Math.sin(this.t + k.y * 0.05) * 0.1
+    }
+    this.cinzas = this.cinzas.filter((k) => k.y < WORLD_H)
+
+    if (this.dialogue.active && (input.consumeConfirm() || input.consumeTap() !== null)) {
+      this.dialogue.confirm()
+    }
+  }
+
+  render(c: CanvasRenderingContext2D): void {
+    c.fillStyle = '#020203'
+    c.fillRect(0, 0, WORLD_W, WORLD_H)
+    desenharToalha(c)
+    desenharLuzDentro(c)
+    c.save()
+    c.translate(0, -34)
+    // Quem ela chama aparece no escuro, longe da luz.
+    const figura = (f: Figura, a: number, luz: string) => {
+      if (a <= 0.02) return
+      c.save()
+      c.globalAlpha = a
+      f.draw(c, 192, luz)
+      c.restore()
+    }
+    figura(this.eli, this.alfa.eli, 'rgba(0,0,0,0)')
+    figura(this.lia, this.alfa.lia * 0.8, 'rgba(255,200,210,0.3)')
+    figura(this.evelyn, this.alfa.evelyn * 0.85, 'rgba(255,220,160,0.3)')
+    this.liam.draw(c, 192, 'rgba(255,255,255,0.25)')
+    this.sombra.draw(c, 192, 'rgba(255,255,255,0.5)')
+    c.restore()
+    for (const k of this.cinzas) {
+      c.fillStyle = `rgba(150,146,150,${(0.55 * this.alfa.cinzas).toFixed(3)})`
+      c.fillRect(Math.round(k.x), Math.round(k.y), k.tam, k.tam)
+    }
+    for (let i = 0; i < 60; i++) {
+      const x = (i * 97 + Math.floor(this.t * 60) * 31) % WORLD_W
+      const y = (i * 53 + Math.floor(this.t * 60) * 17) % WORLD_H
+      c.fillStyle = 'rgba(255,255,255,0.04)'
+      c.fillRect(x, y, 1, 1)
+    }
+  }
+
+  renderUI(c: CanvasRenderingContext2D, cssW: number, cssH: number): void {
+    this.dialogue.render(c, cssW, cssH)
+  }
+}
+
+/** A toalha xadrez da mesa da cozinha, do tamanho do chão inteiro. */
+function desenharToalha(c: CanvasRenderingContext2D): void {
+  const topo = 80
+  const linhas = 9
+  const colunas = 14
+  for (let r = 0; r < linhas; r++) {
+    const v0 = r / linhas
+    const v1 = (r + 1) / linhas
+    const y0 = topo + Math.pow(v0, 1.3) * (WORLD_H - topo)
+    const y1 = topo + Math.pow(v1, 1.3) * (WORLD_H - topo)
+    const l0 = 128 - v0 * 170
+    const r0 = 256 + v0 * 170
+    const l1 = 128 - v1 * 170
+    const r1 = 256 + v1 * 170
+    for (let k = 0; k < colunas; k++) {
+      const u0 = k / colunas
+      const u1 = (k + 1) / colunas
+      const escuro = (r + k) % 2 === 0
+      c.fillStyle = escuro ? '#3a3638' : '#a8a29a'
+      c.beginPath()
+      c.moveTo(l0 + (r0 - l0) * u0, y0)
+      c.lineTo(l0 + (r0 - l0) * u1, y0)
+      c.lineTo(l1 + (r1 - l1) * u1, y1)
+      c.lineTo(l1 + (r1 - l1) * u0, y1)
+      c.closePath()
+      c.fill()
+    }
+  }
+  // A borda some no escuro
+  const g = c.createLinearGradient(0, topo, 0, topo + 40)
+  g.addColorStop(0, 'rgba(2,2,3,1)')
+  g.addColorStop(1, 'rgba(2,2,3,0)')
+  c.fillStyle = g
+  c.fillRect(0, topo, WORLD_W, 40)
+}
+
+/** Uma luz só, de cima, em cone. */
+function desenharLuzDentro(c: CanvasRenderingContext2D): void {
+  c.save()
+  c.globalCompositeOperation = 'lighter'
+  const g = c.createRadialGradient(192, 118, 4, 192, 118, 120)
+  g.addColorStop(0, 'rgba(255,248,236,0.16)')
+  g.addColorStop(1, 'rgba(255,248,236,0)')
+  c.fillStyle = g
+  c.fillRect(0, 0, WORLD_W, WORLD_H)
+  c.fillStyle = 'rgba(255,248,236,0.035)'
+  c.beginPath()
+  c.moveTo(176, 0)
+  c.lineTo(208, 0)
+  c.lineTo(270, 150)
+  c.lineTo(114, 150)
+  c.closePath()
+  c.fill()
+  c.restore()
 }
 
 function easeOut(t: number): number {

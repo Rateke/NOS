@@ -33,9 +33,12 @@ npm test           # joga a fatia inteira num navegador real e confere tudo
 ```
 
 Testes de ponta a ponta, num Chromium de verdade: `test/demo.mjs` (a demo
-inteira no teclado), `test/mouse.mjs` (a mesma só no mouse),
-`test/salvar.mjs` (salvar, continuar, pausar, sair) e `test/playthrough.mjs`
-(a fatia antiga do quarto).
+inteira no teclado, escondendo o caderno a tempo, entrando na frente do
+prato e parando de arrumar), `test/mouse.mjs` (a mesma só no mouse, sendo
+pego com o caderno e arrumando até o fim), `test/escolha.mjs` (a escolha do
+Tear numa segunda partida, salvando cada uma), `test/salvar.mjs` (salvar,
+continuar, pausar, sair) e `test/playthrough.mjs` (a fatia antiga do
+quarto). `npm run test:all` roda todos.
 
 O teste aponta para `http://localhost:4173` por padrão: rode o `preview` antes,
 ou passe `URL=file:///caminho/para/dist/nos.html`. `OUT=<pasta>` salva capturas
@@ -111,6 +114,9 @@ os três caminhos são testados de ponta a ponta.
 | Tocar o piano | clicar na tecla | A S D F G H J K | tocar na tecla |
 | Abrir um fio no Tear | tocar a melodia | tocar a melodia | tocar a melodia |
 | Examinar um vestígio | clicar nele | E perto dele | tocar nele |
+| Esconder o caderno da Lia (os passos) | clicar | espaço ou E | tocar |
+| Entrar na frente de um prato | clicar onde correr | setas | tocar onde correr |
+| Escolher quem salvar, no Tear | clicar na metade dela | ← ou → | tocar na metade dela |
 | Pausar | ícone no canto de cima | Esc ou P | ícone no canto de cima |
 | Abrir o caderno | ícone no canto de baixo | C ou Tab | ícone no canto de baixo |
 
@@ -247,6 +253,14 @@ mesma interface.
    fala de cada um, o nome vem com o parentesco; cada nome tem a cor do fio
    da pessoa.
 
+   **A casa calma, até não estar.** Ler o caderno da Lia no corredor tem
+   consequência: assim que ele fecha, vêm passos da cozinha, cada um mais
+   perto e mais forte, e o aviso é só *ESCONDE*. Dois segundos e pouco.
+   Quem esconde a tempo ouve o pai passar direto. Quem não esconde vê o pai
+   aparecer na porta, pegar o caderno da mão dele e rasgar a página — e a
+   folha rasgada vai para o caderno de Liam. Nada avisa antes que isso pode
+   acontecer.
+
    **O caderno "O que eu sei"** (tecla C, ou o ícone no canto) se escreve
    sozinho com o que Liam vê. Depois do grito, a sombra passa a riscar o que
    é mentira e escrever a verdade por cima, em branco.
@@ -275,7 +289,10 @@ mesma interface.
    esperar na última página do caderno da bisavó e na folha em branco do
    diário; e prestar atenção no que a voz diz dentro da cabana.)
 
-3. **A Mesa.** A cozinha da noite da fuga: fogão de quatro bocas com a
+3. **A Mesa.** Começa no meio: um prato estoura na parede antes de qualquer
+   palavra, e a primeira fala já é gritada e xingada (*"VOCÊ NÃO VAI LEVAR
+   OS MEUS FILHOS A LUGAR NENHUM, PORRA!"*). Toda fala gritada sacode a tela
+   no momento em que começa. A cozinha da noite da fuga: fogão de quatro bocas com a
    panela no fogo e o pano de prato apoiado na tampa, pia com a torneira
    pingando embaixo da janela de chuva, rádio ligado, telefone de parede com o
    fone pendurado pelo fio, geladeira com o desenho MAMÃE E EU, relógio
@@ -288,10 +305,25 @@ mesma interface.
    gancho) e os cinco pratos. Nada disso muda o que vai acontecer; muda o que
    ele sabe quando acontecer.
 
+   **Os pratos.** Três vezes o pai levanta um prato e mira na mãe ou na Lia:
+   o braço sobe, uma marca vermelha aparece no chão aos pés dela, e há um
+   segundo e meio. Quem corre até lá leva o prato no lugar dela — a tela
+   estoura em branco, e Liam pensa *"Fico no meio. Aí eles param."* (não
+   param). Quem não chega vê o prato quebrar nela. O E não funciona enquanto
+   o prato está no ar.
+
+   **O fundo do poço é em voz.** Quando a tensão enche, o pai vira para Liam.
+   Ele sobe a voz; Liam sobe a dele pedindo para parar; as falas entram no
+   tempo marcado e não saem — se empilham pela tela, cada uma maior, até não
+   caber mais nada. Corte seco para o preto e o silêncio. Depois, a fuga
+   para o alçapão.
+
 4. **O Tear.** Um tear de verdade, embaixo da cozinha: moldura de madeira,
    urdidura esticada, liços, pente, lançadeira e seis carretéis, cada um com
    uma relíquia pendurada. Adrian desce atrás e fica ao pé da escada:
-   `Você lembra da música?` Cada nota certa passa a lançadeira e bate o pente,
+   `Você lembra da música?` E não fica no pé da escada: a cada fio ele chega
+   mais perto e aperta mais (*"De novo."* ... *"TOCA, LIAM! TOCA, PORRA!"*),
+   enquanto Liam se agarra às notas para não ouvir. Cada nota certa passa a lançadeira e bate o pente,
    e a tapeçaria da família cresce de baixo para cima — uma casa, cinco
    figuras de mãos dadas. Cada fio completo prende mais um fio no peito de
    Liam e abre uma **lembrança que não é dele**, indo de geração em geração:
@@ -306,19 +338,47 @@ mesma interface.
 5. **Dentro.** Corte seco para a cabeça de Liam: vácuo preto, uma toalha
    xadrez do tamanho do chão, uma luz de cima. As lembranças chegam
    recortadas, e em cada recorte há uma coisa torta brilhando — arrumar faz o
-   próximo chegar (*Cinco. Quatro. Três.*, contando pratos). Entre um e outro
-   fala a **sombra branca**, a parte de Liam que não deve nada a ninguém, e
-   nada do que ela diz é mentira. **A saída é parar de arrumar.** Aí ela
-   aparece inteira e faz a oferta: soltar o que não é dele.
+   próximo chegar (*Cinco. Quatro. Três.*, contando pratos). Em cada recorte
+   a **sombra branca**, a parte de Liam que não deve nada a ninguém, conversa
+   com ele sobre a mãe: pergunta que tipo de pessoa ela era, deixa a
+   lembrança falar, e repete a lição da mãe na boca dela (*"É melhor ser
+   ferido do que ferir os outros"*). Depois vem a pergunta que ele nunca fez
+   (*"Tem certeza de que a sua mãe era tão boa e maravilhosa quanto você
+   pensa?"*), e o golpe, sobre a Lia: *"E a culpa é toda sua."* Do recorte
+   da chave em diante, **dá para parar de arrumar**. Parando ou não, ouve-se
+   o pai descendo a escada.
 
-6. **O grito.** De volta ao Tear, o pai pede só mais um. Segurar a tecla (ou o
+6. **A lei do pai e a escolha.** De volta ao Tear, Adrian fala baixo pela
+   primeira vez: a lei que aprendeu com a mãe dele (*"Todas as desvantagens
+   deste mundo vêm da falta de habilidade de uma pessoa"*), e então monta a
+   situação que prova as duas coisas. A mãe e a Lia aparecem, cada uma presa
+   ao peito de Liam por um fio, e ele acende a vela: *"Qual delas você quer
+   salvar?"* Treze segundos. As três vozes por cima umas das outras (*"Escolhe
+   a Lia, filho."* / *"Escolhe a mãe, seu idiota!"* / *"ESCOLHE!"*), o calor
+   subindo, ← para a mãe, → para a Lia. **Na primeira vez as mãos não
+   obedecem** — todo mundo vive o não escolher: no fim Liam se oferece no
+   lugar (*"Se tem que queimar alguém, queima o meu!"*) e o fogo sobe pelos
+   dois fios. Nas partidas seguintes dá para escolher, e o fio da outra
+   queima. Nos três casos o jogo não diz quem morreu.
+
+7. **Dentro, de novo.** Cinza caindo no vácuo, e a conversa inteira com a
+   sombra: *"Se oferecer no lugar dos outros é a lição da sua mãe levada até
+   o fim. E ela não salva ninguém."* A culpa, dita até o fim (*"É você."*); o
+   *e se* que muda conforme a escolha, e *"Não agir é uma escolha, é
+   simplesmente deixar."*; a mãe, que *"não conseguiu fazer isso. Isso não é
+   bondade. Isso é apenas fraqueza."*; Liam respondendo *"Mesmo assim!"* cada
+   vez mais alto; e o fim, em que ele para de discutir com a sombra e diz o
+   que é dele: *"Eu não sou o nó."*
+
+8. **O grito.** De volta ao Tear, o pai pede só mais um — e Liam pergunta,
+   pela primeira vez: *"Quantas vezes, pai? Quantas vezes 'só mais um'?"* Segurar a tecla (ou o
    clique, ou o dedo) deixa sair *EU NÃO QUERO.* letra por letra; soltar cedo
    é engolir, e o pai repete o pedido. Cheio, vira uma onda branca: todos os
    fios arrebentam. **Cinco segundos de preto**, em que nenhuma tecla
    funciona. Um bipe dispara; a Lia grita que ele apertou a mão dela e chama
    alguém.
 
-7. **A casa sem música.** Tudo fora do lugar, as cores reais das coisas
+9. **A casa sem música.** Tudo fora do lugar, as cores reais das coisas
    (dessaturadas), geladeira, relógio e chuva. A sombra de Liam no chão ficou
    branca. Nada pede para ser arrumado — e deixar como está é a escolha. A
    Lia recua quando ele chega perto, e a etiqueta dela é corrigida pela
@@ -342,6 +402,9 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | **O tema musical** | `src/engine/musica.ts` (`TEMA`, em graus da escala) |
 | Timbre do piano e reverberação | `src/engine/musica.ts` |
 | Vestígios da cozinha | `src/game/content/demoScript.ts` (`MESA_VESTIGIOS`) |
+| **Falas da noite**: a briga, os pratos, a gritaria, a pressão no Tear, a lei do pai, a escolha, as duas conversas com a sombra, os passos | `src/game/content/noite.ts` |
+| Pratos voando e a gritaria (tempos, alvo, dano) | `src/game/scenes/demo/mesa.ts` (`ARREMESSOS_EM`, `AVISO_PRATO`, `CORRIDA`) |
+| A escolha do Tear (duração, fios queimando) | `src/game/scenes/demo/tear.ts` (`ESCOLHA_DUR`) |
 | **Cômodos da casa, portas e vestígios** | `src/game/world/casa.ts` |
 | Quanto o corredor estica | `src/game/world/casa.ts` (`CORREDOR_BASE`, `CORREDOR_MAX`) |
 | Sala (piano, retratos, sofá, estante) | `src/game/world/sala.ts` |
@@ -385,6 +448,22 @@ O mundo é desenhado em 384x216 e escalado por um número inteiro, para os
 pixels ficarem nítidos; o texto é desenhado por cima em resolução de tela,
 para continuar legível. Móveis e Liam são ordenados por profundidade, então
 ele passa atrás da escrivaninha e na frente da cama.
+
+## Créditos e referências
+
+NÓS é de **Fernando Rateke Neto** e **Luana Lupi Vergara** (SA Integrada).
+
+A noite do Tear — a sombra conversando com Liam sobre a mãe, o pai que dá a
+filosofia e monta a situação que prova a culpa, a escolha forçada entre duas
+pessoas, a lição da mãe levada ao extremo — é inspirada no episódio 12 da
+primeira temporada do anime **Tokyo Ghoul**, obra de **Sui Ishida**. Algumas
+falas são citações diretas, a partir da transcrição feita pelos autores, com
+os nomes trocados: o dogma da mãe (*"É melhor ser ferido do que ferir os
+outros..."*), *"Tem certeza de que a sua mãe era tão boa e maravilhosa
+quanto você pensa?"*, *"Todas as desvantagens deste mundo vêm da falta de
+habilidade de uma pessoa"*, *"Não agir é uma escolha, é simplesmente
+deixar"* e *"Há momentos em que você precisa abrir mão de uma coisa para
+preservar a outra..."*. A letra de *Unravel* não está no jogo.
 
 **Referências visuais:** navegação e câmera do OMORI; paleta, queda de luz e
 silhuetas do Hollow Knight. Uma única fonte quente no quarto (a luminária);

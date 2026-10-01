@@ -46,6 +46,7 @@ const PAGINAS: PaginaCaderno[] = [
         verdade: 'Você não dorme direito há meses. Acorda com a raiva dos outros e chama isso de cansaço.',
       },
       { se: 'evelyn-eco', texto: 'A mãe me perguntou uma coisa e eu respondi com a voz do pai.' },
+      { se: 'prato-na-frente', texto: 'Na cozinha eu entrei na frente do prato.', verdade: 'Ninguém pediu. Você foi sozinho, porque aprendeu que é melhor ser ferido do que ferir os outros. Isso não protegeu ninguém. Só pôs você no caminho.' },
       {
         se: 'lia-caderno',
         texto: 'A Lia acha que eu arrumo alguma coisa quando minto.',
@@ -99,6 +100,8 @@ const PAGINAS: PaginaCaderno[] = [
         verdade: 'Ela entende. Ela só não aceita ficar quieta. E você tem raiva dela porque ela faz o que você não tem coragem de fazer.',
       },
       { se: 'lia-caderno', texto: 'Ela tem um caderno de coisas que ela sabe e ninguém pergunta.', nota: 'Ninguém pergunta porque ela responderia.' },
+      { se: 'caderno-rasgado', texto: 'O pai achou o caderno dela comigo. Rasgou a página.', nota: 'Você não disse que era dela. Também não disse que não era. Ficou quieto, e ela vai achar a página no chão.' },
+      { se: 'escolha', texto: 'No porão, o pai me mandou escolher entre a mãe e a Lia.', nota: 'Não agir é uma escolha, é simplesmente deixar.' },
       { se: 'depois-lia', texto: 'Ela deu um passo pra trás quando eu cheguei perto.', nota: 'Ela está com medo de você. É a primeira vez. Medo passa. O que não passava era você sumindo um pouco toda noite.' },
     ],
   },

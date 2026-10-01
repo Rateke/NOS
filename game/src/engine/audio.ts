@@ -320,6 +320,7 @@ export class SonsNos {
   private gritoNos: { osc: OscillatorNode; g: GainNode; ruidoG: GainNode } | null = null
   private casaReal: GainNode | null = null
   private fitaG: GainNode | null = null
+  private fogoG: GainNode | null = null
 
   private get ctx(): AudioContext | null {
     return audio.contexto
@@ -342,6 +343,7 @@ export class SonsNos {
     this.pararGrito(segundos)
     this.setCasaReal(0, segundos)
     this.fita(0, segundos)
+    this.fogo(0, segundos)
   }
 
   /** Um bipe de monitor cardíaco, agendado `quando` segundos à frente. */
@@ -462,6 +464,119 @@ export class SonsNos {
     ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.03)
     src.connect(hp).connect(ng).connect(out)
     src.start(t, Math.random(), 0.05)
+  }
+
+  /** Prato quebrando: o estouro da louça e os cacos tilintando no chão. */
+  prato(atraso = 0): void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b) return
+    const t = ctx.currentTime + atraso
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 3200
+    bp.Q.value = 0.6
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.34, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28)
+    src.connect(bp).connect(g).connect(out)
+    src.start(t, Math.random(), 0.32)
+    // Os cacos: tons agudos e curtos, cada um caindo um pouco depois.
+    for (let i = 0; i < 6; i++) {
+      const tt = t + 0.04 + Math.random() * 0.32
+      const o = ctx.createOscillator()
+      o.type = 'triangle'
+      o.frequency.value = 2600 + Math.random() * 3200
+      const og = ctx.createGain()
+      og.gain.setValueAtTime(0.035, tt)
+      og.gain.exponentialRampToValueAtTime(0.0001, tt + 0.12 + Math.random() * 0.2)
+      o.connect(og).connect(out)
+      o.start(tt)
+      o.stop(tt + 0.4)
+    }
+  }
+
+  /** Passo pesado no assoalho, vindo de outro cômodo. */
+  passo(atraso = 0, forca = 1): void {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out) return
+    const t = ctx.currentTime + atraso
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.setValueAtTime(82, t)
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.14)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(0.32 * forca, t + 0.012)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
+    o.connect(g).connect(out)
+    o.start(t)
+    o.stop(t + 0.25)
+  }
+
+  /** Papel rasgando, devagar e depois de uma vez. */
+  rasgar(atraso = 0): void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b) return
+    const t = ctx.currentTime + atraso
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.Q.value = 1.4
+    bp.frequency.setValueAtTime(1300, t)
+    bp.frequency.linearRampToValueAtTime(4200, t + 0.42)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(0.16, t + 0.05)
+    for (let i = 1; i < 9; i++) g.gain.setValueAtTime(0.06 + Math.random() * 0.14, t + i * 0.045)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5)
+    src.connect(bp).connect(g).connect(out)
+    src.start(t, Math.random(), 0.55)
+  }
+
+  /** O fogo subindo pelos fios: um chiado grave com estalos. */
+  iniciarFogo(): void {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out || this.fogoG) return
+    const len = Math.floor(ctx.sampleRate * 2)
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    let ultimo = 0
+    for (let i = 0; i < len; i++) {
+      ultimo = (ultimo + 0.05 * (Math.random() * 2 - 1)) / 1.05
+      // Um estalo de vez em quando, seco
+      const estalo = Math.random() < 0.0009 ? (Math.random() * 2 - 1) * 0.9 : 0
+      d[i] = ultimo * 2.4 + estalo
+    }
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.loop = true
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 2400
+    const g = ctx.createGain()
+    g.gain.value = 0
+    src.connect(lp).connect(g).connect(out)
+    src.start()
+    this.fogoG = g
+  }
+
+  fogo(nivel: number, segundos = 0.4): void {
+    const ctx = this.ctx
+    const g = this.fogoG
+    if (!ctx || !g) return
+    const t = ctx.currentTime
+    g.gain.cancelScheduledValues(t)
+    g.gain.setValueAtTime(g.gain.value, t)
+    g.gain.linearRampToValueAtTime(nivel, t + segundos)
   }
 
   /** A onda do grito: um baque grave que empurra tudo, e o ar depois. */
