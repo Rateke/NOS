@@ -291,9 +291,10 @@ mesma interface.
 
 3. **A Mesa.** Começa no meio: um prato estoura na parede antes de qualquer
    palavra, e a primeira fala já é gritada e xingada (*"VOCÊ NÃO VAI LEVAR
-   OS MEUS FILHOS A LUGAR NENHUM, PORRA!"*). Toda fala gritada sacode a tela
-   no momento em que começa. A cozinha da noite da fuga: fogão de quatro bocas com a
-   panela no fogo e o pano de prato apoiado na tampa, pia com a torneira
+   OS MEUS FILHOS A LUGAR NENHUM, P\*\*\*\*!"*). Toda fala gritada sacode a
+   tela no momento em que começa. Palavrão sai censurado, sempre numa fala
+   inteira em maiúsculas, para o jogador entender o que foi dito. A cozinha
+   da noite da fuga: fogão de quatro bocas com a panela no fogo e o pano de prato apoiado na tampa, pia com a torneira
    pingando embaixo da janela de chuva, rádio ligado, telefone de parede com o
    fone pendurado pelo fio, geladeira com o desenho MAMÃE E EU, relógio
    marcando quase 23h, o chaveiro com o gancho vazio (a chave está no bolso de
@@ -322,9 +323,9 @@ mesma interface.
    urdidura esticada, liços, pente, lançadeira e seis carretéis, cada um com
    uma relíquia pendurada. Adrian desce atrás e fica ao pé da escada:
    `Você lembra da música?` E não fica no pé da escada: a cada fio ele chega
-   mais perto e aperta mais (*"De novo."* ... *"TOCA, LIAM! TOCA, PORRA!"*),
-   enquanto Liam se agarra às notas para não ouvir. Cada nota certa passa a lançadeira e bate o pente,
-   e a tapeçaria da família cresce de baixo para cima — uma casa, cinco
+   mais perto e aperta mais (*"De novo."* ... *"TOCA, LIAM! TOCA, P\*\*\*\*!"*),
+   enquanto Liam se agarra às notas para não ouvir. Cada nota certa passa a
+   lançadeira e bate o pente, e a tapeçaria da família cresce de baixo para cima — uma casa, cinco
    figuras de mãos dadas. Cada fio completo prende mais um fio no peito de
    Liam e abre uma **lembrança que não é dele**, indo de geração em geração:
    o pai e o prato quebrado, Lia gritando para uma porta, Evelyn na primeira
@@ -448,22 +449,6 @@ O mundo é desenhado em 384x216 e escalado por um número inteiro, para os
 pixels ficarem nítidos; o texto é desenhado por cima em resolução de tela,
 para continuar legível. Móveis e Liam são ordenados por profundidade, então
 ele passa atrás da escrivaninha e na frente da cama.
-
-## Créditos e referências
-
-NÓS é de **Fernando Rateke Neto** e **Luana Lupi Vergara** (SA Integrada).
-
-A noite do Tear — a sombra conversando com Liam sobre a mãe, o pai que dá a
-filosofia e monta a situação que prova a culpa, a escolha forçada entre duas
-pessoas, a lição da mãe levada ao extremo — é inspirada no episódio 12 da
-primeira temporada do anime **Tokyo Ghoul**, obra de **Sui Ishida**. Algumas
-falas são citações diretas, a partir da transcrição feita pelos autores, com
-os nomes trocados: o dogma da mãe (*"É melhor ser ferido do que ferir os
-outros..."*), *"Tem certeza de que a sua mãe era tão boa e maravilhosa
-quanto você pensa?"*, *"Todas as desvantagens deste mundo vêm da falta de
-habilidade de uma pessoa"*, *"Não agir é uma escolha, é simplesmente
-deixar"* e *"Há momentos em que você precisa abrir mão de uma coisa para
-preservar a outra..."*. A letra de *Unravel* não está no jogo.
 
 **Referências visuais:** navegação e câmera do OMORI; paleta, queda de luz e
 silhuetas do Hollow Knight. Uma única fonte quente no quarto (a luminária);

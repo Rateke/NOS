@@ -2,10 +2,11 @@
  * A noite: a cozinha que explode, o Tear que aperta, a escolha, e as duas
  * conversas com a sombra.
  *
- * A estrutura segue, arco por arco, o episódio 12 de Tokyo Ghoul (o Kaneki
- * na cadeira do Yamori, a Rize dentro da cabeça dele), com algumas frases
- * citadas como estão, em homenagem — os créditos ficam no README. O que é
- * do NÓS é o destino: lá a saída é devorar; aqui é largar o que não é seu.
+ * Onze arcos, um degrau de cada vez. No fim a saída não é vencer ninguém:
+ * é largar o que não é seu.
+ *
+ * Palavrão sai censurado (P****, C******, M****), sempre numa fala inteira
+ * em maiúsculas: o jogador entende pela força da frase o que foi dito.
  *
  *   Arco 1  — a pressão que não deixa pensar (o Adrian no Tear)
  *   Arco 2  — a mãe idealizada (Dentro 1)
@@ -49,9 +50,9 @@ export const CASA_PASSOS_PEGO: Line[] = [
  * a casa estava calma até agora, e é isso que faz doer.
  */
 export const MESA_ESTOURO: Line[] = [
-  { speaker: 'Adrian', text: 'VOCÊ NÃO VAI LEVAR OS MEUS FILHOS A LUGAR NENHUM, PORRA!', style: 'speech', grito: true },
+  { speaker: 'Adrian', text: 'VOCÊ NÃO VAI LEVAR OS MEUS FILHOS A LUGAR NENHUM, P****!', style: 'speech', grito: true },
   { speaker: 'Evelyn', text: 'Fala baixo, Adrian. Eles tão ouvindo.', style: 'speech' },
-  { speaker: 'Adrian', text: 'QUE OUÇAM! Que ouçam que a mãe deles é uma ingrata do caralho, que foge no meio da noite!', style: 'speech', grito: true },
+  { speaker: 'Adrian', text: 'QUE OUÇAM! QUE OUÇAM QUE A MÃE DELES É UMA INGRATA DO C******, QUE FOGE NO MEIO DA NOITE!', style: 'speech', grito: true },
   { speaker: 'Lia', text: 'Para de gritar com ela, seu covarde!', style: 'speech', grito: true },
   { speaker: 'Adrian', text: 'Cala essa boca, Lia. Eu não tô falando com você.', style: 'speech' },
 ]
@@ -60,7 +61,7 @@ export const MESA_ESTOURO: Line[] = [
 export const ARREMESSO_ADRIAN: string[] = [
   'TÁ VENDO O QUE VOCÊ FAZ COMIGO?!',
   'É ISSO QUE VOCÊ QUER?! É ISSO?!',
-  'QUEM PAGOU ESSA MERDA TODA FUI EU!',
+  'QUEM PAGOU ESSA M**** TODA FUI EU!',
 ]
 
 /** O prato quebra perto delas. */
@@ -124,7 +125,7 @@ export const PRESSAO_ADRIAN: string[] = [
   'TOCA.',
   'Você quer que ela vá embora? QUER?',
   'Olha pra mim quando eu falo com você.',
-  'TOCA, LIAM! TOCA, PORRA!',
+  'TOCA, LIAM! TOCA, P****!',
 ]
 
 // --- O Tear: a lei do pai e a escolha (Arcos 5 e 6) -----------------------------
