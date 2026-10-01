@@ -10,7 +10,7 @@ import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
 import { Leitor } from '../../systems/leitor'
 import type { Documento } from '../../systems/leitor'
-import { Figura, criarSombraBranca } from '../../world/figura'
+import { Figura, criarSombraBranca, VISUAL } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
@@ -87,11 +87,13 @@ export class CasaScene implements Scene {
   falouPeloPai = false
   private evelynFeita = false
   private evelyn = new Figura({
+    ...VISUAL.evelyn,
     x: 268, y: 167, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
     cor: { roupa: '#3e5664', cabelo: '#2a1a16', pele: '#7a5a4e', sombra: 'rgba(0,0,0,0.5)' },
   })
   private evelynVisivel = 0
   private lia = new Figura({
+    ...VISUAL.lia,
     x: 300, y: 167, altura: 32, cabelo: 'rabo', mochila: '#2e3e56',
     cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
   })
@@ -102,7 +104,7 @@ export class CasaScene implements Scene {
   private comodos = new Map<string, Comodo>()
   private atual!: Comodo
   private t = 0
-  private liam = new Figura({ x: 300, y: 163, altura: 31, cor: { ...COR_LIAM } })
+  private liam = new Figura({ ...VISUAL.liam, x: 300, y: 163, altura: 31, cor: { ...COR_LIAM } })
   private po = new Particulas()
   private piano = new Piano()
   private leitor = new Leitor()

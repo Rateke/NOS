@@ -12,7 +12,7 @@ import { HospitalScene } from './hospital'
 import { DOC_CADERNO_AMELIA } from '../../content/documentos'
 import { Leitor } from '../../systems/leitor'
 import type { GameState } from '../../systems/state'
-import { Figura } from '../../world/figura'
+import { Figura, VISUAL } from '../../world/figura'
 import { Piano } from '../../systems/piano'
 import { RELIQUIAS } from '../../world/reliquias'
 import { musica, TEMA } from '../../../engine/musica'
@@ -104,11 +104,13 @@ export class TearScene implements Scene {
   private afinacaoAntes = { desafinado: 0, abafado: 0 }
 
   private liam = new Figura({
+    ...VISUAL.liam,
     x: LIAM_CAMARA.x, y: LIAM_CAMARA.y, altura: 34,
     cor: { roupa: '#1a2030', cabelo: '#080b12', pele: '#5c4c46', sombra: 'rgba(0,0,0,0.55)' },
   })
   // Adrian desceu atrás dele e ficou ao pé da escada, no escuro.
   private adrian = new Figura({
+    ...VISUAL.adrian,
     x: 40, y: LIAM_CAMARA.y, altura: 44, barba: true, gola: '#bdb4a8',
     cor: { roupa: '#1e1820', cabelo: '#0c0808', pele: '#4a3a34', sombra: 'rgba(0,0,0,0.5)' },
   })

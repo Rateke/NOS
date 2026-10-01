@@ -3,7 +3,7 @@ import { Dialogue } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
 import { audio } from '../../../engine/audio'
 import { musica, TEMA } from '../../../engine/musica'
-import { Figura } from '../../world/figura'
+import { Figura, VISUAL } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { drawSalaFundo, drawSalaFrente, drawLuzSala, LUZ_PIANO, BANCO_Y, PIANO } from '../../world/sala'
 import {
@@ -50,11 +50,13 @@ export class PrologoScene implements Scene {
   // Os dois no banco do piano, de costas para a câmera. É uma cena de nuca e
   // de mãos: o rosto só aparece quando alguém se vira para o outro.
   private adrian = new Figura({
-    x: PIANO.cx - 11, y: BANCO_Y, altura: 40,
+    ...VISUAL.adrian,
+    x: PIANO.cx - 11, y: BANCO_Y, altura: 40, barba: true, gola: '#d4ccc0',
     cor: { roupa: '#2b2129', cabelo: '#171017', pele: '#6a4f48', sombra: 'rgba(0,0,0,0)' },
     pose: 'sentado',
   })
   private liam = new Figura({
+    ...VISUAL.liam,
     x: PIANO.cx + 15, y: BANCO_Y, altura: 31,
     cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0)' },
     pose: 'sentado',

@@ -5,7 +5,7 @@ import { audio } from '../../engine/audio'
 import { musica, ESCALA, TEMA } from '../../engine/musica'
 import { Dialogue, FONT_FIM, FONT_BODY } from '../systems/dialogue'
 import type { Line } from './types'
-import { Figura, criarSombraBranca } from './figura'
+import { Figura, criarSombraBranca, VISUAL } from './figura'
 import { Camada } from '../ui/camada'
 import { DENTRO_SOMBRA, DENTRO_CONTA, DENTRO_PAROU, DENTRO_OFERTA } from '../content/demoScript'
 
@@ -68,6 +68,7 @@ export class Montagem {
   private dialogue = new Dialogue()
   readonly camada = new Camada()
   private liam = new Figura({
+    ...VISUAL.liam,
     x: 150, y: 176, altura: 31,
     cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' },
   })

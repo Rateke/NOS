@@ -3,6 +3,10 @@ import type { RGB } from './arte'
 import {
   mix, rgb, clarear, ret, papelDeParede, lambri, assoalho, porta, quadro, cantos,
 } from './arte'
+import {
+  sanca, rodape, lustre, radiador, violeta, plantaAlta, cestoTrico, chinelos, quadroMar,
+  relogioParado, interruptor, marcaDeQuadro, sombraDeContato, luarNoChao,
+} from './detalhes'
 
 /**
  * A sala.
@@ -54,23 +58,41 @@ function tom(frio: RGB, quente: RGB, k: number): RGB {
 
 export function drawSalaFundo(c: CanvasRenderingContext2D, e: EstadoSala): void {
   const k = e.k
-  papelDeParede(c, 0, SALA_W, 0, 102, tom(PAREDE_FRIA, PAREDE_QUENTE, k), 3)
-  // Sanca no alto
-  ret(c, 0, 0, SALA_W, 5, rgb(clarear(tom(PAREDE_FRIA, PAREDE_QUENTE, k), 12)))
-  ret(c, 0, 5, SALA_W, 1, 'rgba(0,0,0,0.3)')
+  const parede = tom(PAREDE_FRIA, PAREDE_QUENTE, k)
+  papelDeParede(c, 0, SALA_W, 0, 102, parede, 3)
+  sanca(c, 0, SALA_W, parede)
+  // Friso que separa o papel de parede do lambri
+  ret(c, 0, 101, SALA_W, 3, rgb(clarear(parede, 10)))
+  ret(c, 0, 101, SALA_W, 1, rgb(clarear(parede, 22)))
   lambri(c, 0, SALA_W, 104, CHAO_Y, tom([18, 22, 33], [38, 27, 29], k))
   assoalho(c, 0, SALA_W, CHAO_Y, WORLD_H, tom([24, 28, 40], [50, 35, 33], k))
-  cantos(c, SALA_W, CHAO_Y, WORLD_H, tom(PAREDE_FRIA, PAREDE_QUENTE, k))
+  rodape(c, 0, SALA_W, CHAO_Y, tom([26, 30, 42], [60, 40, 36], k))
+  cantos(c, SALA_W, CHAO_Y, WORLD_H, parede)
 
   drawJanela(c, k, e.t)
+  luarNoChao(c, 44, CHAO_Y + 1, 60)
+  radiador(c, 42, 112, 52, k)
+  // Onde ficava o quinto retrato: só o papel mais claro e o prego.
+  marcaDeQuadro(c, 252, 56, 18, 22)
   drawRetratos(c, k)
+  quadroMar(c, 292, 36, 76, 28, k)
+  // O relógio da sala parou nas dez e quarenta. Ninguém comentou.
+  relogioParado(c, 441, 52, 8, 10, 40, k)
+  lustre(c, 318, k)
   drawTapete(c, k)
+  sombraDeContato(c, PIANO.x0, CHAO_Y, PIANO.x1 - PIANO.x0)
+  sombraDeContato(c, 229, CHAO_Y, 166)
+  sombraDeContato(c, 418, CHAO_Y, 46)
   drawPiano(c, e)
   drawBanco(c, k)
+  plantaAlta(c, 214, CHAO_Y, k)
   drawSofa(c, k)
   drawAbajur(c, k)
   drawEstante(c, k)
   porta(c, SALA_PORTA, CHAO_Y, { cor: tom([34, 42, 58], [62, 44, 40], k), luz: true })
+  interruptor(c, 506, 100, k)
+  cestoTrico(c, 222, CHAO_Y + 8, k)
+  chinelos(c, 300, CHAO_Y + 4, rgb(tom([58, 54, 70], [110, 70, 60], k)))
 }
 
 /** O que fica entre Liam e a câmera. */
@@ -118,6 +140,13 @@ function drawJanela(c: CanvasRenderingContext2D, k: number, t: number): void {
     ret(c, cx, y - 8, 1, h + 16, rgb(clarear(cortina, -10)))
   }
   ret(c, x - 14, y - 10, w + 28, 3, rgb(clarear(moldura, -8)))   // varão
+  ret(c, x - 16, y - 11, 3, 5, rgb(clarear(moldura, 10)))           // ponteiras
+  ret(c, x + w + 13, y - 11, 3, 5, rgb(clarear(moldura, 10)))
+  // Prendedores das cortinas, na altura do peitoril
+  ret(c, x - 12, y + h - 10, 14, 2, rgb(clarear(cortina, 22)))
+  ret(c, x + w - 2, y + h - 10, 14, 2, rgb(clarear(cortina, 22)))
+  // O vaso de violeta no peitoril, virado para a rua
+  violeta(c, x + 6, y + h + 2)
 }
 
 function drawRetratos(c: CanvasRenderingContext2D, k: number): void {
@@ -175,6 +204,21 @@ function drawPiano(c: CanvasRenderingContext2D, e: EstadoSala): void {
     ret(c, px, CHAO_Y - 3, 3, 2, '#a88a4a')
   }
 
+  // Veios da madeira e a placa com o nome do fabricante
+  for (const vy of [96, 104, 132, 140]) {
+    c.fillStyle = rgb(clarear(madeira, -4))
+    c.fillRect(x0 + 6, vy, 6, 1)
+    c.fillRect(x1 - 12, vy + 2, 6, 1)
+  }
+  ret(c, x0 + w / 2 - 6, 113, 12, 1, k > 0.5 ? '#c8a860' : '#7a7468')
+  // Arandelas de latão na frente, com tocos de vela que ninguém acende
+  for (const ax of [x0 + 7, x1 - 10]) {
+    ret(c, ax, 100, 3, 2, '#a88a4a')
+    ret(c, ax + 1, 96, 1, 4, '#a88a4a')
+    ret(c, ax, 92, 3, 4, '#d8d0bc')
+    ret(c, ax + 1, 91, 1, 1, '#2a2020')
+  }
+
   // Em cima: metrônomo, um retrato pequeno e a luminária do piano.
   c.fillStyle = rgb(clarear(madeira, -20))
   for (let i = 0; i < 12; i++) c.fillRect(x0 + 10 + Math.floor(i / 3), 74 + i, 10 - Math.floor(i / 3) * 2, 1)
@@ -182,6 +226,14 @@ function drawPiano(c: CanvasRenderingContext2D, e: EstadoSala): void {
   ret(c, x0 + 14 + Math.round(pend * 0.4), 76, 1, 8, '#c8b27a')
 
   quadro(c, x0 + 32, 72, 14, 12, { figuras: 2, moldura: k > 0.5 ? [110, 86, 60] : [70, 68, 72] })
+  // Vaso de flores secas e a pilha de partituras
+  ret(c, x0 + 54, 78, 5, 8, k > 0.5 ? '#7a6a8a' : '#4a4a5e')
+  ret(c, x0 + 54, 78, 5, 1, k > 0.5 ? '#9a8aaa' : '#5e5e72')
+  for (const [dx, hh] of [[0, 9], [2, 12], [4, 8], [3, 10]] as const) {
+    ret(c, x0 + 55 + dx * 0.5, 78 - hh, 1, hh, '#6a5a3a')
+    ret(c, x0 + 54 + dx * 0.5, 77 - hh, 3, 2, k > 0.5 ? '#a86a4a' : '#6a5a5a')
+  }
+  for (let i = 0; i < 3; i++) ret(c, x0 + 62, 82 - i * 2, 14, 2, i % 2 ? '#d8cfbc' : '#c8bfac')
 
   const lx = LUZ_PIANO.x
   ret(c, lx - 1, 80, 3, 7, '#6a5438')
@@ -211,6 +263,26 @@ function drawSofa(c: CanvasRenderingContext2D, k: number): void {
   ret(c, x + larg - 3, 118, 12, 32, rgb(clarear(tecido, 4)))
   ret(c, x - 9, 118, 12, 3, rgb(clarear(tecido, 16)))
   ret(c, x + larg - 3, 118, 12, 3, rgb(clarear(tecido, 16)))
+  // Capitonê no encosto e costuras do assento
+  for (let i = 0; i < 9; i++) {
+    for (const yy of [114, 122]) ret(c, x + 10 + i * 16 + (yy === 122 ? 8 : 0), yy, 1, 1, rgb(clarear(tecido, -14)))
+  }
+  ret(c, x + 2, 140, larg - 4, 1, rgb(clarear(tecido, -12)))
+  ret(c, x, 148, larg, 2, rgb(clarear(tecido, -16)))
+  // Duas almofadas soltas, uma bordada
+  const alm1 = k > 0.5 ? [150, 110, 70] as RGB : [80, 76, 92] as RGB
+  ret(c, x + 8, 120, 16, 13, rgb(alm1))
+  ret(c, x + 8, 120, 16, 1, rgb(clarear(alm1, 18)))
+  for (let i = 0; i < 3; i++) ret(c, x + 11 + i * 4, 125, 2, 2, rgb(clarear(alm1, -22)))
+  const alm2 = k > 0.5 ? [96, 70, 86] as RGB : [58, 62, 80] as RGB
+  ret(c, x + 28, 122, 14, 11, rgb(alm2))
+  ret(c, x + 28, 122, 14, 1, rgb(clarear(alm2, 16)))
+  for (let i = 0; i < 7; i++) ret(c, x + 28 + i * 2, 133, 1, 2, rgb(clarear(alm2, 10)))
+  // Um livro aberto, de bruços, no assento
+  ret(c, x + 62, 129, 14, 3, k > 0.5 ? '#5a3a3a' : '#3a3a4a')
+  ret(c, x + 62, 128, 14, 1, '#d8d0bc')
+  ret(c, x + 69, 128, 1, 4, 'rgba(0,0,0,0.4)')
+
   // O cobertor dobrado no braço: é onde ela dorme, às vezes.
   const cob: RGB = k > 0.5 ? [120, 78, 64] : [70, 62, 84]
   ret(c, x + larg - 16, 112, 22, 10, rgb(cob))
@@ -278,6 +350,17 @@ function drawEstante(c: CanvasRenderingContext2D, k: number): void {
       i++
     }
   }
+  // Em cima da estante: retratinho, um pássaro de cerâmica e uma caixa
+  ret(c, x + 3, y - 10, 9, 10, rgb(clarear(madeira, 20)))
+  ret(c, x + 4, y - 9, 7, 8, k > 0.5 ? '#8a7a6a' : '#4e5262')
+  ret(c, x + 6, y - 6, 2, 4, 'rgba(20,16,16,0.6)')
+  ret(c, x + 18, y - 5, 6, 5, '#c8c0b0')
+  ret(c, x + 23, y - 7, 3, 3, '#c8c0b0')
+  ret(c, x + 26, y - 6, 2, 1, '#c89a4a')
+  ret(c, x + 30, y - 6, 12, 6, k > 0.5 ? '#6a4a3a' : '#3e3e4e')
+  ret(c, x + 30, y - 6, 12, 1, k > 0.5 ? '#8a6a52' : '#55556a')
+  ret(c, x, y - 1, w, 2, rgb(clarear(madeira, 14)))
+
   // O livro de receitas, deitado e saindo da prateleira: é o das contas.
   ret(c, x + 6, y + 58, 24, 5, '#8a6a3e')
   ret(c, x + 6, y + 58, 24, 1, '#b08a52')
@@ -297,6 +380,12 @@ function drawMesinha(c: CanvasRenderingContext2D, k: number): void {
   ret(c, x + 18, y - 7, 7, 7, rgb(louca))
   ret(c, x + 25, y - 5, 2, 3, rgb(louca))
   ret(c, x + 34, y - 6, 6, 6, rgb(louca))
+  // Uma vela num pires e o controle remoto, alinhado com a borda
+  ret(c, x + 80, y - 2, 8, 2, rgb(clarear(louca, -10)))
+  ret(c, x + 83, y - 7, 2, 5, '#d8d0bc')
+  ret(c, x + 83, y - 8, 1, 1, '#2a2020')
+  ret(c, x + 6, y - 2, 9, 2, '#1e1e24')
+  ret(c, x + 8, y - 2, 1, 1, '#8a2a2a')
   // O jornal de hoje, dobrado, com uma mancha de café na capa
   ret(c, x + 48, y - 3, 24, 3, 'rgba(206,202,190,0.75)')
   ret(c, x + 48, y - 3, 24, 1, 'rgba(236,232,220,0.8)')

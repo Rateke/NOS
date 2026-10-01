@@ -2,7 +2,7 @@ import type { Scene, SceneCtx } from '../types'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio } from '../../../engine/audio'
-import { Figura } from '../../world/figura'
+import { Figura, VISUAL } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { Leitor } from '../../systems/leitor'
 import {
@@ -49,22 +49,26 @@ export class MesaScene implements Scene {
   private po = new Particulas()
 
   private liam = new Figura({
+    ...VISUAL.liam,
     x: 232, y: CHAO, altura: 31,
     cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' },
   })
   // Evelyn: uniforme do trabalho, cabelo comprido solto. O casaco está na
   // cadeira — pronto para sair.
   private evelyn = new Figura({
+    ...VISUAL.evelyn,
     x: 132, y: CHAO, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
     cor: { roupa: '#3e5664', cabelo: '#2a1a16', pele: '#7a5a4e', sombra: 'rgba(0,0,0,0.5)' },
   })
   // Adrian: o mais alto, barba, camisa escura de gola clara. Calmo.
   private adrian = new Figura({
+    ...VISUAL.adrian,
     x: 292, y: CHAO, altura: 42, barba: true, gola: '#d4ccc0',
     cor: { roupa: '#2e2430', cabelo: '#16100f', pele: '#7a584c', sombra: 'rgba(0,0,0,0.5)' },
   })
   // Lia: quatorze anos, rabo de cavalo, moletom vinho e a mochila nas costas.
   private lia = new Figura({
+    ...VISUAL.lia,
     x: 92, y: CHAO, altura: 32, cabelo: 'rabo', mochila: '#2e3e56',
     cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
   })

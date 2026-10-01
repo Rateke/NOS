@@ -9,6 +9,10 @@ import {
   rgb, clarear, ret, sorteio, papelDeParede, lambri, assoalho, porta, quadro, cantos,
 } from './arte'
 import {
+  sanca, rodape, interruptor, calendario, sapatos, desenhoNaPorta, cestoRoupa, criadoMudo,
+  pilhaLivros, mochilaEscola, marcaDeQuadro, sombraDeContato, luarNoChao,
+} from './detalhes'
+import {
   drawSalaFundo, drawSalaFrente, drawLuzSala,
   SALA_W, SALA_PORTA, CHAO_Y as SALA_CHAO, PASSO_Y as SALA_PASSO, ABAJUR, PIANO,
 } from './sala'
@@ -453,6 +457,8 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
       ret(c, 0, 4, largura, 1, 'rgba(0,0,0,0.3)')
       lambri(c, 0, largura, 100, CHAO, LAMBRI_CORR)
       assoalho(c, 0, largura, CHAO, WORLD_H, CHAO_CORR)
+      sanca(c, 0, largura, PAREDE_CORR)
+      rodape(c, 0, largura, CHAO, LAMBRI_CORR)
       passadeira(c, 30, largura - 150)
       folhas(c, 640, largura - 20)
       cantos(c, largura, CHAO, WORLD_H, PAREDE_CORR)
@@ -468,6 +474,17 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
       if (depois) secretaria(c, 72)
       porta(c, 42, CHAO, { luz: true, cor: [40, 42, 56] })
       porta(c, 150, CHAO, { cor: [34, 42, 60] })
+      // O desenho colado na porta do quarto dele
+      desenhoNaPorta(c, 146, 104)
+      // Dois pregos sem quadro entre as portas
+      marcaDeQuadro(c, 112, 30, 16, 20)
+      marcaDeQuadro(c, 246, 34, 14, 18)
+      sombraDeContato(c, 72, CHAO, 56)
+      interruptor(c, 62, 92, 0)
+      interruptor(c, 170, 92, 0)
+      interruptor(c, 288, 92, 0)
+      calendario(c, 296, 46)
+      if (!depois) sapatos(c, 74, CHAO + 9)
 
       // O retrato grande, com o vão entre Liam e a mãe. Depois do grito, torto.
       if (depois) {
@@ -489,6 +506,7 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
       }
 
       rouparia(c, 326, e.vistos.has('marcas+'))
+      cestoRoupa(c, 352, CHAO + 2)
       relogio(c, 366, 34, t)
 
       // Retratos do fundo: a família vai sumindo de um quadro para o outro.
@@ -838,6 +856,8 @@ export function comodoQuarto(depois = false): Comodo {
       ret(c, 0, 0, QUARTO_W, 4, rgb(clarear(PAREDE_QUARTO, 10)))
       lambri(c, 0, QUARTO_W, 102, CHAO, LAMBRI_QUARTO)
       assoalho(c, 0, QUARTO_W, CHAO, WORLD_H, CHAO_QUARTO)
+      sanca(c, 0, QUARTO_W, PAREDE_QUARTO)
+      rodape(c, 0, QUARTO_W, CHAO, LAMBRI_QUARTO)
       cantos(c, QUARTO_W, CHAO, WORLD_H, PAREDE_QUARTO)
 
       estrelas(c, t)
@@ -845,8 +865,15 @@ export function comodoQuarto(depois = false): Comodo {
       if (depois) cabanaCaida(c)
       else cabana(c, t)
       paredeDePlantas(c, 100, 26, e.vistos.has('plantas+'))
+      luarNoChao(c, 330, CHAO + 1, 56)
+      sombraDeContato(c, 194, CHAO, 84)
+      sombraDeContato(c, 324, CHAO, 54)
+      criadoMudo(c, 174, CHAO, t)
+      mochilaEscola(c, 160, CHAO)
       cama(c, 196)
+      pilhaLivros(c, 106, CHAO + 2)
       porta(c, 300, CHAO, { cor: [36, 44, 64], luz: true })
+      interruptor(c, 322, 92, 0)
       janelaQuarto(c, 326, 26, t)
       escrivaninha(c, 324, t)
       armario(c, 380, e.vistos.has('armario+'))
