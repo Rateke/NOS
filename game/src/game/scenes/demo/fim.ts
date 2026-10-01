@@ -6,6 +6,8 @@ import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
 import { musica, TEMA, ESCALA } from '../../../engine/musica'
 import { RELIQUIAS, desenharReliquia } from '../../world/reliquias'
 import type { TipoReliquia } from '../../world/reliquias'
+import { memoria } from '../../systems/memoria'
+import { principal } from '../../../engine/principal'
 
 interface Subindo {
   tipo: TipoReliquia
@@ -85,11 +87,13 @@ export class FimScene implements Scene {
   private segredosAchados = 0
   private achouMelodia = false
   private tremor = 0
+  private trilhaFinal = false
 
   enter(ctx: SceneCtx): void {
+    memoria.marcarFim()
     // O instrumento volta ao normal: a lembrança boa, restituída.
     musica.desafinado = 0
-    musica.abafado = 0
+    musica.abafado = 0.3
     musica.setPad(0, 0.5)
     this.segredosAchados = SEGREDOS.filter((s) => ctx.state.segredos.has(s)).length
     this.achouMelodia = ctx.state.segredos.has('melodia')
@@ -134,7 +138,8 @@ export class FimScene implements Scene {
         const f = ESCALA[grau]
         const ultima = i === TEMA.length - 1 && k === frase.length - 1
         if (f !== undefined && !(ultima && !this.achouMelodia)) {
-          this.notas.push({ t: quando, freq: f, forca: 0.5 + i * 0.06, dur: 5.5, grau })
+          // Uma oitava abaixo, e sempre com a mesma força: nada cresce.
+          this.notas.push({ t: quando, freq: f / 2, forca: 0.44, dur: 5.5, grau })
         }
         if (ultima && !this.achouMelodia) {
           // A última nota do tema É o acorde maior.
@@ -143,9 +148,9 @@ export class FimScene implements Scene {
           const acorde = acordes[Math.floor(k / metade)]
           if (acorde) {
             const [baixo, arpejo] = acorde
-            this.notas.push({ t: quando, freq: baixo, forca: 0.34 + i * 0.05, dur: 6 })
+            this.notas.push({ t: quando, freq: baixo / 2, forca: 0.4, dur: 6.5 })
             arpejo.forEach((n, j) => {
-              this.notas.push({ t: quando + 0.46 + j * 0.46, freq: n, forca: 0.17 + i * 0.03, dur: 4 })
+              this.notas.push({ t: quando + 0.46 + j * 0.46, freq: n / 2, forca: 0.2, dur: 4.5 })
             })
           }
         }
@@ -170,27 +175,25 @@ export class FimScene implements Scene {
           this.tchan = quando
           return
         }
-        if (f !== undefined) this.notas.push({ t: quando, freq: f, forca: 0.62, dur: 5, grau })
-        if (k === 3) this.notas.push({ t: quando, freq: F.A2, forca: 0.34, dur: 5 })
+        if (f !== undefined) this.notas.push({ t: quando, freq: f / 2, forca: 0.44, dur: 5, grau })
+        if (k === 3) this.notas.push({ t: quando, freq: F.A2 / 2, forca: 0.36, dur: 5 })
         quando += 0.74
       })
     }
 
     // O acorde: ré maior, dedilhado de baixo para cima, com o grave por
     // baixo de tudo e um brilho agudo subindo logo depois.
+    // O acorde maior entra no mesmo volume de tudo: não é um estrondo, é a
+    // mesma música, pela primeira vez terminando aberta.
     const T = this.tchan
-    const acorde = [F.D1, F.D2, F.A2, F.D3, F.Fs3, F.A3, F.D4, F.Fs4, F.A4]
+    const acorde = [F.D1, F.D2, F.A2, F.D3, F.Fs3, F.A3, F.D4]
     acorde.forEach((f, i) => {
-      this.notas.push({ t: T + i * 0.035, freq: f, forca: i < 2 ? 1 : 0.72, dur: 10, grau: i === 6 ? 0 : undefined })
-    })
-    ;[F.D5, F.Fs5, F.A5, F.D6].forEach((f, i) => {
-      this.notas.push({ t: T + 0.5 + i * 0.11, freq: f, forca: 0.3 - i * 0.04, dur: 7 })
+      this.notas.push({ t: T + i * 0.06, freq: f, forca: 0.44, dur: 10, grau: i === 6 ? 0 : undefined })
     })
     // E a resposta, bem depois, quando tudo já assentou.
-    ;[F.A4, F.Fs4, F.D4].forEach((f, i) => {
-      this.notas.push({ t: T + 6.5 + i * 1.1, freq: f, forca: 0.3, dur: 7 })
+    ;[F.A3, F.Fs3, F.D3].forEach((f, i) => {
+      this.notas.push({ t: T + 6.5 + i * 1.3, freq: f, forca: 0.36, dur: 7 })
     })
-    this.notas.push({ t: T + 6.5, freq: F.D3, forca: 0.24, dur: 8 })
     this.notas.sort((a, b) => a.t - b.t)
   }
 
@@ -207,6 +210,12 @@ export class FimScene implements Scene {
     }
 
     if (!this.explodiu && this.t >= this.tchan) this.explodir()
+    // Depois de assentar, a trilha entra inteira por baixo dos créditos.
+    if (this.explodiu && !this.trilhaFinal && this.t >= this.tchan + 9) {
+      this.trilhaFinal = true
+      principal.tocar(0.7)
+      principal.completo(1, 2.5)
+    }
 
     for (const r of this.reliquias) {
       if (this.t < r.atraso) continue

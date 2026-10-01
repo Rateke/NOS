@@ -111,9 +111,17 @@ diálogo.
 
 ## Os dois modos
 
-**Demo — Só mais um**, em três cenas. A espinha é uma só: **o tema que você
-aprende no piano do prólogo é o que abre os fios no porão.** O presente vira a
-ferramenta, na mesma interface.
+**Demo — Só mais um.** A espinha é uma só: **o tema que você aprende no piano
+do prólogo é o que abre os fios no porão.** O presente vira a ferramenta, na
+mesma interface.
+
+0. **O rádio.** Tela preta. Um boletim diz, em linguagem de jornal, tudo o que
+   o jogador precisa para começar: incêndio na cozinha às 22h40, um menino de
+   catorze anos em coma, **uma pessoa morreu**, o pai saiu ileso. Ninguém diz
+   quem morreu. Depois, só som: o monitor do hospital e a voz da Lia (*"Não
+   precisa aguentar nada. Só volta."*). A primeira vez que cada camada do
+   mundo aparece — hospital, lembrança, a casa, o Dentro — ganha uma anotação
+   a lápis no canto.
 
 1. **A Música.** Sala de estar, o único ambiente quente da obra. Adrian ensina
    um tema em ré menor, em três frases que crescem (4, 5 e 7 notas), num piano
@@ -136,18 +144,46 @@ ferramenta, na mesma interface.
    papel de parede vira floresta e os retratos vão perdendo gente. No fim
    está a **porta que não abre**.
 
-   **Papéis para ler de verdade**, com páginas: o diário de Liam, o livro de
-   receitas onde Evelyn guarda as contas, a carta do concurso de desenho com
-   a autorização rasgada, o jornal do dia (classificados e palavras
-   cruzadas), o bilhete da tia Fernanda na cozinha e, no porão, o caderno de
-   Amélia. Cada pessoa da família tem a sua letra — e uma quarta letra, a
-   lápis roxo, aparece onde não devia.
+   **Cenas que o jogador só assiste.** Ao entrar, a chave gira na porta da
+   frente e Liam anda sozinho até o retrato e o endireita, antes de pensar.
+   No corredor, a mãe sai da cozinha e pergunta se ele arrumaria uma mochila.
+   As respostas dele começam a se escrever devagar — e, **na primeira vez que
+   alguém joga, sempre**, sai antes da boca dele a frase do pai, na cor do
+   fio do pai. Nas partidas seguintes ele às vezes chega antes. Logo depois,
+   o reflexo no vidro do retrato está branco: é a primeira fala da sombra.
 
-   A demo tem **onze segredos**, e nada no jogo avisa que existem — só o fecho
-   conta quantos você achou. (Spoiler, para quem for testar: olhar e ler de
-   novo o que já foi visto; bater mais de uma vez; esperar no menu; contar os
-   pratos; ler o jornal até o fim; ficar parado na última página do caderno
-   da bisavó; e prestar atenção no que a voz diz dentro da cabana.)
+   **Cada pessoa é apresentada por uma etiqueta**, na letra do Adrian, presa
+   por um fio: *EVELYN — mãe. Cansada.* *LIA — filha. Rebelde.* Na primeira
+   fala de cada um, o nome vem com o parentesco; cada nome tem a cor do fio
+   da pessoa.
+
+   **O caderno "O que eu sei"** (tecla C, ou o ícone no canto) se escreve
+   sozinho com o que Liam vê. Depois do grito, a sombra passa a riscar o que
+   é mentira e escrever a verdade por cima, em branco.
+
+   **Papéis para ler de verdade**, com páginas: o diário de Liam (as regras
+   da casa, a lista da família com uma quinta linha riscada), o livro de
+   receitas onde Evelyn guarda as contas, a carta em que a escola pede uma
+   conversa e a **redação "Minha família"**, que tirou dez, o caderno da Lia
+   (*"Quando o Liam mente, ele arruma alguma coisa"*), o jornal do dia
+   (classificados e palavras cruzadas), o bilhete da tia **Catarina** na
+   cozinha e, no porão, o caderno de Amélia. Cada pessoa tem a sua letra — e
+   uma quarta letra, a lápis roxo, aparece onde não devia.
+
+   **A mensagem escondida.** Em vários lugares, sem nenhum texto apontando,
+   o jogo diz *"preciso de ajuda, não me deixa cair"*: as primeiras letras
+   das frases da redação; os bipes do monitor do hospital, que perdem o ritmo
+   num trecho de Morse; o poste da rua, que pisca sempre na mesma ordem; a
+   resposta do outro lado da porta do fim, que completa as três batidas de
+   Liam; cinco casas em branco nas palavras cruzadas; e a marca de caneta
+   numa folha arrancada do diário.
+
+   A demo tem **treze segredos**, e nada no jogo avisa que existem — só o
+   fecho conta quantos você achou. (Spoiler, para quem for testar: olhar e
+   ler de novo o que já foi visto; bater mais de uma vez; esperar no menu;
+   contar os pratos; abaixar o rádio da cozinha; ler o jornal até o fim;
+   esperar na última página do caderno da bisavó e na folha em branco do
+   diário; e prestar atenção no que a voz diz dentro da cabana.)
 
 3. **A Mesa.** A cozinha da noite da fuga: fogão de quatro bocas com a
    panela no fogo e o pano de prato apoiado na tampa, pia com a torneira
@@ -175,9 +211,38 @@ ferramenta, na mesma interface.
    por último, **a figura preta**: alguém na porta do quarto, contra a luz,
    cortando o próprio fio para que nada chegasse nele. Quando o tecido fica
    pronto, o desenho mostra o que faltava — um buraco do tamanho de uma
-   pessoa, ao lado de Liam — e ela aparece ali, no escuro, e corta.
+   pessoa, ao lado de Liam.
+
+5. **Dentro.** Corte seco para a cabeça de Liam: vácuo preto, uma toalha
+   xadrez do tamanho do chão, uma luz de cima. As lembranças chegam
+   recortadas, e em cada recorte há uma coisa torta brilhando — arrumar faz o
+   próximo chegar (*Cinco. Quatro. Três.*, contando pratos). Entre um e outro
+   fala a **sombra branca**, a parte de Liam que não deve nada a ninguém, e
+   nada do que ela diz é mentira. **A saída é parar de arrumar.** Aí ela
+   aparece inteira e faz a oferta: soltar o que não é dele.
+
+6. **O grito.** De volta ao Tear, o pai pede só mais um. Segurar a tecla (ou o
+   clique, ou o dedo) deixa sair *EU NÃO QUERO.* letra por letra; soltar cedo
+   é engolir, e o pai repete o pedido. Cheio, vira uma onda branca: todos os
+   fios arrebentam. **Cinco segundos de preto**, em que nenhuma tecla
+   funciona. O monitor dispara; a Lia chama a enfermeira.
+
+7. **A casa sem música.** Tudo fora do lugar, as cores reais das coisas
+   (dessaturadas), geladeira, relógio e chuva. A sombra de Liam no chão ficou
+   branca. Nada pede para ser arrumado — e deixar como está é a escolha. A
+   Lia recua quando ele chega perto, e a etiqueta dela é corrigida pela
+   sombra. A única cor da casa é a luz âmbar da secretária eletrônica: um
+   recado da mãe, de terça às 17h40. *"Eu volto mais tarde."*
 
 **Abertura** — o quarto de Liam, o diário e a porta que nunca esteve trancada.
+
+**Trilha própria** — escolhe arquivos de música do próprio computador: o piano
+sozinho como trilha de fundo e, se houver, a versão com todos os
+instrumentos, que entra por cima só nos picos (o grito e o fecho). Os
+arquivos ficam guardados no navegador de quem escolheu e **nunca vão para o
+repositório nem para o site publicado** — é assim que dá para apresentar com
+uma gravação que não pode ser distribuída junto com o jogo. Sem arquivo, toca
+o piano sintetizado: grave, lento, sem crescer.
 
 ## Onde mexer
 
@@ -205,6 +270,12 @@ ferramenta, na mesma interface.
 | O Tear e a câmara | `src/game/world/camara.ts` |
 | As lembranças do Tear | `src/game/world/lembrancas.ts` |
 | Personagens animados (cabelo, barba, mochila, silhueta) | `src/game/world/figura.ts` |
+| Rádio do começo e hospital | `src/game/scenes/demo/hospital.ts` |
+| Dentro (montagem, sombra, oferta) | `src/game/world/dentro.ts` |
+| Caderno "O que eu sei" (o que se escreve, o que a sombra corrige) | `src/game/content/caderno.ts` |
+| Etiquetas, anotação de camada, escolha lenta | `src/game/ui/` |
+| A casa depois do grito | `src/game/world/casa.ts` (`*_DEPOIS`) |
+| Trilha de fundo (sintetizada ou arquivos próprios) | `src/engine/principal.ts`, `src/engine/trilhaPropria.ts` |
 
 Para escrever falas novas basta editar `script.ts`; nenhum outro arquivo
 precisa ser aberto.

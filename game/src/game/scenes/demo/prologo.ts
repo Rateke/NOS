@@ -11,6 +11,8 @@ import {
   PROLOGO_ACERTO, PROLOGO_LIVRE, PROLOGO_FECHO, PROLOGO_SUBINDO,
 } from '../../content/demoScript'
 import { CasaScene } from './casa'
+import { Etiquetas } from '../../ui/etiqueta'
+import { Camada } from '../../ui/camada'
 
 type Fase = 'entrada' | 'escuta' | 'toca' | 'livre' | 'fecho' | 'saida'
 
@@ -27,6 +29,8 @@ export class PrologoScene implements Scene {
 
   private dialogue = new Dialogue()
   private piano = new Piano()
+  private etiquetas = new Etiquetas()
+  private camada = new Camada()
   private fase: Fase = 'entrada'
   private t = 0
   private calor = 0
@@ -67,7 +71,8 @@ export class PrologoScene implements Scene {
     return TEMA[this.frase] ?? []
   }
 
-  enter(): void {
+  enter(ctx: SceneCtx): void {
+    this.camada.mostrar(ctx.state, 'lembranca', 7)
     audio.setAmbient(0.16, 2)
     musica.desafinado = 0
     musica.abafado = 0
@@ -87,6 +92,11 @@ export class PrologoScene implements Scene {
 
   update(dt: number, ctx: SceneCtx): void {
     this.t += dt
+    this.etiquetas.update(dt)
+    this.camada.update(dt)
+    // Os dois são apresentados pelas etiquetas, na letra do Adrian.
+    if (this.t > 1.4) this.etiquetas.apresentar(ctx.state, 'Adrian', 7)
+    if (this.t > 4.2) this.etiquetas.apresentar(ctx.state, 'Liam', 7)
     this.calor = Math.min(1, this.calor + dt / 2.5)
     this.piano.update(dt)
     this.animar(dt)
@@ -269,6 +279,13 @@ export class PrologoScene implements Scene {
       } else if (this.fase === 'livre') this.piano.drawDica(ctx.display, PROLOGO_LIVRE)
     }
 
-    this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+    const c = ctx.display.ctx
+    this.etiquetas.draw(c, ctx.display.cssW, (quem) => {
+      const f = quem === 'Adrian' ? this.adrian : quem === 'Liam' ? this.liam : null
+      if (!f) return null
+      return { x: ctx.display.toScreenX(f.x), y: ctx.display.toScreenY(f.y - f.altura * 0.62) }
+    })
+    this.camada.draw(c, ctx.display.cssW, ctx.display.cssH)
+    this.dialogue.render(c, ctx.display.cssW, ctx.display.cssH)
   }
 }

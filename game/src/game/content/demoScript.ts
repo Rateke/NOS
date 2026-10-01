@@ -7,7 +7,7 @@
  */
 import type { Line } from '../world/types'
 import type { Documento } from '../systems/leitor'
-import { DOC_BILHETE_FERNANDA } from './documentos'
+import { DOC_BILHETE_CATARINA } from './documentos'
 
 // --- Prólogo: A Música ------------------------------------------------------
 
@@ -214,6 +214,9 @@ export interface Vestigio {
   /** Papel para ler de verdade, aberto depois de `linhas`. */
   documento?: Documento
   depois?: Line[]
+  /** O que Liam fica sabendo (linha nova no caderno). */
+  aprende?: string
+  segredo?: string
 }
 
 export const MESA_VESTIGIOS: Vestigio[] = [
@@ -229,9 +232,10 @@ export const MESA_VESTIGIOS: Vestigio[] = [
     id: 'bilhete', x: 158, rotulo: 'Ler',
     linhas: [
       { text: 'O casaco da minha mãe, na cadeira. Tem um papel saindo do bolso.' },
-      { text: 'É a letra da tia Fernanda. Faz anos que elas não se falam.' },
+      { text: 'É a letra da tia Catarina. Faz anos que elas não se falam.' },
     ],
-    documento: DOC_BILHETE_FERNANDA,
+    documento: DOC_BILHETE_CATARINA,
+    aprende: 'bilhete-catarina',
     depois: [
       { text: 'Ela ia mesmo. Hoje.' },
       { text: '"Ela perguntou de você." Ela quem?' },
@@ -253,6 +257,12 @@ export const MESA_VESTIGIOS: Vestigio[] = [
       { text: 'Fui eu que liguei pra ele.' },
       { text: 'Eu achei que estava pedindo ajuda.' },
     ],
+  },
+  {
+    id: 'radio', x: 292, rotulo: 'Abaixar o rádio',
+    linhas: [],
+    aprende: 'radio-cozinha',
+    segredo: 'radio',
   },
 ]
 
@@ -348,3 +358,206 @@ export const CASA_PRONTO: Line[] = [
   { text: 'Não tem quarto nenhum no fim daquele corredor.' },
   { text: 'Então por que eu desenhei um?' },
 ]
+
+// --- Abertura: o rádio e o hospital ---------------------------------------
+
+/**
+ * O que o jogador precisa saber antes de qualquer outra coisa: houve um
+ * incêndio, Liam está em coma, alguém morreu e o pai saiu ileso. O boletim
+ * não diz quem morreu — é com essa pergunta que se joga o resto.
+ */
+export const RADIO_ESTACAO = 'RÁDIO VALE FM  ·  7h02'
+export const RADIO_BOLETIM: string[] = [
+  'Bom dia. São sete horas desta quinta-feira.',
+  'Na noite de terça, um incêndio atingiu uma casa no bairro Jardim das Acácias.',
+  'O fogo começou na cozinha, por volta das dez e quarenta.',
+  'Um adolescente de catorze anos foi levado ao Hospital Regional em estado grave. Segue em coma.',
+  'Uma pessoa morreu no local.',
+  'O pai, que saiu para buscar ajuda, não se feriu.',
+  'A família não quis dar entrevista.',
+]
+
+export const HOSPITAL_LIA: Line[] = [
+  { speaker: 'Lia', text: 'Liam.', style: 'speech' },
+  { speaker: 'Lia', text: 'A médica disse que você escuta a gente. Então escuta.', style: 'speech' },
+  { speaker: 'Lia', text: 'Eu trouxe o seu caderno. Tá aqui, do lado da cama.', style: 'speech' },
+  { speaker: 'Lia', text: 'Não precisa aguentar nada. Só volta.', style: 'speech' },
+]
+
+/** Depois do grito: cinco segundos de nada, e então isto. */
+export const HOSPITAL_GRITO: Line[] = [
+  { speaker: 'Lia', text: 'Liam?', style: 'speech' },
+  { speaker: 'Lia', text: 'Liam, você mexeu a mão. Você mexeu.', style: 'speech' },
+  { speaker: 'Lia', text: 'Enfermeira! ENFERMEIRA!', style: 'speech' },
+]
+
+// --- A casa: a chave, a mãe, o reflexo ---------------------------------------
+
+/** A chave na porta. O corpo de Liam arruma antes de ele pensar. */
+export const CASA_CHAVE: Line[] = [
+  { text: 'A chave na porta da frente.' },
+]
+export const CASA_CHAVE_DEPOIS: Line[] = [
+  { text: 'Eu arrumei o retrato antes de pensar.' },
+  { text: 'Ninguém mandou. Ninguém nunca precisa mandar.' },
+  { speaker: 'Adrian', text: 'Cheguei.', style: 'speech', onde: 'da porta' },
+]
+
+/** Pelo vão da cozinha, baixo. É a frase que vai sair da boca de Liam. */
+export const CASA_PAREDE: Line[] = [
+  { speaker: 'Adrian', text: 'Você tá cansada, Eve. Quando você tá cansada, você vê coisa onde não tem.', style: 'speech', onde: 'da cozinha' },
+  { text: 'Ele fala baixo. Ele sempre fala baixo.' },
+  { text: 'É por isso que ninguém de fora escuta.' },
+]
+
+export const EVELYN_PERGUNTA: Line[] = [
+  { speaker: 'Evelyn', text: 'Liam. Vem cá um minuto. Fala baixo.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Se eu te pedisse pra arrumar uma mochila hoje... só o que coubesse...', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Você arrumava?', style: 'speech' },
+]
+
+export const EVELYN_OPCOES = ['Arrumo.', 'Pra onde a gente vai?', 'Mãe, eu tô com medo.']
+
+/** O que sai antes de ele conseguir escolher: a frase do pai, na boca dele. */
+export const LIAM_ECO: Line[] = [
+  { speaker: 'Liam', text: 'Você tá cansada, mãe. Quando você tá cansada, você vê coisa onde não tem.', style: 'speech', fio: 'Adrian' },
+]
+
+export const EVELYN_DEPOIS_ECO: Line[] = [
+  { speaker: 'Evelyn', text: '...', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Foi ele que te ensinou a falar assim.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Tudo bem, filho. Esquece o que eu perguntei. Vai guardar suas coisas.', style: 'speech' },
+]
+
+/** Só para quem já jogou: às vezes as palavras dele chegam primeiro. */
+export const EVELYN_RESPOSTAS: Line[][] = [
+  [
+    { speaker: 'Evelyn', text: 'Obrigada, filho. Só o que couber. E não comenta com o seu pai.', style: 'speech' },
+  ],
+  [
+    { speaker: 'Evelyn', text: 'Pra casa da sua tia Catarina. Por uns dias. Até eu conseguir pensar.', style: 'speech' },
+  ],
+  [
+    { speaker: 'Evelyn', text: 'Eu também, filho.', style: 'speech' },
+    { speaker: 'Evelyn', text: 'Eu também.', style: 'speech' },
+  ],
+]
+
+export const LIAM_DEPOIS_ECO: Line[] = [
+  { text: 'Não era isso que eu ia dizer.' },
+  { text: 'Eu nem sei de onde veio. Estava na minha boca antes de eu pensar.' },
+]
+
+/**
+ * O primeiro reflexo da sombra, no vidro do retrato do corredor. Ela fala
+ * pouco aqui — mas nunca pouco a ponto de não se entender.
+ */
+export const SOMBRA_REFLEXO: Line[] = [
+  { text: 'No vidro do retrato, o meu reflexo está branco.' },
+  { sombra: true, text: 'Não procura de onde veio. Veio dele. Você escuta tanto o seu pai que a voz dele chega na sua boca antes da sua.', style: 'speech' },
+  { sombra: true, text: 'Ela te fez uma pergunta de verdade: se você ia com ela. E você respondeu por ele, porque ser o eco dá menos medo do que ser a resposta.', style: 'speech' },
+  { sombra: true, text: 'Ficar quieto também escolhe, Liam. Só que escolhe sempre a favor de quem manda sem precisar gritar.', style: 'speech' },
+  { text: 'Eu olho de novo. É só o retrato.' },
+]
+
+// --- A cozinha: o rádio que sabe antes ---------------------------------------
+
+export const MESA_RADIO: Line[] = [
+  { text: 'O rádio em cima da geladeira toca uma música alegre, alta demais pra esta cozinha.' },
+  { text: 'Eu giro o botão pra abaixar. A música para. Entra uma voz.' },
+  { text: '"...o fogo começou na cozinha, por volta das dez e quarenta. Um adolescente de catorze anos..."', style: 'read' },
+  { text: 'Eu olho o relógio da parede. São dez e quinze.' },
+  { text: 'Eu desligo o rádio.' },
+  { text: 'Ele continua tocando a música alegre.' },
+]
+
+// --- O Tear: o pico, o Dentro, o grito ---------------------------------------
+
+/**
+ * A montagem do Dentro: cada recorte tem um objeto torto, e arrumar faz o
+ * próximo recorte chegar. A sombra fala entre um e outro — inteira, sem
+ * meias palavras, e nada do que ela diz é mentira.
+ */
+export const DENTRO_SOMBRA: string[] = [
+  'Quantos pratos tem nessa mesa? Conta. Cinco. Vocês são quatro, e todo dia alguém põe cinco, e todo dia ninguém pergunta por quê. Você também não pergunta. Você arruma o garfo.',
+  'Ele te ensinou essa música no mesmo mês em que te ensinou a descer pro porão. O carinho e o serviço vieram juntos, na mesma mão. Por isso é tão difícil separar um do outro.',
+  'Regra número um: sapato alinhado na porta. Você escreveu isso com nove anos. Criança de nove anos não inventa regra pra sapato. Alguém te ensinou que o humor da casa inteira dependia disso.',
+  'A sua mãe te ensinou que, se alguém tem que ficar triste, que seja ela. E ela fica, todo dia, em dois empregos. Ela nunca te pediu pra carregar nada. Mas também nunca te mandou parar. Ela via o peso. E deixava.',
+  'Ele não escolheu você porque você é especial. Escolheu porque você não revida. A Lia revida. É por isso que ela está lá em cima gritando, e você está aqui embaixo, tecendo.',
+  'Conta de novo. Quatro. Alguém cortou o próprio fio pra não deixar a conta pra você. E mesmo assim você continua pagando.',
+  'Toda vez que você ouve a chave na porta, você pensa a mesma coisa. Eu ouço, porque eu moro aqui. Você pensa: tomara que não seja ele. E depois arruma o sapato, pra ninguém saber que você pensou.',
+  'Três. Você vai continuar arrumando até sobrar um prato só?',
+]
+
+/** O número que Liam conta em cada recorte da mesa. */
+export const DENTRO_CONTA = ['Cinco.', 'Quatro.', 'Três.']
+
+/** Quando ele para de arrumar. */
+export const DENTRO_PAROU: Line[] = [
+  { sombra: true, text: 'Você parou.', style: 'speech' },
+  { sombra: true, text: 'É a primeira vez que você para. Olha como é quieto aqui quando você não está segurando nada.', style: 'speech' },
+]
+
+/** A oferta. Aceitar a sombra é aceitar que a família não é dele para carregar. */
+export const DENTRO_OFERTA: Line[] = [
+  { sombra: true, text: 'Eu não sou a coisa ruim que ele diz que você tem por dentro. Eu sou a parte de você que não deve nada a ninguém — a parte que você enterrou no dia em que ele disse que você escutava melhor que todo mundo.', style: 'speech' },
+  { sombra: true, text: 'Você acha que, se me deixar sair, vira um monstro. Não vira. Você só para de carregar o que não é seu.', style: 'speech' },
+  { sombra: true, text: 'A raiva que você sente é dele. O cansaço é da sua mãe. O medo é da Lia. A sua bisavó escreveu com todas as letras: o tear não une ninguém, ele só escolhe quem vai carregar. Ele escolheu você.', style: 'speech' },
+  { sombra: true, text: 'Eu não quero que você fique forte. Forte é o que ele quer, pra você aguentar mais um. Eu quero que você solte.', style: 'speech' },
+  { sombra: true, text: 'Não precisa ser bonito. Não precisa ser educado. Diz pra ele o que você nunca disse.', style: 'speech' },
+]
+
+/** De volta ao Tear, logo antes do grito. */
+export const TEAR_VOLTA: Line[] = [
+  { speaker: 'Adrian', text: 'Só mais um, filho. Junta todos.', style: 'speech' },
+]
+
+/** Quando o jogador solta cedo demais: Liam engole, e o pai repete. */
+export const TEAR_ENGOLIU: string[] = [
+  'Só mais um.',
+  'Isso. Respira. Só mais um.',
+  'Ninguém mais nessa casa faz isso, filho.',
+]
+
+export const TEAR_GRITO = 'EU NÃO QUERO.'
+
+// --- Depois do grito: a casa sem música ---------------------------------------
+
+export const DEPOIS_ABERTURA: Line[] = [
+  { text: 'A casa voltou.' },
+  { text: 'Sem música. Só a geladeira, o relógio e a chuva no telhado.' },
+  { text: 'Tudo está fora do lugar, e nada brilha pedindo pra ser arrumado.' },
+  { text: 'A minha sombra no chão ficou branca. Não voltou a ser preta.' },
+]
+
+/** Lia, quando Liam chega perto: ela dá um passo para trás. */
+export const DEPOIS_LIA: Line[] = [
+  { text: 'A Lia está no corredor. Quando eu chego perto, ela dá um passo pra trás.' },
+  { text: 'Ela nunca deu um passo pra trás. Nem pra ele.' },
+  { sombra: true, text: 'Foi bom, né? Pela primeira vez eles olharam pra você. Não pro que você faz por eles. Pra você.', style: 'speech' },
+  { sombra: true, text: 'Ela está com medo. É a primeira vez que alguém nesta casa tem medo de você, e não por você. Medo passa. O que não passava era você sumindo um pouco toda noite pra casa ficar em paz.', style: 'speech' },
+]
+
+export const DEPOIS_SECRETARIA_ANTES: Line[] = [
+  { text: 'A secretária eletrônica, no aparador. A luz âmbar piscando.' },
+  { text: 'Uma mensagem. Terça-feira, dezessete e quarenta.' },
+]
+
+/** A voz da mãe. É o único som da casa que parece música. */
+export const DEPOIS_RECADO: Line[] = [
+  { speaker: 'Evelyn', text: 'Filho, é a mãe. Tô saindo do primeiro turno agora.', style: 'speech', onde: 'secretária eletrônica' },
+  { speaker: 'Evelyn', text: 'Tem comida na geladeira, é só esquentar. Janta sem esperar ninguém, tá?', style: 'speech', onde: 'secretária eletrônica' },
+  { speaker: 'Evelyn', text: 'E, Liam... você não é o homem da casa. Você não precisa ser.', style: 'speech', onde: 'secretária eletrônica' },
+  { speaker: 'Evelyn', text: 'Eu volto mais tarde. Te amo.', style: 'speech', onde: 'secretária eletrônica' },
+]
+
+export const DEPOIS_RECADO_FIM: Line[] = [
+  { text: 'Fim das mensagens.', style: 'read' },
+  { text: 'Ela disse que voltava mais tarde.' },
+  { text: 'Eu fico esperando a secretária dizer outra coisa.' },
+  { text: 'Ela não diz.' },
+]
+
+// O rádio da cozinha fala com as linhas que estão lá embaixo no arquivo.
+const vestigioRadio = MESA_VESTIGIOS.find((v) => v.id === 'radio')
+if (vestigioRadio) vestigioRadio.linhas = MESA_RADIO

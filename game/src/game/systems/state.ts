@@ -17,6 +17,22 @@ export class GameState {
   doorAttempts = 0
   /** Segredos achados, na demo inteira. Ver content/segredos.ts. */
   readonly segredos = new Set<string>()
+  /**
+   * O que Liam já sabe. É daqui que o caderno "O que eu sei" se escreve
+   * sozinho: cada id destrava uma linha (ver content/caderno.ts).
+   */
+  readonly sabe = new Set<string>()
+  /** Camadas do mundo já apresentadas com a anotação a lápis no canto. */
+  readonly camadas = new Set<string>()
+  /** Quem já ganhou a etiqueta de apresentação, na letra do Adrian. */
+  readonly apresentados = new Set<string>()
+  /**
+   * Depois do grito a sombra passa a escrever no caderno: risca o que é
+   * mentira e escreve a verdade por cima.
+   */
+  sombraEscreve = false
+  /** 0..1: o caderno ganhou uma linha nova e ainda ninguém abriu. */
+  novidade = 0
   private chores = new Set<string>()
 
   registerChore(id: string): void {
@@ -51,6 +67,28 @@ export class GameState {
   descobrir(id: string): boolean {
     if (this.segredos.has(id)) return false
     this.segredos.add(id)
+    return true
+  }
+
+  /** Liam fica sabendo de algo. Devolve true só na primeira vez. */
+  aprender(id: string): boolean {
+    if (this.sabe.has(id)) return false
+    this.sabe.add(id)
+    this.novidade = 1
+    return true
+  }
+
+  /** Primeira vez que esta camada aparece? Marca e responde. */
+  primeiraCamada(id: string): boolean {
+    if (this.camadas.has(id)) return false
+    this.camadas.add(id)
+    return true
+  }
+
+  /** Primeira vez que esta pessoa aparece? Marca e responde. */
+  apresentar(quem: string): boolean {
+    if (this.apresentados.has(quem)) return false
+    this.apresentados.add(quem)
     return true
   }
 

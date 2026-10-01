@@ -9,6 +9,8 @@ import { CasaScene } from './game/scenes/demo/casa'
 import { MesaScene } from './game/scenes/demo/mesa'
 import { TearScene } from './game/scenes/demo/tear'
 import { FimScene } from './game/scenes/demo/fim'
+import { HospitalScene } from './game/scenes/demo/hospital'
+import { principal } from './engine/principal'
 import type { Scene, SceneCtx } from './game/scenes/types'
 
 const canvas = document.getElementById('game') as HTMLCanvasElement | null
@@ -28,6 +30,9 @@ function cenaInicial(): Scene {
   switch (pedida) {
     case 'prologo': return new PrologoScene()
     case 'casa': return new CasaScene()
+    case 'depois': return new CasaScene({ depois: true })
+    case 'hospital': return new HospitalScene('abertura')
+    case 'grito': return new HospitalScene('grito')
     case 'mesa': return new MesaScene()
     case 'tear': return new TearScene()
     case 'fim': return new FimScene()
@@ -74,6 +79,7 @@ function step(dt: number): void {
     }
   }
 
+  principal.update(dt)
   scene.update(dt, ctx)
   scene.render(ctx)
   drawStick()

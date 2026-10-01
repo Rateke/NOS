@@ -18,8 +18,14 @@ import { FONT_BODY, FONT_TITLE, FONT_FIM } from './dialogue'
 
 /** Quem escreveu. Cada letra tem fonte, tamanho e tinta próprios. */
 export type Letra =
-  | 'liam' | 'evelyn' | 'lia' | 'elisa' | 'adrian' | 'amelia' | 'fernanda'
+  | 'liam' | 'evelyn' | 'lia' | 'elisa' | 'adrian' | 'amelia' | 'catarina'
   | 'impresso' | 'titulo' | 'manchete' | 'data' | 'pequeno'
+  /** Caneta vermelha de professora. */
+  | 'professora'
+  /** A letra da sombra: branca, por cima da tinta dos outros. */
+  | 'sombra'
+  /** Marca de caneta que atravessou a folha arrancada: quase não se lê. */
+  | 'marca'
 
 export interface Bloco {
   texto: string
@@ -27,6 +33,8 @@ export interface Bloco {
   alinhar?: 'esq' | 'centro' | 'dir'
   /** Riscado por cima, mas legível. */
   riscado?: boolean
+  /** O risco é da sombra: branco, grosso, por cima da letra de Liam. */
+  riscoBranco?: boolean
   /** Circulado a caneta — o anúncio que alguém marcou. */
   circulado?: boolean
   /** Espaço extra antes do bloco. */
@@ -63,6 +71,8 @@ interface EstiloLetra {
   cor: string
   escala: number
   entre?: string
+  /** Contorno escuro por baixo: branco em papel claro só se lê assim. */
+  contorno?: string
 }
 
 const LETRAS: Record<Letra, EstiloLetra> = {
@@ -72,7 +82,10 @@ const LETRAS: Record<Letra, EstiloLetra> = {
   elisa: { fonte: (s) => `italic 400 ${s}px ${FONT_FIM}`, cor: 'rgba(84,62,120,0.85)', escala: 1.34, entre: '0.03em' },
   adrian: { fonte: (s) => `400 ${s}px ${FONT_TITLE}`, cor: '#141418', escala: 0.98 },
   amelia: { fonte: (s) => `italic 400 ${s}px ${FONT_FIM}`, cor: '#4a2e16', escala: 1.3 },
-  fernanda: { fonte: (s) => `italic 400 ${s}px ${FONT_BODY}`, cor: '#1e2a48', escala: 1.04 },
+  catarina: { fonte: (s) => `italic 400 ${s}px ${FONT_BODY}`, cor: '#1e2a48', escala: 1.04 },
+  professora: { fonte: (s) => `500 ${s}px ${FONT_BODY}`, cor: '#b02a2a', escala: 0.98 },
+  sombra: { fonte: (s) => `italic 600 ${s}px ${FONT_FIM}`, cor: '#fbfbff', escala: 1.26, contorno: 'rgba(18,18,26,0.92)' },
+  marca: { fonte: (s) => `italic 500 ${s}px ${FONT_FIM}`, cor: 'rgba(120,112,98,0.34)', escala: 1.4, contorno: 'rgba(255,252,240,0.5)' },
   impresso: { fonte: (s) => `400 ${s}px ${FONT_BODY}`, cor: '#1c1c20', escala: 0.92 },
   titulo: { fonte: (s) => `500 ${s}px ${FONT_TITLE}`, cor: '#141418', escala: 1.3 },
   manchete: { fonte: (s) => `500 ${s}px ${FONT_TITLE}`, cor: '#0e0e10', escala: 1.7, entre: '0.04em' },
@@ -410,8 +423,21 @@ export class Leitor {
         maisLarga = Math.max(maisLarga, lw)
         const al = b.alinhar ?? (b.letra === 'manchete' || b.letra === 'titulo' ? 'centro' : b.letra === 'data' ? 'dir' : 'esq')
         const lx = al === 'centro' ? x + margem + (largura - lw) / 2 : al === 'dir' ? x + margem + largura - lw : x + margem
+        if (est.contorno) {
+          c.strokeStyle = est.contorno
+          c.lineWidth = Math.max(1.5, tam * 0.09)
+          c.lineJoin = 'round'
+          c.strokeText(l, lx, ty + tam)
+          c.fillStyle = est.cor
+        }
         c.fillText(l, lx, ty + tam)
-        if (b.riscado) {
+        if (b.riscado && b.riscoBranco) {
+          const esp = Math.max(3, tam * 0.16)
+          c.fillStyle = 'rgba(18,18,26,0.9)'
+          c.fillRect(lx - 4, ty + tam * 0.62 - 1, lw + 8, esp + 2)
+          c.fillStyle = '#fbfbff'
+          c.fillRect(lx - 3, ty + tam * 0.62, lw + 6, esp)
+        } else if (b.riscado) {
           c.fillStyle = est.cor
           c.fillRect(lx - 2, ty + tam * 0.66, lw + 4, Math.max(1.5, tam * 0.08))
         }

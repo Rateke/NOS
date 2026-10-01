@@ -52,6 +52,8 @@ export class Figura {
   mochila: string | null
   /** Desenha só a silhueta, em preto. */
   silhueta = false
+  /** Cor da silhueta, quando não é preta: a sombra branca de Liam. */
+  silhuetaCor: CorFigura | null = null
 
   /** -1 olha para a esquerda, 0 de frente, 1 para a direita. */
   olhar = 0
@@ -110,7 +112,7 @@ export class Figura {
    * que é o que separa a silhueta do fundo escuro.
    */
   draw(c: CanvasRenderingContext2D, luzX: number, luzCor = 'rgba(255,206,146,0.34)'): void {
-    const cor = this.silhueta ? SILHUETA : this.cor
+    const cor = this.silhueta ? (this.silhuetaCor ?? SILHUETA) : this.cor
     const espelho = this.paraEsquerda ? -1 : 1
     const trem = this.tremor > 0 ? (Math.random() * 2 - 1) * this.tremor : 0
     const x = Math.round(this.x + trem)
@@ -312,4 +314,15 @@ export class Figura {
     }
     void ombro
   }
+}
+
+/** A sombra branca: silhueta sem rosto, mais alta e mais fina que ele. */
+export function criarSombraBranca(x: number, y: number, altura = 34): Figura {
+  const f = new Figura({
+    x, y, altura,
+    cor: { roupa: '#f2f3f8', cabelo: '#f2f3f8', pele: '#f2f3f8', sombra: 'rgba(240,240,250,0.35)' },
+  })
+  f.silhueta = true
+  f.silhuetaCor = { roupa: '#eef0f7', cabelo: '#f6f7fb', pele: '#f6f7fb', sombra: 'rgba(240,240,250,0.3)' }
+  return f
 }

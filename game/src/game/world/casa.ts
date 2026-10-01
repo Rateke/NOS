@@ -2,7 +2,7 @@ import { WORLD_H } from '../../engine/constants'
 import type { Line } from './types'
 import type { Documento } from '../systems/leitor'
 import {
-  DOC_DIARIO, DOC_DIARIO_CONTRACAPA, DOC_RECEITAS, DOC_JORNAL, DOC_CARTA_ESCOLA,
+  DOC_DIARIO, DOC_DIARIO_CONTRACAPA, DOC_RECEITAS, DOC_JORNAL, DOC_CARTA_ESCOLA, DOC_CADERNO_LIA,
 } from '../content/documentos'
 import type { RGB } from './arte'
 import {
@@ -36,6 +36,8 @@ export interface Porta {
   rotulo: string
   /** Porta que não abre: a cena decide o que acontece ao tentar. */
   travada?: boolean
+  /** O que Liam pensa ao tentar uma porta trancada que não é a do fim. */
+  fala?: Line[]
 }
 
 export interface VestigioCasa {
@@ -49,8 +51,10 @@ export interface VestigioCasa {
   segredo?: string
   /** Está na parede do fundo: Liam vira de costas para a câmera para olhar. */
   naParede?: boolean
-  /** Em vez de só ler: sentar ao piano, entrar na cabana. */
-  acao?: 'piano' | 'cabana'
+  /** Em vez de só ler: sentar ao piano, entrar na cabana, ouvir o recado. */
+  acao?: 'piano' | 'cabana' | 'secretaria'
+  /** O que Liam fica sabendo ao olhar (vira linha no caderno). */
+  aprende?: string
   /** Só existe quando o corredor já esticou até este comprimento. */
   minLargura?: number
   /** Algo para ler de verdade: abre o leitor depois de `linhas`. */
@@ -129,8 +133,8 @@ function sombra(c: CanvasRenderingContext2D, largura: number, fundo: string): vo
 /** Calor da sala na exploração: o prólogo já passou, sobrou um resto. */
 const K_SALA = 0.34
 
-export function comodoSala(): Comodo {
-  const estado = (e: EstadoComodo) => ({ k: K_SALA, t: e.t, tecla: e.tecla, brilhoTecla: e.brilhoTecla })
+export function comodoSala(depois = false): Comodo {
+  const estado = (e: EstadoComodo) => ({ k: depois ? 0.12 : K_SALA, t: e.t, tecla: e.tecla, brilhoTecla: e.brilhoTecla })
   return {
     id: 'sala',
     nome: 'Sala',
@@ -146,11 +150,12 @@ export function comodoSala(): Comodo {
         id: 'janela', x: 68, rotulo: 'Olhar', naParede: true,
         linhas: [
           { text: 'Lá fora é noite. Aqui dentro também.' },
-          { text: 'O poste da rua pisca. Três vezes curtas, uma longa.' },
+          { text: 'O poste da rua pisca. Três curtas, três longas, três curtas. Para. Começa de novo.' },
+          { text: 'Faz anos que pisca assim e ninguém da prefeitura vem consertar.' },
         ],
         deNovo: [
-          { text: 'Três curtas. Uma longa.' },
-          { text: 'Era assim que a gente batia na porta um do outro.' },
+          { text: 'Três curtas, três longas, três curtas.' },
+          { text: 'Era assim que a gente batia na porta um do outro, quando não dava pra falar alto.' },
           { text: 'Eu e...' },
           { text: 'Eu e quem?' },
         ],
@@ -159,15 +164,16 @@ export function comodoSala(): Comodo {
         id: 'piano', x: PIANO.cx, rotulo: 'Tocar', acao: 'piano',
         linhas: [
           { text: 'O piano continua aberto.' },
-          { text: 'A partitura é a mesma. A letra na margem é dele.' },
+          { text: 'A partitura é a mesma. Na margem, na letra dele: "devagar — ela não fecha".' },
+          { text: 'Era do avô dele. Ninguém mais nesta casa sabe tocar. Só eu.' },
         ],
       },
       {
         id: 'retratos-sala', x: 243, rotulo: 'Olhar', naParede: true,
         linhas: [
-          { text: 'Os retratos da sala são os bons.' },
+          { text: 'Os retratos da sala são os bons. Os de festa, os de praia.' },
           { text: 'Quatro pessoas. Duas. Três.' },
-          { text: 'Em nenhum deles tem cinco.' },
+          { text: 'Em nenhum deles tem cinco. Mas em todos sobra espaço na ponta, como se alguém tivesse saído do enquadramento.' },
         ],
         deNovo: [
           { text: 'No maior, o vidro está limpo só num canto.' },
@@ -180,12 +186,13 @@ export function comodoSala(): Comodo {
           { text: 'O cobertor dobrado no braço do sofá.' },
           { text: 'Minha mãe dorme aqui quando ele chega tarde.' },
           { text: 'De manhã ela dobra antes de ele acordar. Pra não parecer.' },
+          { text: 'Ele sabe. Ele dobra também, quando ela esquece. É o único jeito que eles têm de concordar em alguma coisa.' },
         ],
       },
       {
         id: 'jornal', x: 320, rotulo: 'Ler',
         linhas: [
-          { text: 'O jornal de hoje, dobrado na mesinha. Ele sempre lê primeiro.' },
+          { text: 'O jornal de hoje, dobrado na mesinha. Ele sempre lê primeiro e devolve dobrado do jeito que veio.' },
           { text: 'Tem café derramado na primeira página.' },
         ],
         documento: DOC_JORNAL,
@@ -217,14 +224,108 @@ export function comodoSala(): Comodo {
     ],
     desenharFundo(c, e) {
       drawSalaFundo(c, estado(e))
+      if (depois) baguncaSala(c)
     },
     atmosfera(c, e) {
       drawLuzSala(c, estado(e), 'sala')
+      if (depois) dessaturar(c, SALA_W)
     },
     desenharFrente(c, e) {
       drawSalaFrente(c, estado(e))
     },
+    ...(depois ? { vestigios: SALA_DEPOIS } : {}),
   }
+}
+
+/**
+ * A casa depois do grito. Ninguém arrumou nada, e nada pede para ser
+ * arrumado: Liam pode olhar tudo, e a escolha é deixar como está.
+ */
+const SALA_DEPOIS: VestigioCasa[] = [
+  {
+    id: 'd-janela', x: 68, rotulo: 'Olhar', naParede: true,
+    linhas: [
+      { text: 'O poste continua piscando. Três curtas, três longas, três curtas.' },
+      { text: 'Antes eu achava que era defeito.' },
+      { text: 'Agora parece que é pra mim.' },
+    ],
+  },
+  {
+    id: 'd-piano', x: PIANO.cx, rotulo: 'Olhar',
+    linhas: [
+      { text: 'O piano está fechado. A partitura está no chão, rasgada no meio da terceira frase.' },
+      { text: 'Bem onde ela desce até o começo.' },
+      { text: 'Eu não abro.' },
+    ],
+  },
+  {
+    id: 'd-retratos', x: 243, rotulo: 'Olhar', aprende: 'nao-arrumou',
+    linhas: [
+      { text: 'Os retratos da sala caíram. O vidro do maior trincou bem no meio da família.' },
+      { text: 'A minha mão já está indo.' },
+      { sombra: true, text: 'Deixa. Se você arrumar agora, é pra ninguém ver que caiu. É a mesma coisa de sempre, só que com vidro.', style: 'speech' },
+      { text: 'Eu deixo no chão.' },
+      { text: 'É a coisa mais difícil que eu já fiz nesta sala.' },
+    ],
+  },
+  {
+    id: 'd-garrafa', x: 410, rotulo: 'Olhar', aprende: 'garrafa',
+    linhas: [
+      { text: 'Uma garrafa de conhaque rolou pra debaixo do sofá.' },
+      { text: 'Está cheia até o gargalo. Ainda tem a etiqueta de preço do Natal.' },
+      { text: 'O pai sempre diz que é dela. Que ela bebe escondida.' },
+      { text: 'Ninguém bebe escondido de uma garrafa cheia.' },
+    ],
+  },
+  {
+    id: 'd-cobertor', x: 380, rotulo: 'Olhar',
+    linhas: [
+      { text: 'O cobertor que a mãe dobrava antes de ele acordar está no chão, aberto.' },
+      { text: 'Ninguém dobrou.' },
+      { text: 'Ninguém vai dobrar.' },
+    ],
+  },
+  {
+    id: 'd-livro', x: 438, rotulo: 'Abrir',
+    linhas: [
+      { text: 'O livro de receitas, aberto no chão na página do bolo de fubá.' },
+      { text: 'As contas caíram de dentro dele. Ninguém juntou.' },
+    ],
+    documento: DOC_RECEITAS,
+  },
+]
+
+/** As cores reais das coisas: sem a narração do Adrian, a casa perde o filtro. */
+function dessaturar(c: CanvasRenderingContext2D, largura: number): void {
+  c.save()
+  c.globalCompositeOperation = 'saturation'
+  c.globalAlpha = 0.82
+  c.fillStyle = 'rgb(128,128,128)'
+  c.fillRect(0, 0, largura, WORLD_H)
+  c.restore()
+}
+
+/** A sala depois da onda: retratos no chão, partitura rasgada, garrafa. */
+function baguncaSala(c: CanvasRenderingContext2D): void {
+  const chao = SALA_CHAO
+  // Retratos caídos, um com o vidro trincado
+  ret(c, 228, chao + 4, 16, 3, '#4a3e36')
+  ret(c, 230, chao + 3, 12, 1, 'rgba(190,200,220,0.4)')
+  ret(c, 247, chao + 6, 12, 3, '#3e342e')
+  c.fillStyle = 'rgba(220,226,240,0.55)'
+  for (let i = 0; i < 6; i++) c.fillRect(233 + i, chao + 4 + (i % 2), 1, 1)
+  // Folhas da partitura espalhadas
+  for (const [x, y, w] of [[120, 6, 7], [134, 9, 6], [168, 5, 8], [182, 10, 5]] as const) {
+    ret(c, x, chao + y, w, 3, '#cfc8b8')
+    ret(c, x + 1, chao + y + 1, w - 2, 1, 'rgba(40,40,50,0.35)')
+  }
+  // O cobertor aberto no chão
+  ret(c, 362, chao + 6, 30, 4, '#55485a')
+  ret(c, 366, chao + 5, 18, 1, '#685a6e')
+  // A garrafa deitada debaixo do sofá
+  ret(c, 404, chao + 8, 10, 3, '#5a4a30')
+  ret(c, 414, chao + 9, 3, 1, '#4a3c26')
+  ret(c, 405, chao + 8, 6, 1, 'rgba(230,220,190,0.35)')
 }
 
 // --- Corredor ---------------------------------------------------------------
@@ -237,7 +338,7 @@ const PAREDE_CORR: RGB = [23, 27, 39]
 const LAMBRI_CORR: RGB = [19, 23, 34]
 const CHAO_CORR: RGB = [26, 29, 40]
 
-export function comodoCorredor(largura: number): Comodo {
+export function comodoCorredor(largura: number, depois = false): Comodo {
   const portaFim = largura - 46
   const ultimoRetrato = largura - 112
   const esticado = largura >= CORREDOR_MAX
@@ -254,7 +355,15 @@ export function comodoCorredor(largura: number): Comodo {
     portas: [
       { x: 42, para: 'sala', entraEm: SALA_PORTA, rotulo: 'Sala' },
       { x: 150, para: 'quarto', entraEm: 300, rotulo: 'Meu quarto' },
-      { x: 268, para: 'cozinha', entraEm: 0, rotulo: 'Cozinha' },
+      depois
+        ? {
+          x: 268, para: 'cozinha', entraEm: 0, rotulo: 'Cozinha', travada: true,
+          fala: [
+            { text: 'A porta da cozinha não abre.' },
+            { text: 'Por baixo dela não sai luz nenhuma. Só um cheiro de pano queimado.' },
+          ],
+        }
+        : { x: 268, para: 'cozinha', entraEm: 0, rotulo: 'Cozinha' },
       { x: portaFim, para: 'impossivel', entraEm: 0, rotulo: 'Abrir', travada: true },
     ],
     vestigios: [
@@ -270,12 +379,13 @@ export function comodoCorredor(largura: number): Comodo {
         id: 'cartas', x: 118, rotulo: 'Ler',
         linhas: [
           { text: 'Cartas em cima do aparador. A de cima já foi aberta.' },
-          { text: 'É da minha escola.' },
+          { text: 'É da minha escola. A minha redação veio junto, com nota.' },
         ],
+        aprende: 'carta-escola',
         documento: DOC_CARTA_ESCOLA,
         depois: [
-          { text: 'Eu rasguei a autorização. Alguém guardou mesmo assim.' },
-          { text: 'E desenhou no verso.' },
+          { text: 'Ele ligou pra escola e disse que estava tudo bem.' },
+          { text: 'A redação tirou dez. Ninguém aqui em casa leu.' },
         ],
       },
       {
@@ -285,6 +395,18 @@ export function comodoCorredor(largura: number): Comodo {
           { text: 'Minha mãe, meu pai. A Lia e eu, do mesmo tamanho.' },
           { text: 'E um espaço entre mim e a minha mãe. Do tamanho de uma pessoa.' },
           { text: 'Ninguém recortou a foto. A gente é que ficou longe.' },
+        ],
+      },
+      {
+        id: 'caderno-lia', x: 176, rotulo: 'Pegar', aprende: 'lia-caderno',
+        linhas: [
+          { text: 'O caderno da Lia, esquecido no chão do corredor. Caneta vermelha, letra apertada.' },
+          { text: 'Ela não deixa ninguém ler. Ela também não deixa nada no chão.' },
+        ],
+        documento: DOC_CADERNO_LIA,
+        depois: [
+          { text: 'Número quatro.' },
+          { text: 'Eu olho pras minhas mãos. Estão arrumando a alça da mochila dela.' },
         ],
       },
       {
@@ -321,6 +443,7 @@ export function comodoCorredor(largura: number): Comodo {
         segredo: 'ninguem',
       },
     ],
+    ...(depois ? { vestigios: CORREDOR_DEPOIS } : {}),
 
     desenharFundo(c, e) {
       const t = e.t
@@ -342,18 +465,28 @@ export function comodoCorredor(largura: number): Comodo {
       }
 
       aparador(c, 72)
+      if (depois) secretaria(c, 72)
       porta(c, 42, CHAO, { luz: true, cor: [40, 42, 56] })
       porta(c, 150, CHAO, { cor: [34, 42, 60] })
 
-      // O retrato grande, com o vão entre Liam e a mãe.
-      quadro(c, 180, 26, 44, 32, { figuras: 4, vazios: [2], moldura: [82, 66, 52], foto: [30, 28, 34] })
+      // O retrato grande, com o vão entre Liam e a mãe. Depois do grito, torto.
+      if (depois) {
+        quadro(c, 182, 30, 44, 32, { figuras: 4, vazios: [2], moldura: [82, 66, 52], foto: [30, 28, 34] })
+        ret(c, 180, 60, 48, 3, 'rgba(0,0,0,0.35)')
+      } else {
+        quadro(c, 180, 26, 44, 32, { figuras: 4, vazios: [2], moldura: [82, 66, 52], foto: [30, 28, 34] })
+      }
       ret(c, 201, 20, 1, 6, 'rgba(0,0,0,0.5)')
+      cadernoNoChao(c, 176)
       cabideiro(c, 232)
+      if (depois) ret(c, 224, CHAO + 6, 18, 4, '#5a4a2e')
 
-      porta(c, 268, CHAO, { luz: true, cor: [38, 42, 58] })
+      porta(c, 268, CHAO, { luz: !depois, cor: [38, 42, 58] })
       // A briga na cozinha escapa por baixo da porta, em pulsos.
-      const briga = 0.18 + Math.max(0, Math.sin(t * 2.3)) * 0.22
-      ret(c, 253, CHAO - 2, 30, 2, `rgba(236,176,112,${briga})`)
+      if (!depois) {
+        const briga = 0.18 + Math.max(0, Math.sin(t * 2.3)) * 0.22
+        ret(c, 253, CHAO - 2, 30, 2, `rgba(236,176,112,${briga})`)
+      }
 
       rouparia(c, 326, e.vistos.has('marcas+'))
       relogio(c, 366, 34, t)
@@ -382,10 +515,17 @@ export function comodoCorredor(largura: number): Comodo {
         const lx = 96 + i * 150
         if (lx > largura - 90) break
         const acesa = i === 2 ? (Math.sin(e.t * 13) > 0.7 ? 0.2 : 1) : 1 - Math.min(0.7, i * 0.1)
-        brilho(c, lx, 50, 70, '255,214,160', 0.16 * acesa)
+        brilho(c, lx, 50, 70, '255,214,160', 0.16 * acesa * (depois ? 0.5 : 1))
       }
       brilho(c, 42, CHAO - 4, 40, '236,190,130', 0.12)
-      brilho(c, 268, CHAO - 4, 44, '236,170,110', 0.1 + Math.max(0, Math.sin(e.t * 2.3)) * 0.08)
+      if (!depois) brilho(c, 268, CHAO - 4, 44, '236,170,110', 0.1 + Math.max(0, Math.sin(e.t * 2.3)) * 0.08)
+      if (depois) {
+        dessaturar(c, largura)
+        // A luz âmbar da secretária: a única cor da casa. É da mãe.
+        const liga = Math.sin(e.t * 3.2) > 0 ? 1 : 0.15
+        brilho(c, 72 + 47, CHAO - 39, 10, '255,180,90', 0.6 * liga)
+        ret(c, 72 + 46, CHAO - 40, 2, 2, `rgba(255,184,96,${0.4 + liga * 0.6})`)
+      }
       if (e.sinal > 0) brilho(c, portaFim, CHAO - 6, 60, '200,210,255', e.sinal * 0.35)
 
       // O fundo do corredor engole a luz: quanto mais longe, mais escuro.
@@ -603,7 +743,7 @@ const LAMBRI_QUARTO: RGB = [21, 27, 42]
 const CHAO_QUARTO: RGB = [30, 30, 42]
 const LUMINARIA = { x: 352, y: 116 }
 
-export function comodoQuarto(): Comodo {
+export function comodoQuarto(depois = false): Comodo {
   return {
     id: 'quarto',
     nome: 'Quarto de Liam',
@@ -702,7 +842,8 @@ export function comodoQuarto(): Comodo {
 
       estrelas(c, t)
       tapeteQuarto(c)
-      cabana(c, t)
+      if (depois) cabanaCaida(c)
+      else cabana(c, t)
       paredeDePlantas(c, 100, 26, e.vistos.has('plantas+'))
       cama(c, 196)
       porta(c, 300, CHAO, { cor: [36, 44, 64], luz: true })
@@ -717,8 +858,10 @@ export function comodoQuarto(): Comodo {
       ret(c, 326, CHAO + 4, 6, 3, '#5a3e48')
     },
 
+    ...(depois ? { vestigios: QUARTO_DEPOIS } : {}),
     atmosfera(c, e) {
       sombra(c, QUARTO_W, 'rgb(172,176,200)')
+      if (depois) dessaturar(c, QUARTO_W)
       // Luminária da escrivaninha
       brilho(c, LUMINARIA.x, LUMINARIA.y, 90, '255,210,150', 0.2)
       // Lua pela janela
@@ -1045,4 +1188,101 @@ function tapeteQuarto(c: CanvasRenderingContext2D): void {
   ret(c, x + 20, y + 12, 120, 1, '#4a4668')
   ret(c, x + 98, y + 10, 6, 3, '#a83a34')
   ret(c, x + 99, y + 9, 3, 1, '#8ab4d8')
+}
+
+// --- Depois do grito ---------------------------------------------------------
+
+const CORREDOR_DEPOIS: VestigioCasa[] = [
+  {
+    id: 'd-secretaria', x: 118, rotulo: 'Ouvir', acao: 'secretaria',
+    linhas: [
+      { text: 'A secretária eletrônica, no aparador. A luz âmbar piscando.' },
+      { text: 'Uma mensagem. Terça-feira, dezessete e quarenta.' },
+    ],
+  },
+  {
+    id: 'd-retrato', x: 202, rotulo: 'Olhar', naParede: true,
+    linhas: [
+      { text: 'O retrato grande do corredor ficou torto.' },
+      { text: 'O vão entre mim e a minha mãe continua do mesmo tamanho. Só que agora ninguém endireita.' },
+    ],
+  },
+  {
+    id: 'd-caderno-lia', x: 176, rotulo: 'Pegar',
+    linhas: [
+      { text: 'O caderno da Lia continua no chão, aberto na mesma página.' },
+    ],
+    documento: DOC_CADERNO_LIA,
+  },
+  {
+    id: 'd-casaco', x: 232, rotulo: 'Olhar',
+    linhas: [
+      { text: 'O casaco mostarda caiu do cabide.' },
+      { text: 'Pequeno demais pra um adulto. Grande demais pra mim.' },
+      { text: 'Eu deixo ele onde caiu. Alguém vai precisar achar.' },
+    ],
+  },
+]
+
+const QUARTO_DEPOIS: VestigioCasa[] = [
+  {
+    id: 'd-cabana', x: 58, rotulo: 'Olhar',
+    linhas: [
+      { text: 'A cabana desabou. As cadeiras de lado, o cobertor no chão.' },
+      { text: 'A lanterna ainda está acesa lá embaixo, fraca.' },
+    ],
+  },
+  {
+    id: 'd-caixa', x: 214, rotulo: 'Olhar',
+    linhas: [
+      { text: 'A caixa debaixo da cama virou. Botão, passagem vencida, pedra pintada, chave sem porta.' },
+      { text: 'Pela primeira vez a chave não parece sem porta. Parece só que ninguém ainda tentou.' },
+    ],
+  },
+  {
+    id: 'd-coelho', x: 262, rotulo: 'Pegar',
+    linhas: [
+      { text: 'O coelho de pano está virado pra parede, como eu deixei.' },
+      { text: 'Eu viro ele pro quarto.' },
+      { text: 'Ele pode ouvir agora.' },
+    ],
+  },
+  {
+    id: 'd-diario', x: 342, rotulo: 'Ler',
+    linhas: [
+      { text: 'Meu diário. A última página tem a marca de uma folha arrancada.' },
+    ],
+    documento: DOC_DIARIO,
+  },
+]
+
+/** O caderno da Lia no chão: capa vermelha, as folhas abertas. */
+function cadernoNoChao(c: CanvasRenderingContext2D, x: number): void {
+  ret(c, x - 5, CHAO + 7, 10, 3, '#7a2a34')
+  ret(c, x - 4, CHAO + 6, 8, 1, '#e4dccb')
+  ret(c, x - 3, CHAO + 6, 2, 1, '#b03a3a')
+}
+
+/** A secretária eletrônica em cima do aparador, onde ficavam as cartas. */
+function secretaria(c: CanvasRenderingContext2D, x: number): void {
+  ret(c, x + 36, CHAO - 39, 16, 6, '#26262c')
+  ret(c, x + 36, CHAO - 39, 16, 1, '#3a3a42')
+  ret(c, x + 38, CHAO - 37, 6, 3, '#14141a')
+  ret(c, x + 39, CHAO - 36, 1, 1, '#4a4a54')
+  ret(c, x + 42, CHAO - 36, 1, 1, '#4a4a54')
+  // As cartas no chão, embaixo
+  ret(c, x + 30, CHAO + 8, 9, 2, '#cfc9b6')
+  ret(c, x + 42, CHAO + 10, 7, 2, '#dcd6c4')
+}
+
+/** A cabana depois da onda: cadeiras de lado, cobertor caído. */
+function cabanaCaida(c: CanvasRenderingContext2D): void {
+  ret(c, 18, CHAO - 4, 34, 3, '#3c3038')
+  ret(c, 78, CHAO - 3, 30, 3, '#3c3038')
+  const cores = ['#6a3e3a', '#7a5a3e', '#4a4e6a', '#5e3a4a', '#6e6242']
+  for (let i = 0; i < 12; i++) {
+    ret(c, 22 + i * 7, CHAO - 2 + (i % 3), 7, 3, cores[i % cores.length] ?? '#555')
+  }
+  ret(c, 56, CHAO - 5, 4, 3, '#2a2a30')
+  ret(c, 60, CHAO - 4, 2, 1, 'rgba(255,200,130,0.5)')
 }

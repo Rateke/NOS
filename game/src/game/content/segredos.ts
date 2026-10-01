@@ -18,6 +18,8 @@ export const SEGREDOS = [
   'cruzadas',     // ler o jornal até as palavras cruzadas
   'receita',      // abrir de novo o livro de receitas e contar as letras
   'caderno',      // esperar na última página, em branco, do caderno de Amélia
+  'marcas',       // esperar na folha arrancada do diário: ficou a marca da caneta
+  'radio',        // abaixar o rádio da cozinha, que já sabe do incêndio
 ] as const
 
 export type Segredo = (typeof SEGREDOS)[number]

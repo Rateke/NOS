@@ -16,13 +16,25 @@ const DIARIO_PAGINAS: Pagina[] = [
   {
     blocos: [
       { texto: 'terça', letra: 'data' },
-      { texto: 'Regras pra quando ele chega:', letra: 'liam' },
+      { texto: 'Regras da casa (pra quando ele chega):', letra: 'liam' },
       { texto: '1. Sapato alinhado na porta, com o bico pra fora.', letra: 'liam' },
       { texto: '2. Nenhum copo na pia. Nem o meu, nem o da Lia.', letra: 'liam' },
       { texto: '3. Se a mãe estiver cansada, eu respondo por ela.', letra: 'liam' },
-      { texto: '4. Se a Lia começar, eu mudo de assunto.', letra: 'liam' },
+      { texto: '4. Se eles brigarem, eu fico no meio. Aí eles param.', letra: 'liam' },
       { texto: '5. Não chorar.', letra: 'liam', riscado: true },
       { texto: '5. Não chorar na frente.', letra: 'liam' },
+    ],
+  },
+  {
+    blocos: [
+      { texto: 'quarta', letra: 'data' },
+      { texto: 'Minha família', letra: 'liam' },
+      { texto: 'Pai — Adrian. Me ensinou piano. Diz que eu escuto melhor que todo mundo.', letra: 'liam', respiro: 0.4 },
+      { texto: 'Mãe — Evelyn. Trabalha de dia e de noite. Chega cansada e mesmo assim deixa comida pronta.', letra: 'liam' },
+      { texto: 'Lia — minha irmã. Mesma idade, mesma altura. Ela fala tudo o que pensa. Eu penso tudo o que não falo.', letra: 'liam' },
+      { texto: 'Eu — Liam.', letra: 'liam' },
+      { texto: 'Eli', letra: 'liam', riscado: true, respiro: 0.4 },
+      { texto: 'Somos quatro. Eu sempre escrevo cinco linhas e não sei por quê.', letra: 'liam', respiro: 0.6 },
     ],
   },
   {
@@ -37,11 +49,10 @@ const DIARIO_PAGINAS: Pagina[] = [
   {
     blocos: [
       { texto: 'sábado', letra: 'data' },
-      { texto: 'Chegou a carta do concurso de desenho. "A casa que eu queria ter."', letra: 'liam' },
-      { texto: 'Eu fiz uma planta com um cômodo a mais. Sempre faço.', letra: 'liam' },
-      { texto: 'O pai viu o valor da inscrição e ficou quieto o jantar inteiro. A mãe disse que dava um jeito. Aí começou.', letra: 'liam' },
-      { texto: 'Eu disse que não queria ir. Os dois pararam na hora.', letra: 'liam' },
-      { texto: 'Viu? Deu certo.', letra: 'liam', respiro: 0.6 },
+      { texto: 'A professora de português pediu uma redação: "Minha família". Tirei dez.', letra: 'liam' },
+      { texto: 'Mesmo assim ela pediu pra eu ficar depois da aula. Perguntou se estava tudo bem em casa.', letra: 'liam' },
+      { texto: 'Eu disse que sim. Enquanto eu falava, arrumei a pilha de cadernos da mesa dela.', letra: 'liam' },
+      { texto: 'Ela ficou olhando pras minhas mãos e não pro que eu dizia.', letra: 'liam', respiro: 0.6 },
     ],
   },
   {
@@ -52,6 +63,18 @@ const DIARIO_PAGINAS: Pagina[] = [
       { texto: 'Se eu ficar quieto, eles não brigam.', letra: 'liam', respiro: 1.2 },
       { texto: 'Se eu ficar no meio, eles param.', letra: 'liam' },
     ],
+  },
+  {
+    // A folha de cima foi arrancada. Quem espera, vê o que ficou marcado.
+    blocos: [],
+    paciencia: {
+      apos: 5,
+      segredo: 'marcas',
+      blocos: [
+        { texto: '(a folha de cima foi arrancada; ficou a marca da caneta)', letra: 'pequeno' },
+        { texto: 'não me deixa cair', letra: 'marca', respiro: 1.2 },
+      ],
+    },
   },
 ]
 
@@ -110,9 +133,11 @@ export const DOC_RECEITAS: Documento = {
         { texto: 'Mercado ........................ 612,00', letra: 'evelyn' },
         { texto: 'Farmácia ........................ 74,90', letra: 'evelyn' },
         { texto: 'Material da escola ......... 58,00', letra: 'evelyn' },
-        { texto: 'Inscrição do concurso ..... 120,00', letra: 'evelyn', riscado: true },
+        { texto: 'Remédio de dor de cabeça (L.) .. 18,50', letra: 'evelyn' },
+        { texto: 'Psicóloga da escola ............. 0,00', letra: 'evelyn', riscado: true },
         { texto: 'Entrou: 1.340,00 · Sobra: 0', letra: 'evelyn', respiro: 0.6 },
-        { texto: 'Não comentar com A.', letra: 'evelyn', respiro: 0.8 },
+        { texto: 'A. disse que psicólogo é pra quem não tem família.', letra: 'evelyn', respiro: 0.6 },
+        { texto: 'Não comentar com A.', letra: 'evelyn', respiro: 0.4 },
       ],
     },
     {
@@ -131,6 +156,11 @@ export const DOC_RECEITAS: Documento = {
 
 // --- Corredor: a correspondência no aparador ---------------------------------
 
+/**
+ * A carta da escola e a redação que voltou junto. A redação tem dez, nenhum
+ * erro e uma coisa que a professora não viu: as primeiras letras de cada
+ * frase, lidas de cima para baixo. Nenhum texto do jogo aponta para isso.
+ */
 export const DOC_CARTA_ESCOLA: Documento = {
   id: 'carta-escola',
   tipo: 'carta',
@@ -140,28 +170,45 @@ export const DOC_CARTA_ESCOLA: Documento = {
       blocos: [
         { texto: 'Escola Municipal Jardim das Acácias', letra: 'titulo' },
         { texto: 'Senhores pais ou responsáveis,', letra: 'impresso', respiro: 0.8 },
-        { texto: 'Temos a alegria de informar que o aluno LIAM, do 9º ano, foi selecionado para representar a escola no Concurso Regional de Desenho Jovem, com o tema "A casa que eu queria ter".', letra: 'impresso' },
-        { texto: 'A etapa final acontece na capital. O transporte é custeado pela organização; a taxa de inscrição, de R$ 120,00, deve ser paga até sexta-feira.', letra: 'impresso' },
-        { texto: 'A professora de Artes destaca a "imaginação arquitetônica incomum" do aluno.', letra: 'impresso' },
+        { texto: 'Solicitamos o comparecimento de um responsável pelo aluno LIAM, do 9º ano, para uma conversa com a coordenação e com a professora de Língua Portuguesa.', letra: 'impresso' },
+        { texto: 'O aluno tem apresentado sono em sala, dores de cabeça frequentes e um comportamento que nos preocupa: pede desculpas por tudo, inclusive pelo que não fez.', letra: 'impresso' },
+        { texto: 'Não se trata de questão disciplinar. Queremos apenas entender como podemos ajudar.', letra: 'impresso' },
         { texto: 'Atenciosamente, a Coordenação.', letra: 'impresso', alinhar: 'dir' },
-        { texto: 'Quem leva? Quem busca? Com que dinheiro?', letra: 'adrian', respiro: 0.8 },
+        { texto: 'Resolvido por telefone. Não precisa ir ninguém.', letra: 'adrian', respiro: 0.8 },
       ],
     },
     {
-      rasgada: true,
       blocos: [
-        { texto: 'AUTORIZAÇÃO', letra: 'titulo' },
-        { texto: 'Eu, ____________________, responsável pelo aluno acima, autorizo sua participação no Concurso Regional de Desenho Jovem e sua viagem na data...', letra: 'impresso', respiro: 0.6 },
-        { texto: 'Eu não quero ir.', letra: 'liam', respiro: 1.4 },
-        { texto: '— Liam', letra: 'liam', alinhar: 'dir' },
+        { texto: 'Redação — Minha família', letra: 'titulo' },
+        { texto: 'Liam · 9º ano B', letra: 'data' },
+        { texto: 'Pra mim, a minha família é a coisa mais importante que existe.', letra: 'liam', respiro: 0.4 },
+        { texto: 'Reunidos no jantar a gente é quatro, e às vezes parece mais.', letra: 'liam' },
+        { texto: 'Esse ano meu pai me ensinou piano, e ele diz que eu escuto melhor que todo mundo.', letra: 'liam' },
+        { texto: 'Com a minha mãe eu aprendi o bolo de fubá, que é o melhor bolo.', letra: 'liam' },
+        { texto: 'Irmã eu tenho uma, a Lia, que tem a minha idade e fala tudo o que pensa.', letra: 'liam' },
+        { texto: 'Se alguém briga lá em casa, eu ajudo a acalmar, porque eu sou calmo.', letra: 'liam' },
+        { texto: 'O jantar é às oito, e ninguém levanta antes de todo mundo terminar.', letra: 'liam' },
+      ],
+    },
+    {
+      blocos: [
+        { texto: 'Domingo a gente almoça na casa da minha avó, quando dá.', letra: 'liam' },
+        { texto: 'Eu gosto quando a casa fica em silêncio.', letra: 'liam' },
+        { texto: 'A minha mãe trabalha muito, mas mesmo cansada ela deixa comida pronta.', letra: 'liam' },
+        { texto: 'Juntos nós somos fortes, como o meu pai fala.', letra: 'liam' },
+        { texto: 'Um dia eu quero ter uma casa igual a essa, com um quarto a mais.', letra: 'liam' },
+        { texto: 'Deve ser por isso que eu sempre desenho um quarto a mais.', letra: 'liam' },
+        { texto: 'Acho que é isso. A minha família é normal.', letra: 'liam' },
+        { texto: '10', letra: 'professora', alinhar: 'dir', respiro: 0.8 },
+        { texto: 'Liam, texto lindo e sem nenhum erro. Mas você escreveu sobre todo mundo e quase nada sobre você. Quer conversar depois da aula? Eu fico até as seis. — Prof.ª Márcia', letra: 'professora' },
       ],
     },
     {
       planta: true,
       blocos: [
-        { texto: '(no verso da autorização, a lápis)', letra: 'pequeno' },
-        { texto: 'Se não deixarem você ir, a gente constrói aqui.', letra: 'elisa' },
-        { texto: 'o quarto a mais é o nosso →', letra: 'elisa', alinhar: 'dir' },
+        { texto: '(no verso da redação, um desenho a lápis)', letra: 'pequeno' },
+        { texto: 'Por que tem um quarto a mais?', letra: 'professora' },
+        { texto: 'Não sei. Sempre tem.', letra: 'liam', alinhar: 'dir' },
       ],
     },
   ],
@@ -190,7 +237,7 @@ export const DOC_JORNAL: Documento = {
         { texto: 'CLASSIFICADOS', letra: 'titulo' },
         { texto: 'VENDE-SE bicicleta aro 20, pouco uso, pneu novo. Tratar à tarde.', letra: 'impresso', respiro: 0.6 },
         { texto: 'PROCURA-SE cachorro caramelo, atende por Biscoito. Muito querido. Recompensa.', letra: 'impresso' },
-        { texto: 'ALUGA-SE kitnet mobiliada perto da rodoviária. Dois quartos pequenos, quintal. Entrada imediata, sem fiador. Tratar c/ Fernanda.', letra: 'impresso', circulado: true, respiro: 0.4 },
+        { texto: 'ALUGA-SE kitnet mobiliada perto da rodoviária. Dois quartos pequenos, quintal. Entrada imediata, sem fiador. Tratar c/ Catarina.', letra: 'impresso', circulado: true, respiro: 0.4 },
         { texto: 'AULAS de piano para iniciantes, todas as idades. Paciência garantida.', letra: 'impresso', respiro: 0.4 },
         { texto: 'COMPRO fios, lãs e retalhos em qualquer quantidade. Pago bem.', letra: 'impresso' },
         { texto: 'ligar amanhã cedo, antes dele acordar', letra: 'evelyn', respiro: 0.8 },
@@ -204,10 +251,10 @@ export const DOC_JORNAL: Documento = {
       cruzadas: [
         '..O......',
         '.URDIDURA',
-        '..D......',
-        '..E......',
-        'FAMILIA..',
-        '.........',
+        '..D....._',
+        '..E....._',
+        'FAMILIA._',
+        '........_',
         '.._......',
         'floresta.',
       ],
@@ -222,27 +269,69 @@ export const DOC_JORNAL: Documento = {
         { texto: 'VERTICAIS', letra: 'pequeno', respiro: 0.6 },
         { texto: '1. O contrário de bagunça (5)', letra: 'impresso' },
         { texto: '4. O que prende dois fios (2)', letra: 'impresso' },
-        { texto: 'ninguém respondeu a 4', letra: 'lia', respiro: 1.2 },
+        { texto: '6. O que ninguém nesta casa pede em voz alta (5)', letra: 'impresso' },
+        { texto: 'ninguém respondeu a 4. nem a 6.', letra: 'lia', respiro: 1.2 },
       ],
     },
   ],
 }
 
-// --- Cozinha: o bilhete da tia ------------------------------------------------
+// --- Cozinha: o bilhete da tia Catarina ------------------------------------------------
 
-export const DOC_BILHETE_FERNANDA: Documento = {
-  id: 'bilhete-fernanda',
+export const DOC_BILHETE_CATARINA: Documento = {
+  id: 'bilhete-catarina',
   tipo: 'bilhete',
   titulo: 'Bilhete no bolso do casaco',
   paginas: [
     {
       dobras: true,
       blocos: [
-        { texto: 'Eve,', letra: 'fernanda' },
-        { texto: '23h. Estarei na esquina da padaria, carro prata. Não precisa explicar nada, nem pra mim, nem pra ninguém.', letra: 'fernanda' },
-        { texto: 'Traz as crianças. Só o que couber no carro.', letra: 'fernanda' },
-        { texto: 'P.S.: ela perguntou de você. Disse que o Liam ainda guarda a chave.', letra: 'fernanda', respiro: 0.6 },
-        { texto: '— F.', letra: 'fernanda', alinhar: 'dir' },
+        { texto: 'Eve,', letra: 'catarina' },
+        { texto: '23h. Estarei na esquina da padaria, carro prata. Não precisa explicar nada, nem pra mim, nem pra ninguém.', letra: 'catarina' },
+        { texto: 'Traz as crianças. Só o que couber no carro.', letra: 'catarina' },
+        { texto: 'P.S.: ela perguntou de você. Disse que o Liam ainda guarda a chave.', letra: 'catarina', respiro: 0.6 },
+        { texto: '— C.', letra: 'catarina', alinhar: 'dir' },
+      ],
+    },
+  ],
+}
+
+// --- Corredor: o caderno da Lia ----------------------------------------------
+
+/**
+ * Caneta vermelha, letra apertada. Ela sabe tudo o que Liam finge não saber
+ * — e ninguém nunca perguntou nada a ela.
+ */
+export const DOC_CADERNO_LIA: Documento = {
+  id: 'caderno-lia',
+  tipo: 'diario',
+  titulo: 'Caderno da Lia',
+  paginas: [
+    {
+      blocos: [
+        { texto: 'coisas que eu sei e ninguém pergunta', letra: 'lia' },
+        { texto: '1. O pai só é gentil quando tem alguém olhando.', letra: 'lia', respiro: 0.5 },
+        { texto: '2. A mãe chora no banho pra ninguém ouvir. Eu ouço.', letra: 'lia' },
+        { texto: '3. Tem um prato a mais na mesa e todo mundo finge que é pra visita. Nunca vem visita.', letra: 'lia' },
+        { texto: '4. Quando o Liam mente, ele arruma alguma coisa. Hoje ele arrumou a sala inteira.', letra: 'lia' },
+        { texto: '5. Ele acha que eu não percebo.', letra: 'lia' },
+      ],
+    },
+    {
+      blocos: [
+        { texto: 'coisas que eu queria perguntar', letra: 'lia' },
+        { texto: 'pro pai: por que a porta da frente fica trancada de noite, e a chave fica no seu bolso?', letra: 'lia', respiro: 0.5 },
+        { texto: 'pra mãe: por que você ainda tá aqui?', letra: 'lia', riscado: true },
+        { texto: 'pra mãe: você tá bem?', letra: 'lia' },
+        { texto: 'pro Liam: por que você sempre fica do lado dele?', letra: 'lia' },
+        { texto: 'pra E.: onde você tá?', letra: 'lia' },
+      ],
+    },
+    {
+      blocos: [
+        { texto: 'se alguém ler isso:', letra: 'lia', respiro: 2 },
+        { texto: 'não é rebeldia. é que alguém nessa casa tem que falar.', letra: 'lia' },
+        { texto: 'e se eu parar de falar, sobra só ele.', letra: 'lia', respiro: 0.6 },
       ],
     },
   ],

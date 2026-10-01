@@ -101,8 +101,8 @@ function drawJanela(c: CanvasRenderingContext2D, k: number, t: number): void {
   c.fillRect(x, y + 34, 24, 2)
   c.fillRect(x + 14, y + 28, 2, 7)
   c.fillRect(x + 20, y + 36, 9, 1)
-  // Poste lá fora: a única luz da rua, que pisca
-  const pisca = Math.sin(t * 7.1) > 0.92 ? 0.12 : 0.34
+  // Poste lá fora: a única luz da rua, que pisca sempre na mesma ordem.
+  const pisca = posteAceso(t) ? 0.38 : 0.08
   ret(c, x + 6, y + 50, 2, 16, 'rgba(4,6,10,0.8)')
   ret(c, x + 4, y + 47, 6, 3, `rgba(236,196,120,${pisca})`)
   // Caixilho
@@ -336,4 +336,33 @@ export function drawLuzSala(
   c.fillStyle = g
   c.fillRect(0, 0, SALA_W, WORLD_H)
   c.restore()
+}
+
+/**
+ * O poste da rua pisca três curtas, três longas, três curtas, e apaga um
+ * pouco antes de recomeçar. Nenhum texto do jogo diz o que isso é.
+ */
+const SEQUENCIA_POSTE: [number, boolean][] = (() => {
+  const seq: [number, boolean][] = []
+  const ponto = 0.22
+  const traco = 0.66
+  for (const letra of ['...', '---', '...']) {
+    for (const sinal of letra) {
+      seq.push([sinal === '.' ? ponto : traco, true])
+      seq.push([ponto, false])
+    }
+    seq.push([ponto * 2, false])
+  }
+  seq.push([2.4, false])
+  return seq
+})()
+const CICLO_POSTE = SEQUENCIA_POSTE.reduce((a, [d]) => a + d, 0)
+
+export function posteAceso(t: number): boolean {
+  let r = ((t % CICLO_POSTE) + CICLO_POSTE) % CICLO_POSTE
+  for (const [d, aceso] of SEQUENCIA_POSTE) {
+    if (r < d) return aceso
+    r -= d
+  }
+  return false
 }

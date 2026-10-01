@@ -1,15 +1,17 @@
 import type { Scene, SceneCtx } from '../types'
 import { Dialogue, FONT_BODY, FONT_FIM } from '../../systems/dialogue'
 import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
-import { audio } from '../../../engine/audio'
+import { audio, sons } from '../../../engine/audio'
+import { principal } from '../../../engine/principal'
 import {
   TEAR_CHEGADA, ADRIAN_DURANTE, ADRIAN_INSISTE, CORPO,
-  TEAR_FIM, ELISA_CORTE, TEAR_PIANO, TEAR_ERRO, TEAR_CADERNO,
+  TEAR_FIM, TEAR_PIANO, TEAR_ERRO, TEAR_CADERNO, TEAR_VOLTA, TEAR_ENGOLIU, TEAR_GRITO,
 } from '../../content/demoScript'
+import { Montagem } from '../../world/dentro'
+import { HospitalScene } from './hospital'
 import { DOC_CADERNO_AMELIA } from '../../content/documentos'
 import { Leitor } from '../../systems/leitor'
 import type { GameState } from '../../systems/state'
-import { FimScene } from './fim'
 import { Figura } from '../../world/figura'
 import { Piano } from '../../systems/piano'
 import { RELIQUIAS } from '../../world/reliquias'
@@ -22,7 +24,6 @@ import {
 import type { Lembranca } from '../../world/lembrancas'
 import { criarLembrancas, tingir } from '../../world/lembrancas'
 
-const NOTAS_FIO = [147, 165, 185, 196, 220, 233]
 /** Carreiras já tecidas quando Liam chega: só a barra de baixo. */
 const TECIDO_INICIAL = 5
 const POR_FIO = (CARREIRAS - TECIDO_INICIAL) / 6
@@ -36,7 +37,7 @@ interface Eco {
   escala: number
 }
 
-type Fase = 'chegada' | 'absorvendo' | 'pico' | 'corte' | 'silencio'
+type Fase = 'chegada' | 'absorvendo' | 'pico' | 'dentro' | 'volta' | 'grito' | 'onda' | 'silencio'
 
 /**
  * A câmara do Tear.
@@ -68,7 +69,14 @@ export class TearScene implements Scene {
   private idxInsiste = 0
   private proxBatida = 0
   private tPico = 0
-  private tCorte = 0
+  private montagem: Montagem | null = null
+  /** 0..1: quanto do grito Liam já deixou sair. */
+  private nivel = 0
+  private segurava = false
+  private comecouGrito = false
+  private engoliu = 0
+  private tOnda = 0
+  private onda = 0
   private falaAdrian = ''
   private falaAdrianAte = 0
   private po = new Particulas()
@@ -104,12 +112,6 @@ export class TearScene implements Scene {
     x: 40, y: LIAM_CAMARA.y, altura: 44, barba: true, gola: '#bdb4a8',
     cor: { roupa: '#1e1820', cabelo: '#0c0808', pele: '#4a3a34', sombra: 'rgba(0,0,0,0.5)' },
   })
-  // Ela, no fim. Só silhueta.
-  private elisa = new Figura({
-    x: 250, y: LIAM_CAMARA.y, altura: 40, cabelo: 'longo',
-    cor: { roupa: '#000', cabelo: '#000', pele: '#000', sombra: 'rgba(0,0,0,0.5)' },
-  })
-
   /** Exposto para o clique nas teclas e para os testes. */
   get caixas(): { x: number; y: number; w: number; h: number }[] {
     return this.piano.caixas
@@ -131,6 +133,7 @@ export class TearScene implements Scene {
 
   enter(ctx: SceneCtx): void {
     this.jogo = ctx.state
+    ctx.state.aprender('tear')
     const cores = ['#7a90b4', '#9a78b0', '#b88a70', '#78a890', '#b07a90', '#8a98b0']
     this.fios = cores.map((cor, i) => ({
       cor,
@@ -139,8 +142,6 @@ export class TearScene implements Scene {
       reliquia: RELIQUIAS[i] ?? 'carta',
       balanco: i * 0.9,
     }))
-    this.elisa.silhueta = true
-    this.elisa.olhar = -1
     this.adrian.olhar = 1
     this.liam.costas = true
     this.lancadeira = 0
@@ -160,6 +161,7 @@ export class TearScene implements Scene {
             if (this.jogo?.descobrir(id)) audio.segredo()
           },
           onFechar: () => {
+            this.jogo?.aprender('caderno-amelia')
             this.dialogue.play(TEAR_PIANO, () => {
               this.fase = 'absorvendo'
             })
@@ -186,16 +188,29 @@ export class TearScene implements Scene {
       return
     }
 
+    if (this.fase === 'dentro' && this.montagem) {
+      this.montagem.update(dt, ctx.input)
+      if (this.montagem.done) this.voltar()
+      return
+    }
+    if (this.fase === 'grito') {
+      this.gritar(dt, ctx)
+      return
+    }
+    if (this.fase === 'onda') {
+      this.depoisDaOnda(dt, ctx)
+      return
+    }
+
     if (this.dialogue.active) {
-      const cinematico = this.fase === 'pico' || this.fase === 'corte'
+      const cinematico = this.fase === 'pico'
       if (!cinematico && ctx.input.consumeConfirm()) this.dialogue.confirm()
       // Nos clímaxes a fala corre sozinha, e a cena continua por baixo.
       if (!cinematico && this.fase !== 'absorvendo') return
     }
 
     if (this.fase === 'absorvendo') this.absorver(dt, ctx)
-    else if (this.fase === 'pico') this.pico(dt)
-    else if (this.fase === 'corte') this.corte(dt, ctx)
+    else if (this.fase === 'pico') this.pico(dt, ctx)
   }
 
   /** Vida da cena fora da interação: tear, corpo, poeira, brasas. */
@@ -223,11 +238,17 @@ export class TearScene implements Scene {
       }
     }
 
-    for (const f of [this.liam, this.adrian, this.elisa]) f.update(dt)
+    for (const f of [this.liam, this.adrian]) f.update(dt)
+    this.onda = Math.max(0, this.onda - dt * 0.4)
     this.liam.ofego = 1 + i * 3.4
     this.liam.curvatura = Math.min(0.8, i * 0.7)
     this.liam.tremor = i > 0.45 ? (i - 0.45) * 2.6 : 0
-    this.liam.braco = this.fase === 'absorvendo' ? 0.5 + this.batedor * 0.3 : 0.1
+    this.liam.braco = this.fase === 'absorvendo' ? 0.5 + this.batedor * 0.3 : this.fase === 'grito' ? this.nivel * 0.4 : 0.1
+    if (this.fase === 'grito') {
+      // Gritando ele se endireita: a curvatura de carregar todo mundo sai.
+      this.liam.curvatura = Math.max(0, 0.8 - this.nivel)
+      this.liam.tremor = this.nivel * 2.2
+    }
     this.adrian.ofego = 0.8
 
     // Poeira desprendida do assoalho pela discussão lá em cima.
@@ -342,7 +363,6 @@ export class TearScene implements Scene {
     this.intensidade = feitos / this.fios.length
     this.tecidoAlvo = this.nivelTecido()
 
-    audio.addLayer(NOTAS_FIO[feitos - 1] ?? 147, 'sine', 0.055)
     musica.desafinado = -0.35 - this.intensidade * 1.1
     musica.abafado = 0.45 + this.intensidade * 0.45
     audio.setArgument(Math.max(0, 0.34 - this.intensidade * 0.3), 1.6)
@@ -397,19 +417,86 @@ export class TearScene implements Scene {
     this.falaAdrianAte = this.t + dur
   }
 
-  private pico(dt: number): void {
+  private pico(dt: number, ctx: SceneCtx): void {
     this.tPico += dt
     this.intensidade = Math.min(1.5, 1 + this.tPico * 0.22)
     audio.setArgument(0, 1)
-    // Ela só corta quando ele termina de dizer que não quer.
+    // Quando ele termina de dizer que não quer, corta seco para dentro.
     if (this.tPico > 2.6 && !this.dialogue.active && this.fase === 'pico') {
-      this.fase = 'corte'
-      this.tCorte = 0
-      this.dialogue.play(ELISA_CORTE, () => {
-        // O corte é um silêncio absoluto, não uma explosão.
-        audio.cutAll(0.12)
-        this.romper()
-      }, 0.9)
+      this.fase = 'dentro'
+      this.montagem = new Montagem()
+      this.montagem.comecar(ctx.state)
+    }
+  }
+
+  /** De volta ao Tear, logo depois da oferta: o pai pede mais um. */
+  private voltar(): void {
+    this.fase = 'volta'
+    this.montagem = null
+    this.intensidade = 1
+    this.liam.costas = false
+    this.liam.olhar = -1
+    this.dialogue.play(TEAR_VOLTA, () => {
+      this.fase = 'grito'
+      sons.iniciarGrito()
+    })
+  }
+
+  /**
+   * O grito. Segurar deixa sair; soltar antes da hora é engolir de novo — e o
+   * pai repete o pedido. Cheio, vira a onda.
+   */
+  private gritar(dt: number, ctx: SceneCtx): void {
+    const segura = ctx.input.held('Space') || ctx.input.held('Enter') || ctx.input.held('KeyE')
+      || ctx.input.pointerDown
+    ctx.input.consumeConfirm()
+    ctx.input.consumeTap()
+    if (segura) {
+      if (!this.comecouGrito) {
+        this.comecouGrito = true
+        // A versão com todos os instrumentos entra de uma vez, e só aqui.
+        principal.tocar(0.85)
+        principal.completo(1, 0.4)
+      }
+      this.nivel = Math.min(1, this.nivel + dt / 2.8)
+    } else if (this.segurava && this.nivel < 1) {
+      // Soltou cedo: engoliu. O pai repete, baixo.
+      if (this.nivel > 0.1) {
+        const fala = TEAR_ENGOLIU[this.engoliu % TEAR_ENGOLIU.length] ?? ''
+        this.engoliu++
+        this.dizer(fala, 3)
+        audio.refuse()
+      }
+      this.nivel = 0
+    }
+    this.segurava = segura
+    sons.grito(this.nivel)
+    if (this.nivel >= 1) this.explodir(ctx)
+  }
+
+  /** A onda: todos os fios arrebentam de uma vez, e tudo voa. */
+  private explodir(ctx: SceneCtx): void {
+    this.fase = 'onda'
+    this.tOnda = 0
+    this.onda = 1
+    sons.pararGrito(0.05)
+    sons.onda()
+    for (let i = 0; i < this.fios.length; i++) sons.estalo(0.05 + i * 0.07)
+    this.romper()
+    ctx.state.sombraEscreve = true
+    ctx.state.aprender('grito')
+  }
+
+  private depoisDaOnda(dt: number, ctx: SceneCtx): void {
+    this.tOnda += dt
+    ctx.input.consumeConfirm()
+    ctx.input.consumeTap()
+    if (this.tOnda > 0.8 && this.fase === 'onda') {
+      this.fase = 'silencio'
+      principal.cortar()
+      audio.cutAll(0.04)
+      // Corte seco para o preto: os cinco segundos são da próxima cena.
+      ctx.transition(new HospitalScene('grito'), 0, 0)
     }
   }
 
@@ -418,7 +505,7 @@ export class TearScene implements Scene {
     this.rompido = true
     this.clarao = 1
     for (const f of this.fios) {
-      for (let k = 0; k < 10; k++) {
+      for (let k = 0; k < 14; k++) {
         this.po.brasa(
           LIAM_CAMARA.x + (Math.random() - 0.5) * 30, LIAM_CAMARA.y - 20 - Math.random() * 20,
           hexRgba(f.cor),
@@ -427,21 +514,11 @@ export class TearScene implements Scene {
     }
   }
 
-  private corte(dt: number, ctx: SceneCtx): void {
-    this.tCorte += dt
-    if (this.tCorte > 1.4 && this.fase === 'corte') {
-      this.fase = 'silencio'
-      this.intensidade = 0
-      ctx.transition(new FimScene(), 1.4, 2.2)
-    }
-  }
-
   private get estadoTear(): EstadoTear {
     return {
       t: this.t,
       intensidade: Math.min(1, this.intensidade),
-      tecido: this.fase === 'pico' || this.fase === 'corte' || this.fase === 'silencio'
-        ? CARREIRAS : this.tecido,
+      tecido: this.fase === 'absorvendo' || this.fase === 'chegada' ? this.tecido : CARREIRAS,
       fios: this.fios,
       sel: this.sel,
       lancadeira: this.lancadeira,
@@ -455,6 +532,14 @@ export class TearScene implements Scene {
 
   render(ctx: SceneCtx): void {
     const w = ctx.display.beginWorld()
+    if (this.fase === 'dentro' && this.montagem) {
+      this.montagem.render(w)
+      ctx.display.applyGrain(0.07)
+      ctx.display.present({ rgbSplit: 0, wave: 0, shake: 0, zoom: 1, alvoX: WORLD_W / 2, alvoY: WORLD_H / 2, time: this.t })
+      ctx.display.vignette(0.8)
+      this.montagem.renderUI(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+      return
+    }
     const e = this.estadoTear
     drawCamara(w, e)
     drawTear(w, e)
@@ -462,7 +547,7 @@ export class TearScene implements Scene {
     this.adrian.draw(w, WORLD_W / 2, 'rgba(196,170,236,0.35)')
     drawAmarras(w, e, LIAM_CAMARA.y - 22)
     this.liam.draw(w, WORLD_W / 2 + 40, `rgba(196,170,236,${0.3 + this.intensidade * 0.4})`)
-    this.desenharElisa(w)
+    this.desenharOnda(w)
     this.po.draw(w, true)
     drawLuzCamara(w, e)
 
@@ -475,11 +560,12 @@ export class TearScene implements Scene {
     }
 
     const i = this.intensidade * (1 - m)
-    ctx.display.applyGrain(0.05 + i * 0.09)
+    const g = this.nivel
+    ctx.display.applyGrain(0.05 + i * 0.09 + g * 0.05)
     ctx.display.present({
-      rgbSplit: i * 2.6,
+      rgbSplit: i * 2.6 + g * 3,
       wave: i * 1.5,
-      shake: i * i * 1.6 + this.jolt * 2.2 * (1 - m),
+      shake: i * i * 1.6 + this.jolt * 2.2 * (1 - m) + g * g * 2.4 + this.onda * 4,
       zoom: 1 + i * 0.36,
       alvoX: WORLD_W / 2,
       alvoY: WORLD_H / 2 + i * 26,
@@ -498,6 +584,7 @@ export class TearScene implements Scene {
     }
     if (this.lembranca) this.desenharFalaLembranca(ctx, m)
     else this.desenharAdrian(ctx)
+    if (this.fase === 'grito' || this.fase === 'onda') this.desenharGrito(ctx)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
     this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
@@ -568,22 +655,54 @@ export class TearScene implements Scene {
     c.restore()
   }
 
-  /** Ela, no fim: aparece ao lado dele no escuro, e corta. */
-  private desenharElisa(w: CanvasRenderingContext2D): void {
-    if (this.fase !== 'pico' && this.fase !== 'corte' && this.fase !== 'silencio') return
-    const a = this.fase === 'pico' ? Math.max(0, (this.tPico - 1.2) / 1.4) : 1
-    if (a <= 0) return
-    this.elisa.braco = this.fase === 'corte' ? 0.9 : 0.3
+  /** A onda branca saindo de Liam, empurrando tudo para fora. */
+  private desenharOnda(w: CanvasRenderingContext2D): void {
+    if (this.fase !== 'onda') return
+    const r = Math.pow(this.tOnda / 0.6, 0.7) * 420
     w.save()
-    w.globalAlpha = Math.min(1, a)
-    this.elisa.draw(w, 0, 'rgba(0,0,0,0)')
-    if (this.fase === 'corte' && !this.rompido) {
-      w.fillStyle = '#e8e8f0'
-      w.fillRect(this.elisa.x - 9, LIAM_CAMARA.y - 26, 2, 1)
-      w.fillRect(this.elisa.x - 7, LIAM_CAMARA.y - 27, 1, 1)
-      w.fillRect(this.elisa.x - 7, LIAM_CAMARA.y - 25, 1, 1)
-    }
+    w.strokeStyle = `rgba(250,250,255,${Math.max(0, 1 - this.tOnda / 0.7)})`
+    w.lineWidth = 10
+    w.beginPath()
+    w.arc(LIAM_CAMARA.x, LIAM_CAMARA.y - 18, r, 0, Math.PI * 2)
+    w.stroke()
+    w.fillStyle = `rgba(250,250,255,${Math.max(0, 0.6 - this.tOnda)})`
+    w.fillRect(0, 0, WORLD_W, WORLD_H)
     w.restore()
+  }
+
+  /** As palavras saem na medida em que ele deixa sair. */
+  private desenharGrito(ctx: SceneCtx): void {
+    const c = ctx.display.ctx
+    const { cssW, cssH } = ctx.display
+    const n = Math.floor(this.nivel * TEAR_GRITO.length)
+    const texto = this.fase === 'onda' ? TEAR_GRITO : TEAR_GRITO.slice(0, n)
+    c.save()
+    c.textAlign = 'center'
+    if (texto) {
+      const s = Math.max(28, Math.min(cssW / 16, 96)) * (0.7 + this.nivel * 0.5)
+      const j = this.nivel * s * 0.04
+      c.font = `500 ${s}px ${FONT_BODY}`
+      c.letterSpacing = `${0.04 + this.nivel * 0.1}em`
+      c.globalAlpha = 0.25
+      c.fillStyle = '#ff5a6e'
+      c.fillText(texto, cssW / 2 - j, cssH * 0.42)
+      c.fillStyle = '#5ad9ff'
+      c.fillText(texto, cssW / 2 + j, cssH * 0.42)
+      c.globalAlpha = 1
+      c.fillStyle = '#fbfbff'
+      c.fillText(texto, cssW / 2 + (Math.random() - 0.5) * j, cssH * 0.42 + (Math.random() - 0.5) * j)
+      c.letterSpacing = '0em'
+    }
+    if (this.fase === 'grito' && this.nivel < 0.04) {
+      const s = Math.max(13, Math.min(cssW / 60, 20))
+      c.globalAlpha = 0.45 + Math.sin(this.t * 3) * 0.25
+      c.fillStyle = PAL.ink
+      c.font = `${s}px ${FONT_BODY}`
+      c.letterSpacing = '0.2em'
+      const como = 'ontouchstart' in window ? 'SEGURE O DEDO NA TELA' : 'SEGURE ESPAÇO  ·  OU O CLIQUE'
+      c.fillText(como, cssW / 2, cssH * 0.82)
+    }
+    c.restore()
   }
 
   private desenharEcos(ctx: SceneCtx): void {

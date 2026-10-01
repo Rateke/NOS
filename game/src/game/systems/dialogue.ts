@@ -5,6 +5,30 @@ import { PAL } from '../../engine/constants'
 const CHARS_PER_SEC = 42
 
 /**
+ * A cor do fio de cada pessoa. É a cor do nome dela na legenda — o jogador
+ * aprende as cores antes de ver os fios no Tear.
+ */
+export const FIO: Record<string, string> = {
+  Adrian: '#93a6c6',
+  Evelyn: '#e2a95e',
+  Lia: '#d06e80',
+  Elisa: '#b49ade',
+  Voz: '#b49ade',
+  Catarina: '#8cc095',
+  Liam: '#aab0bd',
+  Helena: '#cdb577',
+}
+
+/** Na primeira fala de cada um, o nome vem com o parentesco. */
+const PARENTESCO: Record<string, string> = {
+  Adrian: 'pai',
+  Evelyn: 'mãe',
+  Lia: 'irmã',
+  Catarina: 'tia',
+}
+const apresentados = new Set<string>()
+
+/**
  * Caixa de legenda com efeito de máquina de escrever. Desenhada em resolução
  * de tela (não no mundo) para o texto não ficar ilegível na escala pequena.
  */
@@ -18,9 +42,16 @@ export class Dialogue {
   /** Segundos de espera antes de avançar sozinho; 0 = espera o jogador. */
   private auto = 0
   private paradoDesde = 0
+  /** Parentesco mostrado junto do nome, só na primeira fala da pessoa. */
+  private nota = ''
 
   get active(): boolean {
     return this.current !== null || this.queue.length > 0
+  }
+
+  /** A linha atual já terminou de se escrever (ou não há linha). */
+  get completa(): boolean {
+    return !this.current || this.revealed >= this.current.text.length
   }
 
   /** Quem está falando agora, ou null se é pensamento. */
@@ -52,6 +83,12 @@ export class Dialogue {
     this.revealed = 0
     this.elapsed = 0
     this.paradoDesde = 0
+    this.nota = ''
+    const quem = next.speaker
+    if (quem && PARENTESCO[quem] && !apresentados.has(quem)) {
+      apresentados.add(quem)
+      this.nota = PARENTESCO[quem] ?? ''
+    }
   }
 
   /** Um toque completa a linha; o toque seguinte passa para a próxima. */
@@ -93,7 +130,9 @@ export class Dialogue {
     const boxX = (cssW - boxW) / 2
 
     const style = line.style ?? 'thought'
-    ctx.font = `${style === 'read' ? 'italic ' : ''}${fontSize}px ${FONT_BODY}`
+    const sombra = line.sombra === true
+    const italico = style === 'read' || sombra
+    ctx.font = `${italico ? 'italic ' : ''}${fontSize}px ${FONT_BODY}`
     const text = line.text.slice(0, this.revealed)
     const wrapped = wrap(ctx, line.text, boxW - pad * 2)
     const shownLines = wrap(ctx, text, boxW - pad * 2)
@@ -103,29 +142,47 @@ export class Dialogue {
     const boxY = cssH - boxH - pad
 
     ctx.save()
-    ctx.fillStyle = 'rgba(4,6,11,0.88)'
+    ctx.fillStyle = sombra ? 'rgba(10,10,14,0.9)' : 'rgba(4,6,11,0.88)'
     ctx.fillRect(boxX, boxY, boxW, boxH)
-    ctx.strokeStyle = 'rgba(134,142,162,0.28)'
+    ctx.strokeStyle = sombra ? 'rgba(244,244,250,0.55)' : 'rgba(134,142,162,0.28)'
     ctx.lineWidth = 1
     ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1)
 
+    const corFio = FIO[line.fio ?? line.speaker ?? ''] ?? PAL.accent
     let ty = boxY + pad * 0.7 + fontSize
     if (line.speaker) {
       ctx.font = `${Math.round(fontSize * 0.82)}px ${FONT_BODY}`
-      ctx.fillStyle = PAL.accent
+      ctx.fillStyle = corFio
       ctx.letterSpacing = '0.14em'
-      ctx.fillText(line.speaker.toUpperCase(), boxX + pad, ty)
+      const nome = line.speaker.toUpperCase()
+      ctx.fillText(nome, boxX + pad, ty)
+      const extra = [this.nota, line.onde].filter(Boolean).join(' · ')
+      if (extra) {
+        const nw = ctx.measureText(nome).width
+        ctx.globalAlpha = 0.55
+        ctx.fillText(`  ·  ${extra.toUpperCase()}`, boxX + pad + nw, ty)
+        ctx.globalAlpha = 1
+      }
       ctx.letterSpacing = '0em'
       ty += nameH
       ctx.font = `${fontSize}px ${FONT_BODY}`
     }
 
-    ctx.fillStyle = style === 'read' ? PAL.paper : style === 'speech' ? PAL.ink : PAL.inkDim
-    if (style === 'read') ctx.font = `italic ${fontSize}px ${FONT_BODY}`
+    ctx.fillStyle = sombra
+      ? '#f4f4fa'
+      : line.fio
+        ? corFio
+        : style === 'read' ? PAL.paper : style === 'speech' ? PAL.ink : PAL.inkDim
+    if (italico) ctx.font = `italic ${fontSize}px ${FONT_BODY}`
+    if (sombra) {
+      ctx.shadowColor = 'rgba(244,244,250,0.45)'
+      ctx.shadowBlur = fontSize * 0.5
+    }
     for (const l of shownLines) {
       ctx.fillText(l, boxX + pad, ty)
       ty += lineH
     }
+    ctx.shadowBlur = 0
 
     if (this.revealed >= line.text.length) {
       const t = performance.now() / 500

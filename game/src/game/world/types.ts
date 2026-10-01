@@ -20,6 +20,15 @@ export interface Line {
   speaker?: string
   text: string
   style?: LineStyle
+  /** A sombra falando: sem nome, em branco. */
+  sombra?: boolean
+  /**
+   * De quem é o fio desta fala, quando não é de quem fala. Liam repetindo o
+   * pai sai com a cor do pai.
+   */
+  fio?: string
+  /** De onde vem a voz, quando não se vê quem fala ("da cozinha"). */
+  onde?: string
 }
 
 export interface Interactable {

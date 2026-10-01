@@ -47,9 +47,9 @@ export function drawCozinhaFundo(c: CanvasRenderingContext2D, e: EstadoCozinha):
   bancada(c, 146, FOGAO.x0)
   bancada(c, FOGAO.x1, 274)
   fogao(c, e)
-  radio(c, 232, t, e.tensao)
   telefone(c, 262, t)
   geladeira(c, 284)
+  radio(c, 288, 64, t, e.tensao)
   chaveiro(c, 322, 84)
   portaDaFrente(c, 353)
   malas(c)
@@ -411,8 +411,8 @@ function fogao(c: CanvasRenderingContext2D, e: EstadoCozinha): void {
   }
 }
 
-function radio(c: CanvasRenderingContext2D, x: number, t: number, tensao: number): void {
-  const topo = COZ_CHAO - 38
+/** O rádio em cima da geladeira, tocando música alegre sozinho. */
+function radio(c: CanvasRenderingContext2D, x: number, topo: number, t: number, tensao: number): void {
   ret(c, x, topo - 12, 20, 12, '#5a3e2e')
   ret(c, x, topo - 12, 20, 1, '#7a5a42')
   // Alto-falante com a grade

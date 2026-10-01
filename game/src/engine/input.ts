@@ -95,6 +95,11 @@ export class Input {
     })
   }
 
+  /** Olha o último toque sem consumir: para quem só quer saber onde foi. */
+  peekTap(): { x: number; y: number } | null {
+    return this.tapQueued
+  }
+
   /** Último toque/clique ainda não lido, em pixels de tela. */
   consumeTap(): { x: number; y: number } | null {
     const t = this.tapQueued

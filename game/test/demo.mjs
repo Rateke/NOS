@@ -43,11 +43,11 @@ const estado = () => page.evaluate(() => {
 // Falando ou lendo: os dois pedem um toque para seguir.
 const falando = () => page.evaluate(() => {
   const s = window.__nos?.scene
-  return !!(s?.dialogue?.active || s?.lendo)
+  return !!(s?.dialogue?.active || s?.lendo || s?.ocupado)
 })
 const caixas = () => page.evaluate(() => window.__nos?.scene?.caixas ?? [])
 
-async function limpar(max = 14) {
+async function limpar(max = 40) {
   for (let i = 0; i < max; i++) {
     if (!(await falando())) return
     await page.keyboard.press('Space')
@@ -100,13 +100,13 @@ for (let i = 0; i < 40; i++) {
   if (pronto && (await caixas()).length > 0) break
   await page.waitForTimeout(250)
 }
-esperar('o menu se monta após o primeiro toque', (await caixas()).length, 2)
+esperar('o menu se monta após o primeiro toque', (await caixas()).length, 3)
 if (OUT) await page.screenshot({ path: `${OUT}/a0-menu.png` })
 {
   const c = await caixas()
   await page.mouse.click(c[0].x + c[0].w / 2, c[0].y + c[0].h / 2)
 }
-esperar('o prólogo chega na vez do jogador', await esperarFase('toca'), true)
+esperar('o prólogo chega na vez do jogador', await esperarFase('toca', 120000), true)
 await limpar()
 if (OUT) await page.screenshot({ path: `${OUT}/a-piano.png` })
 
@@ -196,6 +196,8 @@ esperar('a porta da sala leva ao corredor', await comodo(), 'corredor')
 // As marcas de altura, vistas duas vezes, mostram o que a lixa não pegou.
 await andarAte(306); await usar(); await usar()
 esperar('olhar de novo as marcas acha um nome', (await segredos()).includes('nome'), true)
+esperar('na primeira vez, a frase do pai sai da boca do Liam',
+  await page.evaluate(() => window.__nos.scene.falouPeloPai), true)
 
 await andarAte(150); await usar()
 esperar('o corredor leva ao quarto', await comodo(), 'quarto')
@@ -229,7 +231,8 @@ esperar('o último retrato não tem ninguém', (await segredos()).includes('ning
 // A porta do fim não abre. Nunca abriu. Mas quem insiste ouve alguém.
 await andarAte(1180 - 46)
 await usar(); await usar(); await usar()
-await page.waitForTimeout(2400)
+// As três dele, e a resposta do outro lado: três devagar, três rápidas.
+await page.waitForTimeout(6000)
 await limpar()
 esperar('a porta impossível continua fechada', await comodo(), 'corredor')
 esperar('três batidas respondem do outro lado', (await segredos()).includes('bater'), true)
@@ -286,9 +289,59 @@ for (let i = 0; i < 6; i++) {
 }
 if (OUT) await page.screenshot({ path: `${OUT}/g-pico.png` })
 
-esperar('o clímax correu sozinho até o fim', await esperarCena('demo-fim', 40000), true)
+// --- Dentro: arrumar faz os recortes andarem; parar é a saída -----------
+esperar('o pico corta para dentro da cabeça', await esperarFase('dentro', 30000), true)
+const montagem = () => page.evaluate(() => {
+  const m = window.__nos?.scene?.montagem
+  return m ? { arrumados: m.arrumados, fase: m.faseAtual } : null
+})
+for (let i = 0; i < 4; i++) {
+  // O primeiro toque termina a frase da sombra; o segundo arruma.
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(450)
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(900)
+}
+esperar('quatro recortes arrumados', (await montagem())?.arrumados, 4)
+if (OUT) await page.screenshot({ path: `${OUT}/g2-dentro.png` })
+// Parar de arrumar: a sombra aparece inteira e faz a oferta.
+for (let i = 0; i < 40; i++) {
+  if ((await montagem())?.fase !== 'cortes') break
+  await page.waitForTimeout(400)
+}
+esperar('parar de arrumar encerra a montagem', (await montagem())?.fase, 'parou')
+for (let i = 0; i < 60; i++) {
+  const f = (await estado()).fase
+  if (f === 'grito') break
+  if (f === 'volta') await limpar(3)
+  else { await page.keyboard.press('Space'); await page.waitForTimeout(450) }
+}
+esperar('aceitar a sombra é gritar', (await estado()).fase, 'grito')
+if (OUT) await page.screenshot({ path: `${OUT}/g3-grito.png` })
+// Soltar cedo é engolir: o grito volta a zero.
+await page.keyboard.down('Space'); await page.waitForTimeout(700); await page.keyboard.up('Space')
+await page.waitForTimeout(300)
+esperar('soltar cedo engole o grito', (await estado()).fase, 'grito')
+await page.keyboard.down('Space'); await page.waitForTimeout(3600); await page.keyboard.up('Space')
+esperar('o grito vira a onda e o preto', await esperarCena('demo-hospital', 8000), true)
+esperar('cinco segundos de preto, o hospital, e a casa sem música',
+  await esperarCena('demo-casa', 60000) && await page.evaluate(() => window.__nos.scene.depois), true)
+
+// --- A casa depois do grito ----------------------------------------------
+await limpar()
+esperar('a sombra passou a escrever no caderno', await page.evaluate(() => window.__nos.state.sombraEscreve), true)
+if (OUT) await page.screenshot({ path: `${OUT}/h-depois.png` })
+await andarAte(484); await usar()
+esperar('depois do grito, a sala ainda leva ao corredor', await comodo(), 'corredor')
+await andarAte(250)
+await limpar()
+esperar('a Lia recua quando Liam chega perto',
+  await page.evaluate(() => window.__nos.state.sabe.has('depois-lia')), true)
+await andarAte(118); await usar()
+esperar('o recado da mãe encerra a demo', await esperarCena('demo-fim', 60000), true)
 esperar('sem erros de runtime', errs, [])
-if (OUT) await page.screenshot({ path: `${OUT}/h-fim.png` })
+if (OUT) await page.screenshot({ path: `${OUT}/i-fim.png` })
+
 
 await browser.close()
 if (falhas.length) {

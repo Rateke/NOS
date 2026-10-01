@@ -27,6 +27,15 @@ export class Audio {
     void this.ctx?.resume()
   }
 
+  /** Para quem precisa tocar arquivo (a trilha própria). */
+  get contexto(): AudioContext | null {
+    return this.ctx
+  }
+
+  get saida(): AudioNode | null {
+    return this.master
+  }
+
   startAmbient(): void {
     if (!this.ctx || !this.master || this.started) return
     this.started = true
@@ -280,4 +289,420 @@ export class Audio {
   }
 }
 
+// --- Sons da versão nova da demo ----------------------------------------
+
+/** Ruído branco reaproveitável, criado uma vez. */
+function ruido(ctx: AudioContext, segundos: number): AudioBuffer {
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * segundos), ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+  return buf
+}
+
+/** Morse: é assim que o monitor do hospital pede o que Liam não pede. */
+const MORSE: Record<string, string> = {
+  A: '.-', J: '.---', U: '..-', D: '-..', S: '...', O: '---', E: '.', I: '..', M: '--', N: '-.',
+}
+
+export class SonsNos {
+  private ruidoBuf: AudioBuffer | null = null
+  private radioStatic: GainNode | null = null
+  private radioVoz: GainNode | null = null
+  private gritoNos: { osc: OscillatorNode; g: GainNode; ruidoG: GainNode } | null = null
+  private casaReal: GainNode | null = null
+  private fitaG: GainNode | null = null
+
+  private get ctx(): AudioContext | null {
+    return audio.contexto
+  }
+
+  private get out(): AudioNode | null {
+    return audio.saida
+  }
+
+  private buf(): AudioBuffer | null {
+    const ctx = this.ctx
+    if (!ctx) return null
+    if (!this.ruidoBuf) this.ruidoBuf = ruido(ctx, 3)
+    return this.ruidoBuf
+  }
+
+  /** Um bipe de monitor cardíaco, agendado `quando` segundos à frente. */
+  bip(quando = 0, dur = 0.09, freq = 988, vol = 0.06): void {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out) return
+    const t = ctx.currentTime + quando
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.value = freq
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(vol, t + 0.006)
+    g.gain.setValueAtTime(vol, t + dur - 0.01)
+    g.gain.linearRampToValueAtTime(0, t + dur)
+    o.connect(g).connect(out)
+    o.start(t)
+    o.stop(t + dur + 0.02)
+  }
+
+  /**
+   * Uma palavra em Morse, nos bipes do monitor. Parece arritmia. Devolve
+   * quanto tempo leva, para a cena voltar ao ritmo normal depois.
+   */
+  morse(palavra: string, inicio = 0): number {
+    let t = inicio
+    for (const letra of palavra.toUpperCase()) {
+      const cod = MORSE[letra]
+      if (!cod) {
+        t += 0.6
+        continue
+      }
+      for (const sinal of cod) {
+        const dur = sinal === '.' ? 0.09 : 0.3
+        this.bip(t, dur)
+        t += dur + 0.13
+      }
+      t += 0.42
+    }
+    return t - inicio
+  }
+
+  /** A chave girando na porta da frente: tilintar, e a lingueta. */
+  chave(): void {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out) return
+    const t0 = ctx.currentTime
+    const tins = [0, 0.09, 0.16, 0.31]
+    for (const [i, dt] of tins.entries()) {
+      const o = ctx.createOscillator()
+      o.type = 'sine'
+      o.frequency.value = [3150, 4120, 2680, 3620][i] ?? 3000
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0, t0 + dt)
+      g.gain.linearRampToValueAtTime(0.03, t0 + dt + 0.003)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.18)
+      o.connect(g).connect(out)
+      o.start(t0 + dt)
+      o.stop(t0 + dt + 0.2)
+    }
+    // A lingueta: um estalo seco, e o corpo da porta respondendo.
+    const b = this.buf()
+    if (!b) return
+    for (const [dt, f, v] of [[0.62, 1500, 0.2], [0.78, 900, 0.14]] as const) {
+      const src = ctx.createBufferSource()
+      src.buffer = b
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = f
+      bp.Q.value = 3
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(v, t0 + dt)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.07)
+      src.connect(bp).connect(g).connect(out)
+      src.start(t0 + dt, Math.random(), 0.1)
+    }
+  }
+
+  /**
+   * A resposta do outro lado da porta: três devagar, três rápidas. Junto
+   * com as três curtas que Liam bate, fecha uma frase que ele não sabe ler.
+   */
+  baterResposta(depois = 0): void {
+    const tempos = [0, 0.82, 1.64, 2.5, 2.74, 2.98]
+    for (const [i, t] of tempos.entries()) {
+      window.setTimeout(() => audio.bater(1, 0), depois + t * 1000)
+      void i
+    }
+  }
+
+  /** Um fio arrebentando: estalo e um zunido que desce. */
+  estalo(atraso = 0): void {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out) return
+    const t = ctx.currentTime + atraso
+    const o = ctx.createOscillator()
+    o.type = 'triangle'
+    o.frequency.setValueAtTime(2300, t)
+    o.frequency.exponentialRampToValueAtTime(420, t + 0.16)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.07, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
+    o.connect(g).connect(out)
+    o.start(t)
+    o.stop(t + 0.25)
+    const b = this.buf()
+    if (!b) return
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 2400
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(0.12, t)
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.03)
+    src.connect(hp).connect(ng).connect(out)
+    src.start(t, Math.random(), 0.05)
+  }
+
+  /** A onda do grito: um baque grave que empurra tudo, e o ar depois. */
+  onda(): void {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out) return
+    const t = ctx.currentTime
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.setValueAtTime(64, t)
+    o.frequency.exponentialRampToValueAtTime(26, t + 1.4)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.55, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6)
+    o.connect(g).connect(out)
+    o.start(t)
+    o.stop(t + 1.7)
+    const b = this.buf()
+    if (!b) return
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(5000, t)
+    lp.frequency.exponentialRampToValueAtTime(200, t + 1.2)
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(0.3, t)
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 1.3)
+    src.connect(lp).connect(ng).connect(out)
+    src.start(t, 0, 1.4)
+  }
+
+  /**
+   * A voz de Liam segurando o grito: uma vogal aberta, rouca. `nivel` de 0
+   * a 1 é quanto ele já deixou sair.
+   */
+  iniciarGrito(): void {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out || this.gritoNos) return
+    const osc = ctx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.value = 176
+    const vib = ctx.createOscillator()
+    vib.frequency.value = 5.4
+    const vibG = ctx.createGain()
+    vibG.gain.value = 3.2
+    vib.connect(vibG).connect(osc.frequency)
+    vib.start()
+    const g = ctx.createGain()
+    g.gain.value = 0
+    // Duas formantes de "a": é o que transforma serra em voz.
+    for (const [f, q, v] of [[780, 7, 1], [1220, 9, 0.7], [2600, 12, 0.25]] as const) {
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = f
+      bp.Q.value = q
+      const fg = ctx.createGain()
+      fg.gain.value = v
+      osc.connect(bp).connect(fg).connect(g)
+    }
+    const b = this.buf()
+    const ruidoG = ctx.createGain()
+    ruidoG.gain.value = 0
+    if (b) {
+      const src = ctx.createBufferSource()
+      src.buffer = b
+      src.loop = true
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = 1400
+      bp.Q.value = 0.8
+      src.connect(bp).connect(ruidoG).connect(out)
+      src.start()
+    }
+    g.connect(out)
+    osc.start()
+    this.gritoNos = { osc, g, ruidoG }
+  }
+
+  grito(nivel: number): void {
+    const n = this.gritoNos
+    const ctx = this.ctx
+    if (!n || !ctx) return
+    const t = ctx.currentTime
+    n.g.gain.setTargetAtTime(nivel * 0.34, t, 0.05)
+    n.ruidoG.gain.setTargetAtTime(nivel * nivel * 0.1, t, 0.05)
+    n.osc.frequency.setTargetAtTime(176 + nivel * 70, t, 0.1)
+  }
+
+  pararGrito(segundos = 0.08): void {
+    const n = this.gritoNos
+    const ctx = this.ctx
+    if (!n || !ctx) return
+    const t = ctx.currentTime
+    n.g.gain.cancelScheduledValues(t)
+    n.g.gain.setTargetAtTime(0, t, segundos / 3)
+    n.ruidoG.gain.setTargetAtTime(0, t, segundos / 3)
+  }
+
+  /** Rádio: chiado de estação e uma voz que é só contorno. */
+  iniciarRadio(): void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b || this.radioStatic) return
+    const st = ctx.createBufferSource()
+    st.buffer = b
+    st.loop = true
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 900
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 5200
+    const sg = ctx.createGain()
+    sg.gain.value = 0
+    st.connect(hp).connect(lp).connect(sg).connect(out)
+    st.start()
+    this.radioStatic = sg
+
+    const vz = ctx.createBufferSource()
+    vz.buffer = b
+    vz.loop = true
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 1100
+    bp.Q.value = 5
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 3.3
+    const lfoG = ctx.createGain()
+    lfoG.gain.value = 420
+    lfo.connect(lfoG).connect(bp.frequency)
+    lfo.start()
+    // Sílabas: o volume abre e fecha no ritmo de alguém lendo notícia.
+    const am = ctx.createGain()
+    am.gain.value = 0.5
+    const sil = ctx.createOscillator()
+    sil.frequency.value = 6.2
+    const silG = ctx.createGain()
+    silG.gain.value = 0.5
+    sil.connect(silG).connect(am.gain)
+    sil.start()
+    const vg = ctx.createGain()
+    vg.gain.value = 0
+    vz.connect(bp).connect(am).connect(vg).connect(out)
+    vz.start()
+    this.radioVoz = vg
+  }
+
+  radio(estatica: number, voz: number, segundos = 0.4): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    for (const [g, v] of [[this.radioStatic, estatica], [this.radioVoz, voz]] as const) {
+      if (!g) continue
+      g.gain.cancelScheduledValues(t)
+      g.gain.setValueAtTime(g.gain.value, t)
+      g.gain.linearRampToValueAtTime(v, t + segundos)
+    }
+  }
+
+  /**
+   * A casa sem música: geladeira, chuva no telhado. O relógio é tique a
+   * tique, pela cena.
+   */
+  iniciarCasaReal(): void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b || this.casaReal) return
+    const g = ctx.createGain()
+    g.gain.value = 0
+    g.connect(out)
+    this.casaReal = g
+    for (const [f, v] of [[60, 0.05], [120, 0.022], [180.4, 0.01]] as const) {
+      const o = ctx.createOscillator()
+      o.type = 'sine'
+      o.frequency.value = f
+      const og = ctx.createGain()
+      og.gain.value = v
+      o.connect(og).connect(g)
+      o.start()
+    }
+    const chuva = ctx.createBufferSource()
+    chuva.buffer = b
+    chuva.loop = true
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 2600
+    bp.Q.value = 0.5
+    const cg = ctx.createGain()
+    cg.gain.value = 0.07
+    chuva.connect(bp).connect(cg).connect(g)
+    chuva.start()
+  }
+
+  setCasaReal(nivel: number, segundos = 2): void {
+    const ctx = this.ctx
+    const g = this.casaReal
+    if (!ctx || !g) return
+    const t = ctx.currentTime
+    g.gain.cancelScheduledValues(t)
+    g.gain.setValueAtTime(g.gain.value, t)
+    g.gain.linearRampToValueAtTime(nivel, t + segundos)
+  }
+
+  /** Tique do relógio da parede. */
+  tique(forte = false): void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b) return
+    const t = ctx.currentTime
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = forte ? 2400 : 3200
+    bp.Q.value = 6
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.09, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03)
+    src.connect(bp).connect(g).connect(out)
+    src.start(t, Math.random(), 0.04)
+  }
+
+  /** Secretária eletrônica: o bipe longo e o chiado da fita. */
+  secretaria(): void {
+    this.bip(0, 0.55, 1020, 0.06)
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b || this.fitaG) return
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    src.loop = true
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 3000
+    const g = ctx.createGain()
+    g.gain.value = 0
+    src.connect(lp).connect(g).connect(out)
+    src.start()
+    this.fitaG = g
+  }
+
+  fita(nivel: number, segundos = 0.5): void {
+    const ctx = this.ctx
+    const g = this.fitaG
+    if (!ctx || !g) return
+    const t = ctx.currentTime
+    g.gain.cancelScheduledValues(t)
+    g.gain.setValueAtTime(g.gain.value, t)
+    g.gain.linearRampToValueAtTime(nivel, t + segundos)
+  }
+}
+
 export const audio = new Audio()
+export const sons = new SonsNos()

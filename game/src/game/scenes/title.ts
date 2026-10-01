@@ -1,11 +1,13 @@
 import type { Scene, SceneCtx } from './types'
 import { FONT_BODY, FONT_TITLE } from '../systems/dialogue'
 import { audio } from '../../engine/audio'
-import { musica, Trilha, TEMA_MENU, DURACAO_MENU } from '../../engine/musica'
+import { musica } from '../../engine/musica'
+import { principal } from '../../engine/principal'
+import { trilhaPropria } from '../../engine/trilhaPropria'
 import { Particulas } from '../world/particulas'
 import { PAL, WORLD_W, WORLD_H } from '../../engine/constants'
 import { OpeningScene } from './opening'
-import { PrologoScene } from './demo/prologo'
+import { HospitalScene } from './demo/hospital'
 
 type Fase = 'espera' | 'abrindo' | 'pronto' | 'saindo'
 
@@ -32,7 +34,6 @@ export class TitleScene implements Scene {
   private t = 0
   private desde = 0
   private sel = 0
-  private trilha = new Trilha()
   private po = new Particulas()
   caixas: { x: number; y: number; w: number; h: number }[] = []
   /** Tempo sem tocar em nada com o menu aberto. */
@@ -41,16 +42,56 @@ export class TitleScene implements Scene {
   private abertura = 0
   private bateu = false
 
-  private readonly itens = [
-    { rotulo: 'Só mais um', nota: 'demo · a música, a casa e o Tear', cena: () => new PrologoScene() },
+  private readonly itens: { rotulo: string; nota: string; cena?: () => Scene }[] = [
+    { rotulo: 'Só mais um', nota: 'demo · a música, a casa, o Tear e o que vem depois', cena: () => new HospitalScene('abertura') },
     { rotulo: 'Abertura', nota: 'o quarto de Liam', cena: () => new OpeningScene() },
+    { rotulo: 'Trilha própria', nota: '' },
   ]
+
+  /**
+   * Arquivos de música escolhidos no computador de quem joga. Ficam só no
+   * navegador desta máquina — ver engine/trilhaPropria.ts.
+   */
+  private seletor: HTMLInputElement | null = null
+  private carregando = false
+
+  private notaTrilha(): string {
+    if (this.carregando) return 'carregando...'
+    if (!trilhaPropria.pronta) return 'usar arquivos de música deste computador (piano, e a versão completa se tiver)'
+    const nome = trilhaPropria.nomes.piano ?? 'arquivo'
+    const extra = trilhaPropria.temCompleto ? ' + versão completa' : ''
+    return `tocando: ${nome}${extra}  ·  clique para trocar  ·  Delete remove`
+  }
+
+  private escolherTrilha(): void {
+    if (!this.seletor) {
+      const el = document.createElement('input')
+      el.type = 'file'
+      el.accept = 'audio/*'
+      el.multiple = true
+      el.style.display = 'none'
+      el.addEventListener('change', () => {
+        const arquivos = Array.from(el.files ?? [])
+        el.value = ''
+        if (arquivos.length === 0) return
+        this.carregando = true
+        void trilhaPropria.escolher(arquivos)
+          .then(() => principal.recomecar(0.8))
+          .catch(() => undefined)
+          .finally(() => {
+            this.carregando = false
+          })
+      })
+      document.body.appendChild(el)
+      this.seletor = el
+    }
+    this.seletor.click()
+  }
 
   update(dt: number, ctx: SceneCtx): void {
     this.t += dt
     this.desde += dt
     this.po.update(dt)
-    this.trilha.update(dt)
 
     if (this.fase === 'espera') {
       if (this.t > 0.7 && (ctx.input.consumeAny() || ctx.input.consumeConfirm())) {
@@ -110,14 +151,22 @@ export class TitleScene implements Scene {
       }
     }
 
+    if (this.sel === 2 && ctx.input.consumeKey('Delete') && trilhaPropria.pronta) {
+      void trilhaPropria.remover().then(() => principal.recomecar(0.8))
+    }
+
     if (clicou || ctx.input.consumeConfirm()) {
+      const item = this.itens[this.sel]
+      if (!item?.cena) {
+        this.escolherTrilha()
+        return
+      }
       this.fase = 'saindo'
       this.desde = 0
       musica.nota(146.83, 0.6, 5)
-      this.trilha.parar()
+      principal.parar(2)
       musica.setPad(0.2, 2)
-      const item = this.itens[this.sel]
-      if (item) ctx.transition(item.cena(), 2.2, 0.6)
+      ctx.transition(item.cena(), 2.2, 0.6)
     }
   }
 
@@ -130,10 +179,11 @@ export class TitleScene implements Scene {
     audio.startAmbient()
     audio.setAmbient(0.2, 6)
     musica.desafinado = 0
-    musica.abafado = 0.1
+    musica.abafado = 0.3
     musica.iniciarPad()
-    musica.setPad(0.34, 8)
-    this.trilha.iniciar(TEMA_MENU, DURACAO_MENU)
+    musica.setPad(0.22, 8)
+    // Se havia trilha própria guardada, ela toca; senão, o piano sintetizado.
+    void trilhaPropria.carregarGuardada().finally(() => principal.tocar(0.8))
   }
 
   private mover(d: number): void {
@@ -295,7 +345,7 @@ export class TitleScene implements Scene {
     c.fillRect(cssW / 2 - fio / 2, cssH * 0.3 + tam * 0.2, fio, 1)
 
     const s = Math.max(14, Math.min(cssW / 58, 24))
-    let y = cssH * 0.68
+    let y = cssH * 0.58
     this.caixas = []
     for (const [i, item] of this.itens.entries()) {
       const a = Math.max(0, Math.min(1, (this.desde - 2.4 - i * 0.45) / 1.2)) * luz
@@ -321,9 +371,9 @@ export class TitleScene implements Scene {
         c.globalAlpha = a * 0.5
         c.fillStyle = PAL.inkDim
         c.font = `300 italic ${s * 0.72}px ${FONT_BODY}`
-        c.fillText(item.nota, cssW / 2, y + s * 1.5)
+        c.fillText(item.cena ? item.nota : this.notaTrilha(), cssW / 2, y + s * 1.5)
       }
-      y += s * 3.9
+      y += s * 3.7
     }
 
     const aPe = Math.max(0, Math.min(1, (this.desde - 4) / 1.6)) * luz

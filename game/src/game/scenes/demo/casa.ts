@@ -10,17 +10,34 @@ import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
 import { Leitor } from '../../systems/leitor'
 import type { Documento } from '../../systems/leitor'
-import { Figura } from '../../world/figura'
+import { Figura, criarSombraBranca } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { PAL, WORLD_W } from '../../../engine/constants'
-import { audio } from '../../../engine/audio'
+import { audio, sons } from '../../../engine/audio'
 import { musica } from '../../../engine/musica'
+import { principal } from '../../../engine/principal'
 import {
   CASA_ABERTURA, CASA_CORREDOR, CASA_ANTES_DA_COZINHA, CASA_PRONTO,
   CASA_OBJETIVO_INICIAL, CASA_OBJETIVO_COZINHA, CASA_PORTA_FIM, CASA_MELODIA,
-  CASA_MELODIA_DELE,
+  CASA_MELODIA_DELE, CASA_CHAVE, CASA_CHAVE_DEPOIS, CASA_PAREDE,
+  EVELYN_PERGUNTA, EVELYN_OPCOES, LIAM_ECO, EVELYN_DEPOIS_ECO, EVELYN_RESPOSTAS,
+  LIAM_DEPOIS_ECO, SOMBRA_REFLEXO, DEPOIS_ABERTURA, DEPOIS_LIA, DEPOIS_RECADO,
+  DEPOIS_RECADO_FIM,
 } from '../../content/demoScript'
+import { Etiquetas } from '../../ui/etiqueta'
+import { Camada } from '../../ui/camada'
+import { CadernoUI } from '../../ui/cadernoUI'
+import { Escolha } from '../../ui/escolha'
+import { memoria } from '../../systems/memoria'
 import { MesaScene } from './mesa'
+import { FimScene } from './fim'
+
+/** Cenas que o jogador assiste: Liam não obedece às setas enquanto duram. */
+type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado'
+
+const COR_LIAM = { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' }
+/** Depois do grito, a sombra de Liam no chão fica branca e não volta. */
+const SOMBRA_BRANCA = 'rgba(236,238,248,0.6)'
 
 const VELOCIDADE = 44
 const ALCANCE = 15
@@ -51,14 +68,41 @@ const MELODIA_DESCENDO = [0, 2, 4, 3, 2, 1, 0]
 export class CasaScene implements Scene {
   readonly id = 'demo-casa'
 
+  /** A casa depois do grito: sem música, tudo fora do lugar, Lia com medo. */
+  readonly depois: boolean
+
+  constructor(opcoes: { depois?: boolean } = {}) {
+    this.depois = opcoes.depois === true
+  }
+
   private dialogue = new Dialogue()
+  private etiquetas = new Etiquetas()
+  private camada = new Camada()
+  private caderno = new CadernoUI()
+  private escolha = new Escolha()
+  private cutscene: Cutscene | null = null
+  private tCut = 0
+  private passoCut = 0
+  /** A frase do pai saiu da boca dele (para os testes, e para a história). */
+  falouPeloPai = false
+  private evelynFeita = false
+  private evelyn = new Figura({
+    x: 268, y: 167, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
+    cor: { roupa: '#3e5664', cabelo: '#2a1a16', pele: '#7a5a4e', sombra: 'rgba(0,0,0,0.5)' },
+  })
+  private evelynVisivel = 0
+  private lia = new Figura({
+    x: 300, y: 167, altura: 32, cabelo: 'rabo', mochila: '#2e3e56',
+    cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
+  })
+  private liaVisivel = 1
+  private liaFeita = false
+  private reflexo = 0
+  private proxTique = 0
   private comodos = new Map<string, Comodo>()
   private atual!: Comodo
   private t = 0
-  private liam = new Figura({
-    x: 300, y: 163, altura: 31,
-    cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' },
-  })
+  private liam = new Figura({ x: 300, y: 163, altura: 31, cor: { ...COR_LIAM } })
   private po = new Particulas()
   private piano = new Piano()
   private leitor = new Leitor()
@@ -105,6 +149,15 @@ export class CasaScene implements Scene {
     return this.leitor.aberto
   }
 
+  /** Alguma coisa que o jogador só assiste ou escolhe — não é hora de andar. */
+  get ocupado(): boolean {
+    return this.cutscene !== null || this.escolha.ativa
+  }
+
+  get cutsceneAtual(): string | null {
+    return this.cutscene
+  }
+
   enter(ctx: SceneCtx): void {
     this.jogo = ctx.state
     this.montar()
@@ -112,28 +165,69 @@ export class CasaScene implements Scene {
     this.visitados.add('sala')
     this.liam.x = 300
     this.liam.y = this.atual.passoY
-    audio.setAmbient(0.42, 3)
-    musica.setPad(0.2, 5)
     musica.desafinado = 0
     musica.abafado = 0.15
-    this.dialogue.play(CASA_ABERTURA)
+    if (this.depois) {
+      this.liam.cor.sombra = SOMBRA_BRANCA
+      ctx.state.sombraEscreve = true
+      principal.parar(0.3)
+      musica.setPad(0, 1)
+      audio.setAmbient(0.1, 3)
+      sons.iniciarCasaReal()
+      sons.setCasaReal(0.9, 4)
+      this.lia.x = 300
+      this.dialogue.play(DEPOIS_ABERTURA)
+      return
+    }
+    audio.setAmbient(0.36, 3)
+    musica.setPad(0.12, 5)
+    principal.tocar(0.5)
+    this.camada.mostrar(ctx.state, 'casa')
+    // A chave na porta: o corpo de Liam arruma antes de ele pensar.
+    this.cutscene = 'chave'
+    this.tCut = 0
+    this.passoCut = 0
+    this.liam.olhar = -1
   }
 
   /** (Re)constrói os cômodos. O corredor depende do comprimento atual. */
   private montar(): void {
     this.comodos = new Map<string, Comodo>()
-    for (const c of [comodoSala(), comodoCorredor(this.corredorLargura), comodoQuarto()]) {
+    const d = this.depois
+    for (const c of [comodoSala(d), comodoCorredor(this.corredorLargura, d), comodoQuarto(d)]) {
       this.comodos.set(c.id, c)
     }
   }
 
   update(dt: number, ctx: SceneCtx): void {
     this.jogo = ctx.state
+    this.ctxAtual = ctx
     this.t += dt
     this.liam.update(dt)
+    this.evelyn.update(dt)
+    this.lia.update(dt)
     this.po.update(dt)
     this.piano.update(dt)
     this.dialogue.update(dt)
+    this.etiquetas.update(dt)
+    this.camada.update(dt)
+    this.reflexo = Math.max(0, this.reflexo - dt * 0.5)
+    if (this.depois && this.t >= this.proxTique) {
+      this.proxTique = this.t + 1
+      sons.tique(Math.floor(this.t) % 2 === 0)
+    }
+
+    if (this.escolha.ativa) {
+      this.liam.andando = 0
+      this.escolha.update(dt, ctx.input)
+      return
+    }
+    if (this.cutscene && !this.leitor.aberto) {
+      this.liam.andando = 0
+      if (this.dialogue.active && ctx.input.consumeConfirm()) this.dialogue.confirm()
+      this.rodarCutscene(dt, ctx)
+      return
+    }
     this.dedilhado = Math.max(0, this.dedilhado - dt * 3)
     this.sinal = Math.max(0, this.sinal - dt * 0.35)
     this.estrela = Math.max(0, this.estrela - dt * 0.3)
@@ -162,6 +256,9 @@ export class CasaScene implements Scene {
       this.aoPiano(ctx)
       return
     }
+
+    if (this.caderno.update(dt, ctx, this.leitor, true)) return
+    this.gatilhos(ctx)
 
     // Lê os dois de uma vez. Um clique marca confirmar E toque; se a
     // proximidade valesse também, clicar para andar acionaria a porta embaixo
@@ -238,7 +335,7 @@ export class CasaScene implements Scene {
    * afasta a porta do fim — e Liam comenta, três vezes, até entender.
    */
   private esticarCorredor(): void {
-    if (this.atual.id !== 'corredor') return
+    if (this.atual.id !== 'corredor' || this.depois) return
     const limite = this.corredorLargura - 120
     if (this.liam.x < limite || this.corredorLargura >= CORREDOR_MAX) return
 
@@ -260,9 +357,15 @@ export class CasaScene implements Scene {
     this.deCostas = Boolean(v.naParede)
 
     const primeira = !this.achados.has(v.id)
+    if (v.acao === 'secretaria') {
+      this.achados.add(v.id)
+      this.iniciarRecado(v.linhas)
+      return
+    }
     if (primeira) {
       this.achados.add(v.id)
       audio.interact()
+      if (v.aprende) this.jogo?.aprender(v.aprende)
       if (v.segredo && !v.deNovo) this.segredo(v.segredo)
       if (v.acao === 'piano') {
         this.dialogue.play(v.linhas, () => this.sentar())
@@ -323,6 +426,201 @@ export class CasaScene implements Scene {
     this.po.poeira(this.liam.x - 14, this.liam.y - 36, 28, 30)
   }
 
+  // --- Cenas assistidas ---------------------------------------------------
+
+  private ctxAtual: SceneCtx | null = null
+
+  private rodarCutscene(dt: number, ctx: SceneCtx): void {
+    this.tCut += dt
+    if (this.cutscene === 'chave') this.cutChave(dt)
+    else if (this.cutscene === 'evelyn') this.cutEvelyn(dt, ctx)
+    else if (this.cutscene === 'reflexo') this.reflexo = 1
+    else if (this.cutscene === 'lia') this.cutLia(dt)
+  }
+
+  /** O que dispara uma cena só de andar até certo ponto. */
+  private gatilhos(ctx: SceneCtx): void {
+    if (this.atual.id !== 'corredor') return
+    if (!this.depois && !this.evelynFeita && this.liam.x > 96) {
+      this.evelynFeita = true
+      this.cutscene = 'evelyn'
+      this.passoCut = 0
+      this.tCut = 0
+      this.destino = null
+      this.evelyn.x = 268
+      this.evelynVisivel = 0
+      void ctx
+    } else if (this.depois && !this.liaFeita && Math.abs(this.liam.x - this.lia.x) < 74) {
+      this.liaFeita = true
+      this.cutscene = 'lia'
+      this.passoCut = 0
+      this.tCut = 0
+      this.destino = null
+    }
+  }
+
+  /** A chave gira, e Liam vai sozinho endireitar o retrato. */
+  private cutChave(dt: number): void {
+    if (this.passoCut === 0 && this.tCut > 1.1) {
+      this.passoCut = 1
+      sons.chave()
+      this.dialogue.play(CASA_CHAVE, undefined, 0.9)
+      return
+    }
+    if (this.passoCut === 1 && !this.dialogue.active) {
+      const alvo = 243
+      const d = alvo - this.liam.x
+      if (Math.abs(d) > 1.5) {
+        this.liam.x += Math.sign(d) * VELOCIDADE * 1.2 * dt
+        this.liam.olhar = Math.sign(d)
+        this.liam.andando = 1
+        return
+      }
+      this.passoCut = 2
+      this.tCut = 0
+      this.liam.costas = true
+      this.liam.braco = 0.8
+      audio.interact()
+      return
+    }
+    if (this.passoCut === 2 && this.tCut > 0.9) {
+      this.passoCut = 3
+      this.liam.braco = 0
+      this.liam.costas = false
+      this.dialogue.play(CASA_CHAVE_DEPOIS, () => {
+        this.dialogue.play(CASA_ABERTURA, () => {
+          this.dialogue.play(CASA_PAREDE, () => {
+            this.cutscene = null
+          })
+        })
+      })
+    }
+  }
+
+  /**
+   * A mãe sai da cozinha e faz uma pergunta. As respostas de Liam se
+   * escrevem devagar; a do pai chega antes.
+   */
+  private cutEvelyn(dt: number, ctx: SceneCtx): void {
+    if (this.passoCut === 0) {
+      this.evelynVisivel = Math.min(1, this.evelynVisivel + dt * 2)
+      this.liam.olhar = 1
+      const alvo = this.liam.x + 34
+      if (this.evelyn.x > alvo) {
+        this.evelyn.x -= 52 * dt
+        this.evelyn.olhar = -1
+        this.evelyn.andando = 1
+        return
+      }
+      this.evelyn.andando = 0
+      this.passoCut = 1
+      this.etiquetas.apresentar(ctx.state, 'Evelyn')
+      this.dialogue.play(EVELYN_PERGUNTA, () => {
+        const primeira = !memoria.viuEvelyn
+        this.escolha.abrir({
+          opcoes: EVELYN_OPCOES,
+          escrita: primeira ? 4 : 40,
+          forcarEm: primeira ? 3.4 : 9,
+          travada: primeira,
+          onForcada: () => {
+            this.falouPeloPai = true
+            ctx.state.aprender('evelyn-eco')
+            this.dialogue.play(LIAM_ECO, () => {
+              this.dialogue.play(EVELYN_DEPOIS_ECO, () => this.evelynSai())
+            })
+          },
+          onEscolha: (i) => {
+            this.dialogue.play(EVELYN_RESPOSTAS[i] ?? [], () => this.evelynSai())
+          },
+        })
+      })
+      return
+    }
+    if (this.passoCut === 2) {
+      // Ela volta para a cozinha, de costas, e some na porta.
+      this.evelyn.olhar = 1
+      this.evelyn.andando = 1
+      this.evelyn.x += 46 * dt
+      if (this.evelyn.x > 250) this.evelynVisivel = Math.max(0, this.evelynVisivel - dt * 2)
+      if (this.evelynVisivel <= 0) {
+        this.evelyn.andando = 0
+        this.passoCut = 3
+        memoria.marcarEvelyn()
+        if (this.falouPeloPai) {
+          this.dialogue.play(LIAM_DEPOIS_ECO, () => {
+            this.cutscene = 'reflexo'
+            this.deCostas = true
+            this.liam.costas = true
+            this.dialogue.play(SOMBRA_REFLEXO, () => {
+              this.cutscene = null
+              this.deCostas = false
+            })
+          })
+        } else {
+          this.cutscene = null
+        }
+      }
+    }
+  }
+
+  private evelynSai(): void {
+    this.passoCut = 2
+  }
+
+  /** Depois do grito: a Lia recua quando Liam chega perto. */
+  private cutLia(dt: number): void {
+    const ctx = this.ctxAtual
+    if (this.passoCut === 0) {
+      this.passoCut = 1
+      this.liam.olhar = Math.sign(this.lia.x - this.liam.x) || 1
+      this.etiquetas.corrigir('Lia', 'Com medo de você.')
+      ctx?.state.aprender('depois-lia')
+      audio.refuse()
+      this.dialogue.play(DEPOIS_LIA, () => {
+        this.passoCut = 2
+      })
+    }
+    if (this.passoCut === 1) {
+      // Recua de frente para ele: um passo, outro, até a parede do fundo.
+      const longe = this.liam.x + 112
+      if (this.lia.x < longe && this.lia.x < this.atual.limiteDir - 30) {
+        this.lia.x += 34 * dt
+        this.lia.andando = 1
+      } else {
+        this.lia.andando = 0
+      }
+      this.lia.olhar = -1
+    }
+    if (this.passoCut === 2) {
+      this.lia.andando = 0
+      // Ela só some depois que a etiqueta corrigida já foi lida.
+      if (this.etiquetas.visivel) return
+      this.liaVisivel = Math.max(0, this.liaVisivel - dt * 0.7)
+      if (this.liaVisivel <= 0) this.cutscene = null
+    }
+  }
+
+  /** O recado da mãe na secretária. É aqui que a demo termina. */
+  private iniciarRecado(linhas: Line[]): void {
+    const ctx = this.ctxAtual
+    this.cutscene = 'recado'
+    this.deCostas = true
+    this.dialogue.play(linhas, () => {
+      sons.secretaria()
+      sons.fita(0.035, 0.8)
+      sons.setCasaReal(0.35, 1)
+      this.dialogue.play(DEPOIS_RECADO, () => {
+        sons.fita(0, 0.4)
+        this.dialogue.play(DEPOIS_RECADO_FIM, () => {
+          ctx?.state.aprender('secretaria')
+          sons.setCasaReal(0, 3.5)
+          this.saindo = true
+          window.setTimeout(() => ctx?.transition(new FimScene(), 3, 2.4), 900)
+        })
+      })
+    })
+  }
+
   // --- Piano da sala ------------------------------------------------------
 
   private sentar(): void {
@@ -333,6 +631,7 @@ export class CasaScene implements Scene {
     this.liam.y = BANCO_Y
     this.liam.olhar = 0
     musica.setPad(0.08, 2)
+    principal.volume(0.08, 1.5)
   }
 
   private levantar(): void {
@@ -341,7 +640,8 @@ export class CasaScene implements Scene {
     this.liam.y = this.atual.passoY
     this.liam.braco = 0
     this.liam.x = PIANO.cx + 22
-    musica.setPad(0.2, 3)
+    musica.setPad(0.12, 3)
+    principal.volume(0.5, 3)
   }
 
   private aoPiano(ctx: SceneCtx): void {
@@ -381,6 +681,12 @@ export class CasaScene implements Scene {
   private atravessar(p: Porta, ctx: SceneCtx): void {
     this.destino = null
     this.liam.andando = 0
+    if (p.travada && p.fala) {
+      this.deCostas = true
+      audio.refuse()
+      this.dialogue.play(p.fala)
+      return
+    }
     if (p.travada) {
       this.bater()
       return
@@ -416,24 +722,36 @@ export class CasaScene implements Scene {
    * — do jeito que o poste da sala pisca.
    */
   private bater(): void {
-    const i = Math.min(this.tentativasFim, CASA_PORTA_FIM.length - 1)
-    this.tentativasFim++
     this.deCostas = true
     audio.refuse()
+    if (this.depois) {
+      audio.bater(3, 200)
+      this.dialogue.play([
+        { text: 'Eu bato. Três curtas.' },
+        { text: 'Ninguém responde.' },
+        { text: 'Talvez ela não precise mais ficar do outro lado da porta.' },
+      ])
+      return
+    }
+    const i = Math.min(this.tentativasFim, CASA_PORTA_FIM.length - 1)
+    this.tentativasFim++
     const fala: Line[] = CASA_PORTA_FIM[i] ?? []
     if (i === 2) {
       this.dialogue.play(fala, () => {
-        audio.bater(3, 500)
+        // As três curtas dele, e do outro lado: três devagar, três rápidas.
+        audio.bater(3, 0)
+        sons.baterResposta(1500)
         window.setTimeout(() => {
           this.sinal = 1
-        }, 500)
+        }, 1500)
         window.setTimeout(() => {
           this.deCostas = true
           this.dialogue.play([
             { speaker: 'Voz', text: 'Ainda não.', style: 'speech' },
-            { text: 'Tinha alguém do outro lado.' },
+            { text: 'Ela respondeu devagar, e depois rápido.' },
+            { text: 'Como quem termina uma frase que eu comecei.' },
           ], () => this.segredo('bater'))
-        }, 1700)
+        }, 5200)
       })
       return
     }
@@ -496,6 +814,7 @@ export class CasaScene implements Scene {
     // A atmosfera do cômodo vem ANTES de Liam. Desenhada depois, a névoa do
     // fundo do corredor engolia o próprio jogador.
     this.atual.atmosfera?.(w, estado)
+    if (this.atual.id === 'corredor') this.desenharGente(w)
     if (!this.escondido) this.liam.draw(w, this.atual.luzX, 'rgba(210,200,230,0.32)')
     this.atual.desenharFrente?.(w, estado)
     this.po.draw(w, true)
@@ -508,15 +827,55 @@ export class CasaScene implements Scene {
     ctx.display.present({ rgbSplit: 0, wave: 0, shake: 0, zoom: z, alvoX: focoX, alvoY: focoY, time: this.t })
     ctx.display.vignette(0.6)
 
+    const c = ctx.display.ctx
+    const { cssW, cssH } = ctx.display
     if (this.tocando) {
       this.piano.draw(ctx.display, {})
       this.piano.drawDica(ctx.display, 'toque o que quiser  ·  A S D F G H J K  ·  E ou Esc levanta')
-    } else if (!this.leitor.aberto) {
+    } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa) {
       this.drawInterface(ctx, cam)
+      if (!this.dialogue.active && !this.saindo) this.caderno.draw(c, cssW, cssH, ctx.state.novidade)
     }
+    this.etiquetas.draw(c, cssW, (quem) => {
+      const f = quem === 'Evelyn' ? this.evelyn : quem === 'Lia' ? this.lia : quem === 'Liam' ? this.liam : null
+      if (!f || this.atual.id !== 'corredor' && f !== this.liam) return null
+      return { x: ctx.display.toScreenX(f.x - cam), y: ctx.display.toScreenY(f.y - f.altura - 2) }
+    })
+    this.camada.draw(c, cssW, cssH)
     this.drawEstrela(ctx)
-    this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
-    this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+    this.escolha.draw(c, cssW, cssH)
+    this.dialogue.render(c, cssW, cssH)
+    this.leitor.render(c, cssW, cssH)
+  }
+
+  /** A mãe (antes) e a Lia (depois), no corredor; e o reflexo no retrato. */
+  private desenharGente(w: CanvasRenderingContext2D): void {
+    if (this.reflexo > 0 && !this.depois) {
+      w.save()
+      w.fillStyle = `rgba(0,0,0,${0.3 * this.reflexo})`
+      w.fillRect(0, 0, this.atual.largura, 216)
+      // Dentro do vidro do retrato grande: uma silhueta branca, sem rosto.
+      w.beginPath()
+      w.rect(180, 26, 44, 32)
+      w.clip()
+      w.globalAlpha = this.reflexo
+      criarSombraBranca(203, 60, 28).draw(w, 203, 'rgba(255,255,255,0.4)')
+      w.restore()
+    }
+    if (!this.depois && this.evelynVisivel > 0) {
+      w.save()
+      w.globalAlpha = this.evelynVisivel
+      this.evelyn.y = this.atual.passoY
+      this.evelyn.draw(w, this.atual.luzX, 'rgba(220,190,160,0.3)')
+      w.restore()
+    }
+    if (this.depois && this.liaVisivel > 0) {
+      w.save()
+      w.globalAlpha = this.liaVisivel
+      this.lia.y = this.atual.passoY
+      this.lia.draw(w, this.atual.luzX, 'rgba(220,190,160,0.25)')
+      w.restore()
+    }
   }
 
   private drawInterface(ctx: SceneCtx, cam: number): void {
@@ -562,10 +921,12 @@ export class CasaScene implements Scene {
     c.globalAlpha = 0.42
     c.fillStyle = PAL.inkDim
     c.font = `${s * 0.95}px ${FONT_BODY}`
-    const objetivo = this.avisouCozinha ? CASA_OBJETIVO_COZINHA : CASA_OBJETIVO_INICIAL
+    const objetivo = this.depois
+      ? (this.visitados.has('corredor') ? 'a luz âmbar no corredor' : 'ouvir a casa')
+      : this.avisouCozinha ? CASA_OBJETIVO_COZINHA : CASA_OBJETIVO_INICIAL
     const vistos = [...this.achados].filter((a) => !a.endsWith('+') && a !== 'melodia-dele').length
     c.fillText(
-      `${objetivo}  ·  ${vistos} vestígios  ·  ← → anda · E usa`,
+      `${objetivo}  ·  ${vistos} vestígios  ·  ← → anda · E usa · C caderno`,
       cssW / 2, cssH - s * 2,
     )
     c.restore()

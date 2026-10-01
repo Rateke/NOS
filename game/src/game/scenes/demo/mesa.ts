@@ -10,6 +10,8 @@ import {
   MESA_VESTIGIOS, MESA_PRATOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
 } from '../../content/demoScript'
 import { TearScene } from './tear'
+import { Etiquetas } from '../../ui/etiqueta'
+import { CadernoUI } from '../../ui/cadernoUI'
 import type { EstadoCozinha } from '../../world/cozinha'
 import {
   drawCozinhaFundo, drawCozinhaFrente, drawCozinhaLuz, COZ_CHAO, LAMPADA, PANELA,
@@ -39,6 +41,8 @@ export class MesaScene implements Scene {
 
   private dialogue = new Dialogue()
   private leitor = new Leitor()
+  private etiquetas = new Etiquetas()
+  private caderno = new CadernoUI()
   private fase: Fase = 'abertura'
   private t = 0
   private tensao = 0
@@ -80,7 +84,10 @@ export class MesaScene implements Scene {
   private desdeQuePreso = 0
   private examinarAoChegar = false
 
-  enter(): void {
+  enter(ctx: SceneCtx): void {
+    ctx.state.aprender('mesa')
+    this.etiquetas.apresentar(ctx.state, 'Evelyn')
+    this.etiquetas.apresentar(ctx.state, 'Lia', 8)
     audio.setAmbient(0.5, 2)
     audio.startArgument()
     audio.setArgument(0.16, 3)
@@ -92,9 +99,13 @@ export class MesaScene implements Scene {
     })
   }
 
+  private jogo: SceneCtx['state'] | null = null
+
   update(dt: number, ctx: SceneCtx): void {
+    this.jogo = ctx.state
     this.t += dt
     this.dialogue.update(dt)
+    this.etiquetas.update(dt)
     this.po.update(dt)
     for (const f of [this.liam, this.evelyn, this.adrian, this.lia]) f.update(dt)
 
@@ -143,6 +154,8 @@ export class MesaScene implements Scene {
       ctx.input.consumeTap()
       return
     }
+
+    if (this.caderno.update(dt, ctx, this.leitor, true)) return
 
     // Examinar o que estiver ao alcance
     // Igual à casa: um clique vale como destino, não como usar o que está ao
@@ -240,6 +253,8 @@ export class MesaScene implements Scene {
     this.achados.add(v.id)
     if (v.id === 'fogao') this.panoTirado = true
     audio.interact()
+    if (v.aprende) this.jogo?.aprender(v.aprende)
+    if (v.segredo && this.jogo?.descobrir(v.segredo)) window.setTimeout(() => audio.segredo(), 400)
     const doc = v.documento
     if (doc) {
       const depois = v.depois
@@ -320,6 +335,15 @@ export class MesaScene implements Scene {
 
     this.drawAviso(ctx)
     this.drawPuxao(ctx)
+    const c = ctx.display.ctx
+    this.etiquetas.draw(c, ctx.display.cssW, (quem) => {
+      const f = quem === 'Evelyn' ? this.evelyn : quem === 'Lia' ? this.lia : null
+      if (!f) return null
+      return { x: ctx.display.toScreenX(f.x), y: ctx.display.toScreenY(f.y - f.altura) }
+    })
+    if (this.fase === 'preso' && !this.leitor.aberto && !this.dialogue.active) {
+      this.caderno.draw(c, ctx.display.cssW, ctx.display.cssH, this.jogo?.novidade ?? 0)
+    }
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
     this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }
@@ -359,7 +383,7 @@ export class MesaScene implements Scene {
     c.fillStyle = PAL.inkDim
     c.font = `${s * 0.92}px ${FONT_BODY}`
     c.fillText(
-      `${this.achados.size}/${MESA_VESTIGIOS.length} · ← → anda · E examina`,
+      `${this.achados.size}/${MESA_VESTIGIOS.length} · ← → anda · E examina · C caderno`,
       cssW / 2, cssH - s * 2,
     )
     c.restore()

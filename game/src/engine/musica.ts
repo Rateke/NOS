@@ -33,6 +33,10 @@ export class Musica {
   private reverb: ConvolverNode | null = null
   private envioReverb: GainNode | null = null
   private padGain: GainNode | null = null
+  /** A trilha de fundo (não o piano da cena): sobe e desce inteira. */
+  private fundo: GainNode | null = null
+  /** Camada "completa": cordas por baixo do piano, só nos picos. */
+  private completo: GainNode | null = null
   /** Desafinação em semitons: 0 no prólogo, negativa no Tear. */
   desafinado = 0
   /** Abafamento: 0 aberto, 1 sufocado. */
@@ -56,6 +60,72 @@ export class Musica {
     this.envioReverb = ctx.createGain()
     this.envioReverb.gain.value = 1
     this.envioReverb.connect(this.reverb)
+
+    this.fundo = ctx.createGain()
+    this.fundo.gain.value = 1
+    this.fundo.connect(this.saida)
+    this.fundo.connect(this.envioReverb)
+    this.completo = ctx.createGain()
+    this.completo.gain.value = 0
+    this.completo.connect(this.saida)
+    this.completo.connect(this.envioReverb)
+  }
+
+  private rampa(g: GainNode | null, nivel: number, segundos: number): void {
+    if (!this.ctx || !g) return
+    const t = this.ctx.currentTime
+    g.gain.cancelScheduledValues(t)
+    g.gain.setValueAtTime(g.gain.value, t)
+    g.gain.linearRampToValueAtTime(nivel, t + Math.max(0.01, segundos))
+  }
+
+  /** Volume da trilha de fundo. 0 some com ela sem cortar as notas no meio. */
+  setFundo(nivel: number, segundos = 2): void {
+    this.rampa(this.fundo, nivel, segundos)
+  }
+
+  /** A versão com todos os instrumentos entra por cima do piano, ou sai. */
+  setCompleto(nivel: number, segundos = 1.5): void {
+    this.rampa(this.completo, nivel, segundos)
+  }
+
+  /**
+   * Uma corda (violoncelo, viola): serra filtrada com ataque lento e um
+   * vibrato quase parado. Só existe na camada completa.
+   */
+  corda(freq: number, duracao = 6, forca = 0.5): void {
+    const ctx = this.ctx
+    const dest = this.completo
+    if (!ctx || !dest) return
+    const t = ctx.currentTime
+    const f = freq * Math.pow(2, this.desafinado / 12)
+    const g = ctx.createGain()
+    const pico = 0.05 * forca
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(pico, t + Math.min(1.6, duracao * 0.3))
+    g.gain.setValueAtTime(pico, t + duracao * 0.7)
+    g.gain.linearRampToValueAtTime(0, t + duracao)
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 900 + forca * 500
+    lp.Q.value = 0.4
+    for (const dt of [-5, 5]) {
+      const o = ctx.createOscillator()
+      o.type = 'sawtooth'
+      o.frequency.value = f
+      o.detune.value = dt
+      const vib = ctx.createOscillator()
+      vib.frequency.value = 4.6
+      const vg = ctx.createGain()
+      vg.gain.value = f * 0.0035
+      vib.connect(vg).connect(o.frequency)
+      vib.start(t)
+      vib.stop(t + duracao + 0.1)
+      o.connect(lp)
+      o.start(t)
+      o.stop(t + duracao + 0.1)
+    }
+    lp.connect(g).connect(dest)
   }
 
   private criarCauda(ctx: AudioContext, segundos: number, decaimento: number): AudioBuffer {
@@ -77,9 +147,10 @@ export class Musica {
    * Uma nota de piano. `forca` de 0 a 1 muda volume, brilho e duração —
    * é o que separa uma nota tocada de uma nota apertada.
    */
-  nota(freqBase: number, forca = 1, duracao = 3.2): void {
+  nota(freqBase: number, forca = 1, duracao = 3.2, bus: 'piano' | 'fundo' | 'completo' = 'piano'): void {
     const ctx = this.ctx
     if (!ctx || !this.saida || !this.envioReverb) return
+    const destino = bus === 'fundo' ? this.fundo : bus === 'completo' ? this.completo : null
     const freq = freqBase * Math.pow(2, this.desafinado / 12)
     const t = ctx.currentTime
 
@@ -128,8 +199,12 @@ export class Musica {
     mart.start(t)
 
     corpo.connect(filtro)
-    filtro.connect(this.saida)
-    filtro.connect(this.envioReverb)
+    if (destino) {
+      filtro.connect(destino)
+    } else {
+      filtro.connect(this.saida)
+      filtro.connect(this.envioReverb)
+    }
   }
 
   /** Um colchão grave por baixo de tudo. Não é melodia: é a casa respirando. */
@@ -180,10 +255,9 @@ export const musica = new Musica()
 
 /** Frequências usadas nas composições. */
 const N = {
-  D2: 73.42, F2: 87.31, G2: 98.0, A2: 110.0, Bb2: 116.54,
-  C3: 130.81, D3: 146.83, F3: 174.61, G3: 196.0, A3: 220.0, Bb3: 233.08,
-  C4: 261.63, D4: 293.66, F4: 349.23, G4: 392.0, A4: 440.0, Bb4: 466.16,
-  D5: 587.33,
+  G1: 49.0, A1: 55.0, Bb1: 58.27, D2: 73.42, F2: 87.31, G2: 98.0, A2: 110.0, Bb2: 116.54,
+  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.0, A3: 220.0, Bb3: 233.08,
+  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0,
 } as const
 
 export interface Evento {
@@ -192,43 +266,59 @@ export interface Evento {
   freq: number
   forca: number
   dur?: number
+  /** Só toca na versão completa: cordas e dobras por baixo do piano. */
+  completo?: boolean
+  /** Corda em vez de piano (só na camada completa). */
+  corda?: boolean
 }
 
 /**
- * Tema do menu.
+ * A trilha da casa.
  *
- * Quatro compassos lentos em ré menor — Dm, Si♭, Fá, Sol menor — com a mão
- * esquerda em arpejo e uma melodia esparsa por cima, feita dos mesmos
- * intervalos do tema que Adrian ensina. A ideia é a mesma de Magdalene: pouca
- * nota, muito silêncio, e a reverberação fazendo o resto.
+ * Piano nos graves e nada de crescer: a mesma força do começo ao fim, lenta,
+ * abafada, com a cauda da reverberação fazendo o trabalho. Quatro acordes que
+ * não resolvem — ré menor, si bemol com sétima maior, sol menor, lá com a
+ * quarta suspensa — e o laço volta ao começo sem nunca pousar.
+ *
+ * Por cima, o tema que Adrian ensina, uma oitava abaixo, devagar: dá para
+ * reconhecer, mas não dá para cantar junto.
+ *
+ * A camada completa (cordas e o baixo dobrado) fica escrita junto, calada.
+ * Só entra nos picos, e entra inteira — não vai crescendo.
  */
-export const TEMA_MENU: Evento[] = (() => {
+export const TEMA_PRINCIPAL: Evento[] = (() => {
   const ev: Evento[] = []
-  const compassos: [number, number[]][] = [
-    [N.D2, [N.D3, N.F3, N.A3, N.D4]],
-    [N.Bb2, [N.D3, N.F3, N.Bb3, N.D4]],
-    [N.F2, [N.C3, N.F3, N.A3, N.C4]],
-    [N.G2, [N.D3, N.G3, N.Bb3, N.D4]],
+  const BAR = 7.2
+  const acordes: { baixo: number; dentro: number[]; cordas: number[] }[] = [
+    { baixo: N.D2, dentro: [N.F3, N.A3], cordas: [N.D3, N.F3, N.A3] },
+    { baixo: N.Bb1, dentro: [N.D3, N.A3], cordas: [N.Bb2, N.D3, N.A3] },
+    { baixo: N.G1, dentro: [N.Bb2, N.D3], cordas: [N.G2, N.Bb2, N.D3] },
+    { baixo: N.A1, dentro: [N.D3, N.E3], cordas: [N.A2, N.D3, N.E3] },
   ]
-  compassos.forEach(([baixo, arpejo], i) => {
-    const t0 = i * 6
-    ev.push({ t: t0, freq: baixo, forca: 0.5, dur: 5 })
-    arpejo.forEach((f, k) => {
-      ev.push({ t: t0 + 0.7 + k * 0.85, freq: f, forca: 0.3 - k * 0.03, dur: 3.4 })
-    })
+  acordes.forEach((a, i) => {
+    const t0 = i * BAR
+    // Mão esquerda: a oitava grave, e as vozes de dentro depois de um respiro.
+    ev.push({ t: t0, freq: a.baixo, forca: 0.46, dur: 7 })
+    ev.push({ t: t0 + 0.05, freq: a.baixo * 2, forca: 0.3, dur: 6 })
+    a.dentro.forEach((f, k) => ev.push({ t: t0 + 1.6 + k * 0.5, freq: f, forca: 0.24, dur: 5 }))
+    // Camada completa: cordas sustentando o acorde e o baixo dobrado.
+    for (const f of a.cordas) ev.push({ t: t0 + 0.1, freq: f, forca: 0.55, dur: BAR, completo: true, corda: true })
+    ev.push({ t: t0 + 0.1, freq: a.baixo, forca: 0.6, dur: BAR, completo: true, corda: true })
   })
-  // Melodia por cima, sempre entrando depois do arpejo começar.
+  // O tema do Adrian, uma oitava abaixo, espalhado pelos quatro compassos.
   const melodia: [number, number][] = [
-    [1.6, N.A4], [3.6, N.D5],
-    [7.6, N.Bb4], [9.6, N.A4],
-    [13.2, N.F4], [15.2, N.A4],
-    [19.2, N.G4], [21.2, N.F4], [22.6, N.D4],
+    [2.6, N.D3], [3.7, N.F3], [4.8, N.A3], [6.2, N.G3],
+    [BAR + 2.6, N.D3], [BAR + 3.6, N.F3], [BAR + 4.6, N.A3], [BAR + 5.6, N.C4], [BAR + 6.6, N.Bb3],
+    [BAR * 2 + 2.6, N.A3], [BAR * 2 + 3.8, N.G3], [BAR * 2 + 5.0, N.F3],
+    [BAR * 3 + 2.6, N.E3], [BAR * 3 + 4.4, N.D3],
   ]
-  for (const [t, freq] of melodia) ev.push({ t, freq, forca: 0.52, dur: 4 })
+  for (const [t, freq] of melodia) ev.push({ t, freq, forca: 0.36, dur: 4.6 })
+  // Na versão completa a melodia ganha a oitava de cima, bem baixinho.
+  for (const [t, freq] of melodia) ev.push({ t: t + 0.02, freq: freq * 2, forca: 0.18, dur: 4, completo: true })
   return ev.sort((a, b) => a.t - b.t)
 })()
 
-export const DURACAO_MENU = 24
+export const DURACAO_PRINCIPAL = 7.2 * 4
 
 /**
  * Toca uma sequência em laço, disparando as notas quadro a quadro. Simples de
@@ -253,13 +343,18 @@ export class Trilha {
     this.tocando = false
   }
 
+  get ativa(): boolean {
+    return this.tocando
+  }
+
   update(dt: number): void {
     if (!this.tocando) return
     this.t += dt
     while (this.proximo < this.eventos.length) {
       const e = this.eventos[this.proximo]
       if (!e || e.t > this.t) break
-      musica.nota(e.freq, e.forca, e.dur ?? 3.2)
+      if (e.corda) musica.corda(e.freq, e.dur ?? 6, e.forca)
+      else musica.nota(e.freq, e.forca, e.dur ?? 3.2, e.completo ? 'completo' : 'fundo')
       this.proximo++
     }
     if (this.t >= this.duracao) {
