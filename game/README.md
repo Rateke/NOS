@@ -63,9 +63,11 @@ navegador por causa de uma dependência que só serve aos testes.
 
 **Se um push não virou deploy**, confira nesta ordem:
 
-1. **O projeto existe na Vercel?** Em vercel.com/new o repositório
-   `Rateke/NOS` tem que aparecer como importado. Se aparecer "Import", ele
-   nunca foi ligado.
+1. **O projeto está ligado ao GitHub?** Deploy feito pela linha de comando
+   aparece em Deployments com o ícone `>_` — o projeto existe, mas nenhum
+   push chega nele. Ligue em Vercel > projeto > Settings > Git > Connect Git
+   Repository > `Rateke/NOS` (não importe de novo: isso cria um segundo
+   projeto, com outro endereço).
 2. **O branch de produção.** O repositório só tem um branch,
    `claude/nos-roteiro-narrativo-lz8r6r`. Em Vercel > projeto > Settings >
    Git > Production Branch, tem que estar esse nome; se estiver `main`, os
