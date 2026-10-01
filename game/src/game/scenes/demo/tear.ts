@@ -55,6 +55,7 @@ type Fase = 'chegada' | 'absorvendo' | 'pico' | 'dentro' | 'volta' | 'grito' | '
  */
 export class TearScene implements Scene {
   readonly id = 'demo-tear'
+  readonly ponto = 'tear' as const
 
   private dialogue = new Dialogue()
   private leitor = new Leitor()

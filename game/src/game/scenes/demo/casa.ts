@@ -1,4 +1,5 @@
 import type { Scene, SceneCtx } from '../types'
+import type { Ponto } from '../../systems/salvo'
 import type { GameState } from '../../systems/state'
 import type { Comodo, Porta, VestigioCasa, EstadoComodo } from '../../world/casa'
 import {
@@ -70,9 +71,11 @@ export class CasaScene implements Scene {
 
   /** A casa depois do grito: sem música, tudo fora do lugar, Lia com medo. */
   readonly depois: boolean
+  readonly ponto: Ponto
 
   constructor(opcoes: { depois?: boolean } = {}) {
     this.depois = opcoes.depois === true
+    this.ponto = this.depois ? 'depois' : 'casa'
   }
 
   private dialogue = new Dialogue()
@@ -941,8 +944,9 @@ export class CasaScene implements Scene {
     const { cssW } = ctx.display
     const s = Math.max(12, Math.min(cssW / 70, 17))
     const a = Math.min(1, this.estrela * 1.6)
+    // Abaixo do canto, que é do ícone de pausa e do nó do salvamento.
     const x = cssW - s * 2.4
-    const y = s * 2.4
+    const y = s * 5.4
     const r = s * (0.5 + (1 - this.estrela) * 0.6)
     c.save()
     c.globalAlpha = a

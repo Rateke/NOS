@@ -5,6 +5,28 @@ export interface Keepsake {
 }
 
 /**
+ * O estado como ele vai para o jogo salvo: só dados, sem Set, para caber em
+ * JSON. Todos os campos são opcionais na leitura — um salvo de uma versão
+ * anterior, sem algum deles, carrega com o campo vazio.
+ */
+export interface EstadoSalvo {
+  resolved: string[]
+  seen: string[]
+  inventory: Keepsake[]
+  diaryRead: boolean
+  doorAttempts: number
+  segredos: string[]
+  sabe: string[]
+  camadas: string[]
+  apresentados: string[]
+  sombraEscreve: boolean
+}
+
+function lista(x: unknown): string[] {
+  return Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []
+}
+
+/**
  * Estado da fatia. `resolved` guarda tudo que já foi examinado ou recolhido;
  * `chores` é o subconjunto que precisa estar vazio para o quarto contar como
  * arrumado.
@@ -94,5 +116,50 @@ export class GameState {
 
   addKeepsake(k: Keepsake): void {
     if (!this.inventory.some((i) => i.id === k.id)) this.inventory.push(k)
+  }
+
+  /** Uma cópia do que importa, pronta para gravar. */
+  fotografar(): EstadoSalvo {
+    return {
+      resolved: [...this.resolved],
+      seen: [...this.seen],
+      inventory: this.inventory.map((k) => ({ ...k })),
+      diaryRead: this.diaryRead,
+      doorAttempts: this.doorAttempts,
+      segredos: [...this.segredos],
+      sabe: [...this.sabe],
+      camadas: [...this.camadas],
+      apresentados: [...this.apresentados],
+      sombraEscreve: this.sombraEscreve,
+    }
+  }
+
+  /** Volta ao começo: um jogo novo. */
+  zerar(): void {
+    for (const s of [this.resolved, this.seen, this.segredos, this.sabe, this.camadas, this.apresentados]) s.clear()
+    this.inventory.length = 0
+    this.diaryRead = false
+    this.doorAttempts = 0
+    this.sombraEscreve = false
+    this.novidade = 0
+  }
+
+  /** Carrega um estado salvo por cima deste. O que faltar fica vazio. */
+  restaurar(e: Partial<EstadoSalvo>): void {
+    this.zerar()
+    for (const id of lista(e.resolved)) this.resolved.add(id)
+    for (const id of lista(e.seen)) this.seen.add(id)
+    for (const id of lista(e.segredos)) this.segredos.add(id)
+    for (const id of lista(e.sabe)) this.sabe.add(id)
+    for (const id of lista(e.camadas)) this.camadas.add(id)
+    for (const id of lista(e.apresentados)) this.apresentados.add(id)
+    if (Array.isArray(e.inventory)) {
+      for (const k of e.inventory) {
+        if (k && typeof k.id === 'string') this.addKeepsake({ id: k.id, name: String(k.name ?? ''), note: String(k.note ?? '') })
+      }
+    }
+    this.diaryRead = e.diaryRead === true
+    this.doorAttempts = typeof e.doorAttempts === 'number' ? e.doorAttempts : 0
+    this.sombraEscreve = e.sombraEscreve === true
   }
 }

@@ -352,10 +352,10 @@ export class Figura {
     c.fillRect(cx0, topoCabeca + 1, largCabeca, altCabeca - 2)
     c.fillRect(cx0 + 1, topoCabeca + altCabeca - 1, largCabeca - 2, 1)
     if (!sil) {
-      // Sombra do lado de longe da luz e embaixo do queixo
-      c.fillStyle = peleSom
-      c.fillRect(ladoLuz > 0 ? cx0 : cx0 + largCabeca - 1, topoCabeca + 2, 1, altCabeca - 3)
-      c.fillRect(cx0 + 2, topoCabeca + altCabeca - 1, largCabeca - 4, 1)
+      // Sombra só do lado de longe da luz, parando antes do queixo. (Uma
+      // faixa escura embaixo do queixo, nesse tamanho, vira barba.)
+      c.fillStyle = tom(pele, -14)
+      c.fillRect(ladoLuz > 0 ? cx0 : cx0 + largCabeca - 1, topoCabeca + 2, 1, altCabeca - 5)
     }
 
     const olhoY = topoCabeca + Math.round(altCabeca * 0.56)
@@ -501,7 +501,7 @@ export class Figura {
         c.fillStyle = sobr
         c.fillRect(ox - (lado > 0 ? 1 : 0), olhoY - 2, 2, 1)
         // Boca
-        c.fillStyle = tom(pele, -34)
+        c.fillStyle = tom(pele, -24)
         c.fillRect(lado > 0 ? frente - 1 : frente, olhoY + 3, 2, 1)
       }
       // Orelha no meio da cabeça
@@ -524,12 +524,8 @@ export class Figura {
     c.fillStyle = fechado ? peleSom : olho
     c.fillRect(oE, olhoY, 1, 1)
     c.fillRect(oD, olhoY, 1, 1)
-    if (alt >= 9 && !fechado) {
-      // Brilho do olho: quem olha de volta
-      c.fillStyle = 'rgba(230,236,250,0.5)'
-      c.fillRect(oE + 1, olhoY, 1, 1)
-      c.fillRect(oD - 1, olhoY, 1, 1)
-    }
+    // Sem brilho do lado de dentro dos olhos: com um pixel de pupila, o
+    // brilho virado para o nariz deixava todo mundo vesgo.
     c.fillStyle = sobr
     c.fillRect(oE - (alt >= 9 ? 1 : 0), olhoY - 2, alt >= 9 ? 2 : 1, 1)
     c.fillRect(oD, olhoY - 2, alt >= 9 ? 2 : 1, 1)
@@ -538,14 +534,15 @@ export class Figura {
       c.fillRect(oE, olhoY + 1, 1, 1)
       c.fillRect(oD, olhoY + 1, 1, 1)
     }
-    // Nariz: só a sombra de baixo
-    c.fillStyle = peleSom
+    // Nariz: um ponto de sombra, só. Mais que isso, colado na boca, vira
+    // bigode.
+    c.fillStyle = tom(pele, -12)
     const meio = cx0 + Math.floor(lc / 2)
-    c.fillRect(meio - (lc % 2 === 0 ? 1 : 0), olhoY + 2, lc % 2 === 0 ? 2 : 1, 1)
-    // Boca: reta. Ninguém sorri nesta casa.
+    c.fillRect(meio - (lc % 2 === 0 ? 1 : 0), olhoY + 2, 1, 1)
+    // Boca: reta e clara. Ninguém sorri nesta casa.
     if (alt >= 7) {
-      c.fillStyle = tom(pele, -36)
-      c.fillRect(meio - 1, olhoY + (alt >= 9 ? 4 : 3), lc % 2 === 0 ? 2 : 3, 1)
+      c.fillStyle = tom(pele, -24)
+      c.fillRect(meio - 1, olhoY + (alt >= 9 ? 4 : 3), 2, 1)
     }
   }
 
@@ -579,9 +576,10 @@ export class Figura {
     } else {
       c.fillRect(cx0 + 1, topo - 1, lc - 2, 1)
       c.fillRect(cx0, topo, lc, altCabelo)
-      // Costeletas
-      c.fillRect(cx0, topo, 1, Math.round(alt * 0.62))
-      c.fillRect(cx0 + lc - 1, topo, 1, Math.round(alt * 0.62))
+      // Costeletas curtas: até a altura dos olhos, nunca até o queixo
+      const cost = this.barba || this.cabelo === 'longo' ? Math.round(alt * 0.62) : Math.round(alt * 0.46)
+      c.fillRect(cx0, topo, 1, cost)
+      c.fillRect(cx0 + lc - 1, topo, 1, cost)
     }
     if (!sil) {
       c.fillStyle = luz

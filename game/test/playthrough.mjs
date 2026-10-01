@@ -27,7 +27,8 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
 const errors = []
 page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message))
 
-await page.goto(URL + '?debug=1', { waitUntil: 'networkidle' })
+// A fatia antiga do quarto não está mais no menu: entra direto por ?cena=quarto.
+await page.goto(URL + '?debug=1&cena=quarto', { waitUntil: 'networkidle' })
 await page.waitForTimeout(800)
 
 const KEY = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }
@@ -79,16 +80,6 @@ async function grab(name, tx, ty, face) {
   console.log(`  ${name.padEnd(12)} restam=${s.left}`)
 }
 
-// O menu abre em preto: o primeiro toque acende tudo. Só depois de pronto
-// dá para descer até "Abertura" e confirmar.
-await page.keyboard.press('Space')
-for (let i = 0; i < 40; i++) {
-  const pronto = await page.evaluate(() => window.__nos?.scene?.fase === 'pronto')
-  if (pronto) break
-  await page.waitForTimeout(250)
-}
-await page.keyboard.press('ArrowDown')
-await page.waitForTimeout(350)
 await page.keyboard.press('Space')
 await page.waitForTimeout(600)
 for (let i = 0; i < 6; i++) { await page.keyboard.press('Space'); await page.waitForTimeout(450) }

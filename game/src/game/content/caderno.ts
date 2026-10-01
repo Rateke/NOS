@@ -4,8 +4,9 @@ import type { GameState } from '../systems/state'
 /**
  * O caderno "O que eu sei".
  *
- * É o caderno que a Lia levou para o hospital e deixou do lado da cama. Na
- * cabeça de Liam ele se escreve sozinho: cada coisa que ele vê vira uma
+ * É o caderno que a Lia levou para o hospital e deixou do lado da cama —
+ * coisa que o jogador só entende no fim (a Lia diz "eu trouxe o seu
+ * caderno", e não diz para onde). Na cabeça de Liam ele se escreve sozinho: cada coisa que ele vê vira uma
  * linha, na letra dele. Serve de resumo para quem se perdeu — e serve de
  * outra coisa depois do grito, quando a sombra passa a riscar o que é
  * mentira e a escrever a verdade por cima, em branco.
@@ -38,8 +39,8 @@ const PAGINAS: PaginaCaderno[] = [
     linhas: [
       { texto: 'Liam. Catorze anos. 9º ano B.' },
       { texto: 'Regra da casa: quando eles brigam, eu fico no meio. Aí eles param.' },
-      { se: 'radio', texto: 'O rádio falou de um incêndio numa casa do meu bairro. Um menino de catorze anos em coma.' },
-      { se: 'radio', texto: 'A Lia diz que eu escuto.' },
+      { se: 'radio', texto: 'O rádio falou de um incêndio numa casa do meu bairro. Uma pessoa morreu.' },
+      { se: 'radio', texto: 'A Lia falou comigo no escuro. Me chamou de idiota. Disse que leu este caderno.' },
       {
         texto: 'Eu tô bem.',
         verdade: 'Você não dorme direito há meses. Acorda com a raiva dos outros e chama isso de cansaço.',
@@ -131,6 +132,7 @@ const PAGINAS: PaginaCaderno[] = [
     titulo: 'Perguntas',
     linhas: [
       { se: 'radio', texto: 'Quem morreu no incêndio?' },
+      { se: 'radio', texto: 'A Lia me pediu pra voltar. Voltar de onde?' },
       { texto: 'Quem é a quinta pessoa?' },
       { se: 'mesa', texto: 'O que tem embaixo da cozinha?', resposta: { se: 'tear', texto: 'Um tear. E os fios de todo mundo, presos em mim.' } },
       { se: 'bilhete-catarina', texto: 'A mãe ia mesmo embora?' },

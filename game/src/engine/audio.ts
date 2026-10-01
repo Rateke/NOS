@@ -184,6 +184,15 @@ export class Audio {
     this.setAmbient(0, seconds)
   }
 
+  /**
+   * Cala tudo o que é desta classe sem desligar nada: quem vem depois (o
+   * menu) sobe só o que quiser.
+   */
+  silenciar(segundos = 0.3): void {
+    this.cutAll(segundos)
+    this.setArgument(0, segundos)
+  }
+
   /** Batida cardíaca: dois golpes graves. Acelera com a intensidade. */
   heartbeat(volume = 0.16): void {
     this.thud(70, volume)
@@ -299,7 +308,7 @@ function ruido(ctx: AudioContext, segundos: number): AudioBuffer {
   return buf
 }
 
-/** Morse: é assim que o monitor do hospital pede o que Liam não pede. */
+/** Morse: é assim que os bipes (a hora certa do rádio, o aparelho do grito) pedem o que Liam não pede. */
 const MORSE: Record<string, string> = {
   A: '.-', J: '.---', U: '..-', D: '-..', S: '...', O: '---', E: '.', I: '..', M: '--', N: '-.',
 }
@@ -325,6 +334,14 @@ export class SonsNos {
     if (!ctx) return null
     if (!this.ruidoBuf) this.ruidoBuf = ruido(ctx, 3)
     return this.ruidoBuf
+  }
+
+  /** Os laços (rádio, grito, casa, fita) a zero. Os bipes já agendados terminam. */
+  silenciar(segundos = 0.3): void {
+    this.radio(0, 0, segundos)
+    this.pararGrito(segundos)
+    this.setCasaReal(0, segundos)
+    this.fita(0, segundos)
   }
 
   /** Um bipe de monitor cardíaco, agendado `quando` segundos à frente. */

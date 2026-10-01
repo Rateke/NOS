@@ -165,38 +165,107 @@ export interface OpcoesQuadro {
   foto?: RGB
 }
 
-/** Retrato emoldurado, com silhuetas dentro. */
+/** Quem aparece nas fotos da família, na ordem em que eles sempre posam. */
+const POSE: { roupa: RGB; cabelo: RGB; adulto: boolean; longo?: boolean; rabo?: boolean }[] = [
+  { roupa: [70, 78, 104], cabelo: [34, 28, 26], adulto: true },
+  { roupa: [70, 104, 112], cabelo: [44, 30, 26], adulto: true, longo: true },
+  { roupa: [52, 60, 86], cabelo: [24, 24, 32], adulto: false },
+  { roupa: [128, 58, 70], cabelo: [32, 22, 24], adulto: false, rabo: true },
+]
+
+/**
+ * Retrato emoldurado: moldura com filete e passe-partout, a foto com fundo
+ * de estúdio e chão, e a família posando — cada um com a sua roupa, o seu
+ * cabelo e o rosto que a foto deixa ver. O vazio é o recorte exato de uma
+ * pessoa, mais claro que o fundo. Por cima, o vidro.
+ */
 export function quadro(
   c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, o: OpcoesQuadro,
 ): void {
   const moldura = o.moldura ?? [74, 58, 50]
   const foto = o.foto ?? [22, 20, 26]
+  // Moldura: madeira com luz em cima e à esquerda, sombra embaixo e à direita
+  ret(c, x - 3, y - 3, w + 6, h + 6, rgb(clarear(moldura, -20)))
   ret(c, x - 2, y - 2, w + 4, h + 4, rgb(moldura))
-  ret(c, x - 2, y - 2, w + 4, 1, rgb(clarear(moldura, 22)))
-  ret(c, x - 1, y - 1, w + 2, h + 2, rgb(clarear(moldura, -16)))
-  const g = c.createLinearGradient(0, y, 0, y + h)
-  g.addColorStop(0, rgb(clarear(foto, 16)))
+  ret(c, x - 2, y - 2, w + 4, 1, rgb(clarear(moldura, 24)))
+  ret(c, x - 2, y - 2, 1, h + 4, rgb(clarear(moldura, 14)))
+  ret(c, x - 2, y + h + 1, w + 4, 1, rgb(clarear(moldura, -26)))
+  ret(c, x + w + 1, y - 2, 1, h + 4, rgb(clarear(moldura, -18)))
+  // Filete dourado e o passe-partout
+  ret(c, x - 1, y - 1, w + 2, h + 2, 'rgba(176,146,92,0.55)')
+  const pp = w >= 30 ? 2 : 1
+  ret(c, x, y, w, h, rgb(clarear(foto, 40), 0.9))
+  const fx0 = x + pp
+  const fy0 = y + pp
+  const fw = w - pp * 2
+  const fh = h - pp * 2
+  // Fundo de estúdio, mais claro no meio, e o chão
+  const g = c.createLinearGradient(0, fy0, 0, fy0 + fh)
+  g.addColorStop(0, rgb(clarear(foto, 18)))
+  g.addColorStop(0.7, rgb(clarear(foto, 8)))
   g.addColorStop(1, rgb(foto))
   c.fillStyle = g
-  c.fillRect(x, y, w, h)
+  c.fillRect(fx0, fy0, fw, fh)
+  ret(c, fx0 + Math.round(fw * 0.25), fy0 + 1, Math.round(fw * 0.5), Math.round(fh * 0.5), rgb(clarear(foto, 26), 0.25))
+  const chao = fy0 + fh - 2
+  ret(c, fx0, chao, fw, 2, rgb(clarear(foto, -6)))
+
   const total = o.figuras + (o.vazios?.length ?? 0)
-  const passo = w / (total + 1)
+  const passo = fw / (total + 1)
+  const escala = Math.min(1, (fh - 3) / 13)
   let fig = 0
   for (let i = 0; i < total; i++) {
-    const fx = Math.round(x + passo * (i + 1))
+    const px = Math.round(fx0 + passo * (i + 1))
+    const quem = POSE[fig % POSE.length] ?? POSE[0]!
+    const alt = Math.max(5, Math.round((quem.adulto ? 12 : 9) * escala))
+    const topo = chao - alt
     if (o.vazios?.includes(i)) {
-      // O vazio: um recorte mais claro, do tamanho exato de uma pessoa.
-      ret(c, fx - 2, y + h - 11, 5, 9, rgb(clarear(foto, 26), 0.5))
-      ret(c, fx - 2, y + h - 14, 5, 3, rgb(clarear(foto, 26), 0.5))
+      // O vazio: o recorte exato de alguém, cabeça e ombros, mais claro.
+      const recorte = rgb(clarear(foto, 34), 0.55)
+      ret(c, px - 1, topo, 3, 3, recorte)
+      ret(c, px - 2, topo + 3, 5, alt - 3, recorte)
       continue
     }
-    const alt = 7 + ((fig * 3) % 4)
-    ret(c, fx - 2, y + h - 2 - alt, 5, alt, 'rgba(196,184,170,0.34)')
-    ret(c, fx - 1, y + h - 5 - alt, 3, 3, 'rgba(214,200,184,0.4)')
+    pessoaNaFoto(c, px, topo, alt, quem, foto)
     fig++
   }
-  // Reflexo do vidro
-  ret(c, x + 1, y + 1, Math.max(2, w * 0.3), 1, 'rgba(255,255,255,0.12)')
+  // Vidro: um reflexo largo em diagonal e o brilho do canto
+  ret(c, fx0, fy0, Math.max(2, Math.round(fw * 0.3)), 1, 'rgba(255,255,255,0.16)')
+  for (let i = 0; i < Math.min(fh, 6); i++) ret(c, fx0 + fw - 8 + i, fy0 + i, 2, 1, 'rgba(255,255,255,0.06)')
+}
+
+/** Uma pessoa numa foto antiga: cores lavadas, cabeça, ombros, braços. */
+function pessoaNaFoto(
+  c: CanvasRenderingContext2D, px: number, topo: number, alt: number,
+  quem: (typeof POSE)[number], foto: RGB,
+): void {
+  const lavar = (cor: RGB): string => rgb([
+    Math.round(cor[0] * 0.7 + foto[0] * 0.3 + 18),
+    Math.round(cor[1] * 0.7 + foto[1] * 0.3 + 14),
+    Math.round(cor[2] * 0.7 + foto[2] * 0.3 + 10),
+  ], 0.9)
+  const pele: RGB = [176, 142, 120]
+  const larg = quem.adulto ? 5 : 4
+  const cab = quem.adulto ? 3 : 3
+  // Corpo e braços
+  ret(c, px - Math.floor(larg / 2), topo + cab, larg, alt - cab, lavar(quem.roupa))
+  ret(c, px - Math.floor(larg / 2), topo + cab, larg, 1, lavar(clarear(quem.roupa, 14)))
+  ret(c, px + Math.ceil(larg / 2) - 1, topo + cab + 1, 1, alt - cab - 1, lavar(clarear(quem.roupa, -14)))
+  // Calça e pés
+  if (alt >= 8) ret(c, px - Math.floor(larg / 2), topo + alt - 3, larg, 3, lavar([40, 40, 48]))
+  // Cabeça, com o cabelo por cima
+  ret(c, px - 1, topo, 3, cab, lavar(pele))
+  ret(c, px - 1, topo, 3, 1, lavar(quem.cabelo))
+  if (quem.longo) {
+    ret(c, px - 2, topo, 1, cab + 2, lavar(quem.cabelo))
+    ret(c, px + 2, topo, 1, cab + 2, lavar(quem.cabelo))
+  }
+  if (quem.rabo) ret(c, px + 2, topo, 1, 2, lavar(quem.cabelo))
+  // Os olhos, quando a foto é grande o bastante para eles
+  if (alt >= 10) {
+    ret(c, px - 1, topo + 1, 1, 1, 'rgba(30,26,30,0.6)')
+    ret(c, px + 1, topo + 1, 1, 1, 'rgba(30,26,30,0.6)')
+  }
 }
 
 /**

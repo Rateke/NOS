@@ -26,6 +26,7 @@ type Fase = 'entrada' | 'escuta' | 'toca' | 'livre' | 'fecho' | 'saida'
  */
 export class PrologoScene implements Scene {
   readonly id = 'demo-prologo'
+  readonly ponto = 'prologo' as const
 
   private dialogue = new Dialogue()
   private piano = new Piano()

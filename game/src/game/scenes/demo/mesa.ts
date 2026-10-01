@@ -38,6 +38,7 @@ const PRATOS_X = 232
  */
 export class MesaScene implements Scene {
   readonly id = 'demo-mesa'
+  readonly ponto = 'mesa' as const
 
   private dialogue = new Dialogue()
   private leitor = new Leitor()

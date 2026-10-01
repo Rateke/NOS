@@ -220,7 +220,7 @@ export function comodoSala(depois = false): Comodo {
           { text: 'Abro de novo na página do bolo.' },
           { text: 'Eu sempre disse que ali tinha três letras.' },
           { text: 'Tem quatro.' },
-          { text: '"e canela por cima!!" — a lápis roxo, letra redonda, de criança.' },
+          { text: '"e granulado por cima!!" — a lápis roxo, letra redonda, de criança.' },
           { text: 'Ninguém nesta casa escreve assim.' },
         ],
         segredo: 'receita',
@@ -292,7 +292,7 @@ const SALA_DEPOIS: VestigioCasa[] = [
   {
     id: 'd-livro', x: 438, rotulo: 'Abrir',
     linhas: [
-      { text: 'O livro de receitas, aberto no chão na página do bolo de fubá.' },
+      { text: 'O livro de receitas, aberto no chão na página do bolo de chocolate.' },
       { text: 'As contas caíram de dentro dele. Ninguém juntou.' },
     ],
     documento: DOC_RECEITAS,
@@ -711,22 +711,83 @@ function relogio(c: CanvasRenderingContext2D, x: number, y: number, t: number): 
   ret(c, x + Math.round(p) - 1, y + 15, 3, 3, '#b8964e')
 }
 
-/** O último retrato: ninguém dentro, só o próprio corredor, de dia. */
+/**
+ * O último retrato: ninguém dentro, só o próprio corredor, de dia — uma foto
+ * de verdade, em perspectiva. O teto com a luminária, as paredes com o
+ * lambri e os quadros, as portas dos quartos, o tapete comprido no
+ * assoalho e, no fundo, a porta do fim, clara, fechada. Foi tirada de onde
+ * o Liam está agora.
+ */
 function retratoVazio(c: CanvasRenderingContext2D, x: number, y: number): void {
-  const w = 28
-  const h = 22
-  ret(c, x - 2, y - 2, w + 4, h + 4, '#5a4c44')
-  ret(c, x - 1, y - 1, w + 2, h + 2, '#3c322e')
-  ret(c, x, y, w, h, '#b4aa8e')
-  // Um corredor em perspectiva, de dia
-  ret(c, x + 10, y + 6, 8, 10, '#e2d8b8')
-  c.fillStyle = '#8e846c'
-  for (let i = 0; i < 10; i++) {
-    c.fillRect(x + i, y + i * 0.6, 1, h - i * 1.2)
-    c.fillRect(x + w - 1 - i, y + i * 0.6, 1, h - i * 1.2)
+  const W = 24
+  const H = 18
+  // Moldura escura e larga, filete, passe-partout creme
+  ret(c, x - 5, y - 5, W + 10, H + 10, '#2e2622')
+  ret(c, x - 4, y - 4, W + 8, H + 8, '#5a4c44')
+  ret(c, x - 4, y - 4, W + 8, 1, '#7a6a5e')
+  ret(c, x - 4, y - 4, 1, H + 8, '#6c5c50')
+  ret(c, x - 4, y + H + 3, W + 8, 1, '#3a302a')
+  ret(c, x - 3, y - 3, W + 6, H + 6, 'rgba(176,146,92,0.6)')
+  ret(c, x - 2, y - 2, W + 4, H + 4, '#d2c8ae')
+  ret(c, x - 1, y - 1, W + 2, 1, 'rgba(0,0,0,0.18)')
+
+  // Fundo da perspectiva: a parede do fim entre (8,3) e (16,12)
+  const fx0 = 8
+  const fx1 = 16
+  const fy0 = 3
+  const fy1 = 12
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      let cor: string
+      if (px >= fx0 && px < fx1 && py >= fy0 && py < fy1) {
+        // A parede do fim e a porta, clara, com o batente e a maçaneta
+        const naPorta = px >= 10 && px < 14 && py >= 5
+        cor = naPorta ? (px === 10 || py === 5 ? '#c8bc9c' : '#f2ead2') : '#ddd2b4'
+        if (naPorta && px === 13 && py === 9) cor = '#8a7a52'
+      } else if (py >= fy1 && px >= fx0 - (py - fy1) * (8 / 6) && px < fx1 + (py - fy1) * (8 / 6)) {
+        // Assoalho: tábuas que fogem para o fundo, e o tapete no meio
+        const xl = fx0 - (py - fy1) * (8 / 6)
+        const xr = fx1 + (py - fy1) * (8 / 6)
+        const rel = (px + 0.5 - xl) / (xr - xl)
+        if (rel > 0.36 && rel < 0.64) cor = rel < 0.4 || rel > 0.6 ? '#9a5c48' : '#7e443a'
+        else cor = Math.floor(rel * 9) % 2 === 0 ? '#8e7254' : '#80664a'
+      } else if (py < fy0 && px >= fx0 - (fy0 - py) * (8 / 3) && px < fx1 + (fy0 - py) * (8 / 3)) {
+        cor = '#e2dac4'
+      } else {
+        // Paredes laterais, com o lambri embaixo
+        const esq = px < fx0
+        const prof = esq ? (fx0 - px) / fx0 : (px + 1 - fx1) / (W - fx1)
+        const topo = fy0 - prof * fy0
+        const piso = fy1 + prof * (H - fy1)
+        const lambri = py > piso - (piso - topo) * 0.34
+        const base = esq ? [196, 184, 152] : [180, 168, 138]
+        const d = Math.round(prof * 14)
+        cor = lambri
+          ? `rgb(${base[0] - 52 - d},${base[1] - 54 - d},${base[2] - 48 - d})`
+          : `rgb(${base[0] - d},${base[1] - d},${base[2] - d})`
+        // A porta de um quarto em cada parede
+        if ((esq && (px === 4 || px === 5) && py > topo + (piso - topo) * 0.2 && py < piso) ||
+          (!esq && (px === 19 || px === 20) && py > topo + (piso - topo) * 0.2 && py < piso)) cor = '#6c5a46'
+        // Quadrinhos na parede
+        if ((esq && px === 2 && (py === 6 || py === 7)) || (!esq && px === 22 && (py === 5 || py === 6))) cor = '#4a3e36'
+      }
+      ret(c, x + px, y + py, 1, 1, cor)
+    }
   }
-  ret(c, x, y + h - 3, w, 3, '#9a8a6a')
-  ret(c, x + 1, y + 1, 8, 1, 'rgba(255,255,255,0.2)')
+  // A luminária do teto e o halo que ela faz
+  ret(c, x + 11, y + 1, 2, 1, '#fff6dc')
+  ret(c, x + 10, y + 2, 4, 1, 'rgba(255,240,200,0.35)')
+  // A luz de uma janela que não aparece, caída no assoalho da esquerda
+  ret(c, x + 3, y + 15, 3, 1, 'rgba(255,244,214,0.3)')
+  ret(c, x + 2, y + 16, 4, 1, 'rgba(255,244,214,0.22)')
+  // Foto velha: cantos mais escuros
+  ret(c, x, y, 1, 1, 'rgba(60,40,20,0.3)')
+  ret(c, x + W - 1, y, 1, 1, 'rgba(60,40,20,0.3)')
+  ret(c, x, y + H - 1, 1, 1, 'rgba(60,40,20,0.3)')
+  ret(c, x + W - 1, y + H - 1, 1, 1, 'rgba(60,40,20,0.3)')
+  // Vidro: o reflexo em diagonal
+  for (let i = 0; i < 7; i++) ret(c, x + 14 + i, y + i, 2, 1, 'rgba(255,255,255,0.1)')
+  ret(c, x + 1, y + 1, 6, 1, 'rgba(255,255,255,0.18)')
 }
 
 /** A porta que não deveria existir. Mais velha, mais clara, com um desenho. */
@@ -784,8 +845,8 @@ export function comodoQuarto(depois = false): Comodo {
           { text: 'Eu entro. Ainda cabe.' },
           { speaker: 'Voz', text: 'Quando a casa apertar...', style: 'speech' },
           { text: '...a gente inventa outra.' },
-          { speaker: 'Voz', text: 'Ele te ensinou aquela música descendo.', style: 'speech' },
-          { speaker: 'Voz', text: 'Eu te ensinava subindo. Lembra?', style: 'speech' },
+          { speaker: 'Voz', text: 'Lembra quando você não conseguia dormir e vinha pra cá? Eu tocava aquela música pra você, só que ao contrário.', style: 'speech' },
+          { speaker: 'Voz', text: 'Subindo. Pra ela não acabar lá embaixo. Você ria disso.', style: 'speech' },
         ],
         segredo: 'cabana',
       },
@@ -1003,49 +1064,99 @@ function planta(
   semente: number, circulada: boolean, comArvores: boolean,
 ): void {
   const r = sorteio(semente * 97 + 13)
+  // Três papéis: sulfite, quadriculado e uma cópia azul, de arquiteto.
+  const tipo = semente % 3
+  const azul = tipo === 2
+  const papel = azul ? '#3c5276' : '#a7a08c'
+  const tinta = azul ? 'rgba(214,226,244,0.9)' : 'rgba(30,38,62,0.9)'
+  const traco = azul ? 'rgba(214,226,244,0.5)' : 'rgba(30,38,62,0.45)'
   ret(c, x + 1, y + 1, w, h, 'rgba(0,0,0,0.3)')
-  ret(c, x, y, w, h, '#9c9684')
-  ret(c, x, y, w, 1, '#b4ae9a')
-  const tinta = 'rgba(34,44,72,0.85)'
-  // Contorno da casa
-  const cx = x + 3
-  const cy = y + 4
-  const cw = w - 10
-  const ch = h - 9
-  ret(c, cx, cy, cw, 1, tinta)
-  ret(c, cx, cy + ch, cw, 1, tinta)
-  ret(c, cx, cy, 1, ch, tinta)
-  ret(c, cx + cw, cy, 1, ch + 1, tinta)
-  // Paredes internas, diferentes em cada planta
-  const vx = cx + 4 + Math.floor(r() * (cw - 8))
-  ret(c, vx, cy, 1, ch, tinta)
-  const hy = cy + 4 + Math.floor(r() * (ch - 8))
-  ret(c, r() > 0.5 ? cx : vx, hy, r() > 0.5 ? vx - cx : cw - (vx - cx), 1, tinta)
-  // Porta: um vão
-  ret(c, vx, hy + 2, 1, 2, '#9c9684')
-  // O cômodo a mais, sempre à direita, pendurado no fim do corredor
-  const ex = cx + cw
-  const ey = cy + Math.floor(ch * 0.3)
-  for (let i = 0; i < 6; i += 2) {
-    ret(c, ex + i, ey, 1, 1, tinta)
-    ret(c, ex + i, ey + 7, 1, 1, tinta)
+  ret(c, x, y, w, h, papel)
+  ret(c, x, y, w, 1, azul ? '#52688c' : '#bdb6a2')
+  if (tipo === 1) {
+    for (let i = 3; i < w; i += 3) ret(c, x + i, y + 1, 1, h - 1, 'rgba(70,90,130,0.12)')
+    for (let j = 3; j < h; j += 3) ret(c, x, y + j, w, 1, 'rgba(70,90,130,0.12)')
   }
-  ret(c, ex + 6, ey, 1, 8, tinta)
+  // Título e escala, numa faixa em cima
+  ret(c, x + 2, y + 2, 8, 1, traco)
+  ret(c, x + w - 6, y + 2, 4, 1, traco)
+
+  const cx = x + 2
+  const cy = y + 5
+  const cw = w - 9
+  const ch = h - 8
+  // Paredes de fora grossas (dois pixels), as de dentro finas
+  ret(c, cx, cy, cw, 2, tinta)
+  ret(c, cx, cy + ch - 2, cw, 2, tinta)
+  ret(c, cx, cy, 2, ch, tinta)
+  ret(c, cx + cw - 2, cy, 2, ch, tinta)
+  // Janelas: o traço grosso vira dois finos
+  const janela = (jx: number, jy: number, horizontal: boolean) => {
+    ret(c, jx, jy, horizontal ? 4 : 2, horizontal ? 2 : 4, papel)
+    ret(c, jx, jy, horizontal ? 4 : 1, horizontal ? 1 : 4, traco)
+    ret(c, horizontal ? jx : jx + 1, horizontal ? jy + 1 : jy, horizontal ? 4 : 1, horizontal ? 1 : 4, traco)
+  }
+  janela(cx + 3 + Math.floor(r() * 4), cy, true)
+  janela(cx + cw - 8 + Math.floor(r() * 2), cy + ch - 2, true)
+  janela(cx, cy + 4 + Math.floor(r() * 4), false)
+
+  // Corredor no meio, de ponta a ponta, e os cômodos dos dois lados
+  const corrY = cy + Math.floor(ch * 0.42) + Math.floor(r() * 3)
+  ret(c, cx + 2, corrY, cw - 4, 1, tinta)
+  ret(c, cx + 2, corrY + 4, cw - 4, 1, tinta)
+  const divCima = cx + 5 + Math.floor(r() * (cw - 10))
+  ret(c, divCima, cy + 2, 1, corrY - cy - 2, tinta)
+  const divsBaixo = [cx + 4 + Math.floor(r() * 3), cx + Math.floor(cw / 2) + Math.floor(r() * 3)]
+  for (const dx of divsBaixo) ret(c, dx, corrY + 5, 1, cy + ch - corrY - 7, tinta)
+  // Portas: o vão na parede do corredor e a folha aberta em diagonal
+  const portas = [cx + 3, divCima + 2, divsBaixo[0]! + 1, divsBaixo[1]! + 1]
+  for (const [i, pxp] of portas.entries()) {
+    const yy = i < 2 ? corrY : corrY + 4
+    ret(c, pxp, yy, 2, 1, papel)
+    ret(c, pxp, i < 2 ? yy - 1 : yy + 1, 1, 1, traco)
+  }
+  // Móveis: camas, a mesa da cozinha com as cadeiras, o piano
+  ret(c, cx + 3, cy + ch - 6, 3, 3, traco)
+  ret(c, divsBaixo[1]! + 2, cy + ch - 6, 2, 3, traco)
+  const mx = divCima + 2 + Math.floor(r() * 2)
+  ret(c, mx, cy + 4, 3, 2, traco)
+  ret(c, mx - 1, cy + 4, 1, 1, traco)
+  ret(c, mx + 3, cy + 5, 1, 1, traco)
+  ret(c, cx + 3, cy + 3, 4, 1, traco)
+  // A porta do fim, fechada, e o cômodo a mais, sempre ali
+  const ex = cx + cw
+  const ey = corrY - 2
+  ret(c, ex - 2, corrY + 1, 2, 3, papel)
+  ret(c, ex - 1, corrY + 1, 1, 3, tinta)
+  for (let i = 0; i < 7; i += 2) {
+    ret(c, ex + i, ey, 1, 1, tinta)
+    ret(c, ex + i, ey + 8, 1, 1, tinta)
+  }
+  for (let j = 0; j < 9; j += 2) ret(c, ex + 6, ey + j, 1, 1, tinta)
+  ret(c, ex + 2, ey + 3, 2, 1, traco)
+  ret(c, ex + 3, ey + 4, 1, 1, traco)
+  ret(c, ex + 3, ey + 6, 1, 1, traco)
+
   if (comArvores) {
-    // Giz de cera: árvores verdes e um sol, desenhados por outra mão.
+    // Giz de cera, de outra mão: árvores redondas e tortas por cima do
+    // corredor, e um sol no canto.
     for (let i = 0; i < 3; i++) {
-      const tx = cx + 2 + Math.floor(r() * (cw - 4))
-      const ty = cy + 2 + Math.floor(r() * (ch - 5))
-      ret(c, tx, ty, 1, 3, 'rgba(60,130,70,0.8)')
-      ret(c, tx - 1, ty + 1, 3, 1, 'rgba(60,130,70,0.8)')
+      const tx = cx + 3 + i * 5 + Math.floor(r() * 2)
+      const ty = corrY - 1 + Math.floor(r() * 2)
+      ret(c, tx, ty + 2, 1, 3, 'rgba(126,80,44,0.85)')
+      ret(c, tx - 1, ty - 1, 3, 3, 'rgba(70,150,72,0.8)')
+      ret(c, tx, ty - 2, 1, 1, 'rgba(70,150,72,0.8)')
+      ret(c, tx + 1, ty, 1, 1, 'rgba(110,190,96,0.7)')
     }
-    ret(c, x + w - 5, y + 2, 3, 3, 'rgba(220,180,60,0.8)')
+    ret(c, x + w - 5, y + 4, 3, 3, 'rgba(232,186,60,0.85)')
+    ret(c, x + w - 6, y + 5, 1, 1, 'rgba(232,186,60,0.6)')
+    ret(c, x + w - 2, y + 5, 1, 1, 'rgba(232,186,60,0.6)')
   }
   if (circulada) {
     c.strokeStyle = 'rgba(200,60,50,0.8)'
     c.lineWidth = 1
     c.beginPath()
-    c.ellipse(ex + 4, ey + 4, 6, 6, 0, 0, Math.PI * 2)
+    c.ellipse(ex + 3.5, ey + 4.5, 6, 6.5, 0, 0, Math.PI * 2)
     c.stroke()
   }
   // Fita crepe nos cantos de cima

@@ -146,36 +146,104 @@ export function violeta(c: CanvasRenderingContext2D, x: number, y: number): void
   ret(c, x + 3, y - 12, 1, 1, '#c8b04a')
 }
 
-/** Planta alta num vaso de barro, folhas largas pendendo. */
+/**
+ * Uma arvorezinha de vaso (um fícus), no canto entre o piano e o sofá. É a
+ * única coisa viva da sala, e alguém ainda rega: a terra está escura.
+ *
+ * A copa é feita de cachos, cada um uma massa escura com folhas por cima —
+ * mais claras em cima, onde a luz do abajur bate. As folhas caem sempre no
+ * mesmo lugar (a semente é fixa), senão a árvore tremeria a cada quadro.
+ */
 export function plantaAlta(c: CanvasRenderingContext2D, x: number, chao: number, k: number): void {
-  const barro = mistura([84, 62, 56], [130, 80, 58], k)
-  ret(c, x - 7, chao - 14, 14, 14, rgb(barro))
-  ret(c, x - 8, chao - 15, 16, 3, rgb(clarear(barro, 14)))
-  ret(c, x + 4, chao - 12, 2, 11, rgb(clarear(barro, -16)))
-  ret(c, x - 6, chao - 1, 12, 1, 'rgba(0,0,0,0.4)')
-  const caule = mistura([40, 54, 44], [70, 84, 50], k)
-  ret(c, x, chao - 46, 1, 32, rgb(caule))
-  ret(c, x - 3, chao - 34, 1, 18, rgb(caule))
-  const folha = mistura([40, 64, 52], [72, 98, 58], k)
-  // Folhas compridas, pendendo de cada lado do caule, com a nervura clara.
-  const folhas: [number, number, number, number][] = [
-    [0, -52, 11, -1], [0, -50, 10, 1], [0, -42, 12, -1], [0, -40, 12, 1],
-    [-3, -32, 10, -1], [0, -30, 10, 1], [0, -58, 7, -1], [0, -57, 7, 1],
+  // Vaso de barro, mais largo em cima, com pires e uma faixa
+  const barro = mistura([96, 62, 50], [152, 92, 64], k)
+  ret(c, x - 9, chao - 2, 18, 2, rgb(clarear(barro, -22)))
+  ret(c, x - 9, chao - 2, 18, 1, rgb(clarear(barro, -4)))
+  for (let i = 0; i < 12; i++) {
+    const y = chao - 3 - i
+    const meia = 5 + Math.floor(i / 4)
+    ret(c, x - meia, y, meia * 2, 1, rgb(barro))
+    ret(c, x - meia, y, 1, 1, rgb(clarear(barro, 12)))
+    ret(c, x + meia - 3, y, 3, 1, rgb(clarear(barro, -20)))
+  }
+  ret(c, x - 6, chao - 8, 12, 1, rgb(clarear(barro, -14)))
+  ret(c, x - 6, chao - 7, 12, 1, rgb(clarear(barro, 6)))
+  // Borda grossa e a terra escura lá dentro
+  ret(c, x - 9, chao - 17, 18, 3, rgb(clarear(barro, 10)))
+  ret(c, x - 9, chao - 17, 18, 1, rgb(clarear(barro, 26)))
+  ret(c, x + 5, chao - 16, 4, 2, rgb(clarear(barro, -8)))
+  ret(c, x - 8, chao - 14, 16, 1, 'rgba(0,0,0,0.35)')
+  ret(c, x - 7, chao - 18, 14, 1, '#2a1d17')
+
+  // Tronco: sobe torto e abre em três galhos
+  const casca = mistura([56, 42, 34], [100, 74, 54], k)
+  const tronco: [number, number][] = [[0, 18], [0, 19], [0, 20], [1, 21], [1, 22], [1, 23], [1, 24], [0, 25], [0, 26], [0, 27], [-1, 28], [-1, 29], [0, 30], [0, 31]]
+  for (const [dx, dy] of tronco) {
+    ret(c, x + dx - 1, chao - dy, 2, 1, rgb(casca))
+    ret(c, x + dx - 1, chao - dy, 1, 1, rgb(clarear(casca, 14)))
+  }
+  const galhos: [number, number][][] = [
+    [[-1, 31], [-2, 33], [-3, 34], [-4, 36], [-5, 37]],
+    [[0, 31], [1, 33], [2, 34], [3, 35], [4, 37], [5, 38], [6, 40]],
+    [[0, 32], [0, 34], [-1, 36], [-1, 38], [0, 40], [0, 43]],
   ]
-  for (const [dx, dy, comp, dir] of folhas) folhaPendente(c, x + dx, chao + dy, comp, dir, folha)
+  for (const g of galhos) for (const [dx, dy] of g) ret(c, x + dx, chao - dy, 1, 1, rgb(casca))
+
+  // A copa, em cachos: os de trás primeiro
+  const escuro = mistura([24, 40, 32], [40, 62, 42], k)
+  const medio = mistura([40, 64, 46], [70, 98, 56], k)
+  const claro = mistura([62, 92, 62], [116, 140, 76], k)
+  const cachos: [number, number, number, number][] = [
+    [x + 9, chao - 39, 5, 4],
+    [x - 9, chao - 42, 6, 4],
+    [x + 6, chao - 46, 7, 5],
+    [x - 5, chao - 47, 7, 5],
+    [x + 1, chao - 54, 7, 5],
+    [x - 3, chao - 39, 5, 3],
+  ]
+  let semente = 7
+  for (const [cx, cy, rx, ry] of cachos) {
+    copa(c, cx, cy, rx, ry, escuro, medio, claro, semente)
+    semente += 13
+  }
 }
 
-/** Uma folha: nasce no caule, abre, e a ponta cai. */
-function folhaPendente(c: CanvasRenderingContext2D, x: number, y: number, comp: number, dir: number, cor: RGB): void {
-  for (let i = 0; i < comp; i++) {
-    const t = i / comp
-    const larg = Math.max(1, Math.round(Math.sin(t * Math.PI) * 3))
-    const queda = Math.round(t * t * 5)
-    const px = x + dir * (i + 1)
-    ret(c, px, y + queda - Math.floor(larg / 2), 1, larg, rgb(clarear(cor, i % 3 === 0 ? 6 : 0)))
-    ret(c, px, y + queda + Math.ceil(larg / 2) - 1, 1, 1, rgb(clarear(cor, -16)))
-    if (t > 0.15 && t < 0.85) ret(c, px, y + queda, 1, 1, rgb(clarear(cor, 18)))
+/** Um cacho de folhas: massa escura, folhas médias, as de cima mais claras. */
+function copa(
+  c: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number,
+  escuro: RGB, medio: RGB, claro: RGB, semente: number,
+): void {
+  let s = semente * 9301 + 49297
+  const rnd = () => {
+    s = (s * 9301 + 49297) % 233280
+    return s / 233280
   }
+  for (let dy = -ry; dy <= ry; dy++) {
+    const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy / ry) ** 2)))
+    ret(c, cx - w, cy + dy, w * 2 + 1, 1, rgb(escuro))
+  }
+  const n = Math.round(rx * ry * 0.8)
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2
+    const r = Math.sqrt(rnd())
+    const lx = Math.round(cx + Math.cos(a) * r * (rx - 1))
+    const ly = Math.round(cy + Math.sin(a) * r * (ry - 1))
+    const emCima = ly < cy - ry * 0.15
+    folhaMiuda(c, lx, ly, emCima && rnd() < 0.7 ? claro : medio, rnd() < 0.5)
+  }
+  // Folhas soltas na borda: a copa não é um balão
+  for (let i = 0; i < rx + 2; i++) {
+    const a = rnd() * Math.PI * 2
+    const lx = Math.round(cx + Math.cos(a) * (rx + 0.5))
+    const ly = Math.round(cy + Math.sin(a) * (ry + 0.5))
+    folhaMiuda(c, lx, ly, ly < cy ? medio : escuro, rnd() < 0.5)
+  }
+}
+
+/** Uma folha de fícus: dois pixels e a ponta, em diagonal. */
+function folhaMiuda(c: CanvasRenderingContext2D, x: number, y: number, cor: RGB, espelho: boolean): void {
+  ret(c, x, y, 2, 1, rgb(cor))
+  ret(c, espelho ? x - 1 : x + 1, y + 1, 2, 1, rgb(clarear(cor, -12)))
 }
 
 /**

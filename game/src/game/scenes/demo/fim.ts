@@ -8,6 +8,7 @@ import { RELIQUIAS, desenharReliquia } from '../../world/reliquias'
 import type { TipoReliquia } from '../../world/reliquias'
 import { memoria } from '../../systems/memoria'
 import { principal } from '../../../engine/principal'
+import { salvo } from '../../systems/salvo'
 
 interface Subindo {
   tipo: TipoReliquia
@@ -69,6 +70,7 @@ const BRANCO: [number, number, number] = [255, 246, 228]
  */
 export class FimScene implements Scene {
   readonly id = 'demo-fim'
+  readonly ponto = 'fim' as const
   private t = 0
   private reliquias: Subindo[] = []
   private notas: { t: number; freq: number; forca: number; dur: number; grau?: number }[] = []
@@ -197,8 +199,16 @@ export class FimScene implements Scene {
     this.notas.sort((a, b) => a.t - b.t)
   }
 
-  update(dt: number): void {
+  update(dt: number, ctx: SceneCtx): void {
     this.t += dt
+
+    // Depois do "fim da demo" aparecer, um toque volta ao menu. A história
+    // acabou: o salvo vai junto, e o menu volta a oferecer só o começo.
+    if (this.t > this.tchan + 10.5 && (ctx.input.consumeConfirm() || ctx.input.consumeKey('Escape'))) {
+      salvo.apagar()
+      ctx.menu()
+      return
+    }
 
     while (this.idxNota < this.notas.length) {
       const n = this.notas[this.idxNota]
@@ -587,7 +597,8 @@ export class FimScene implements Scene {
       c.fillStyle = PAL.inkFaint
       c.font = `300 ${sc * 0.92}px ${FONT_BODY}`
       c.letterSpacing = '0.26em'
-      c.fillText(`${DEMO_FIM.toUpperCase()}  ·  F5 PARA RECOMEÇAR`, cssW / 2, cssH - sc * 3)
+      const volta = 'ontouchstart' in window ? 'TOQUE PARA VOLTAR AO MENU' : 'CLIQUE PARA VOLTAR AO MENU'
+      c.fillText(`${DEMO_FIM.toUpperCase()}  ·  ${volta}`, cssW / 2, cssH - sc * 3)
       c.letterSpacing = '0em'
     }
     c.restore()

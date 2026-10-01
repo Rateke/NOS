@@ -358,37 +358,307 @@ export class Leitor {
       c.arc(fx, fy, s * 0.22, 0, Math.PI * 2)
       c.fill()
     }
-    if (pag.planta) this.desenharPlanta(c, x + w * 0.18, y + h * 0.3, w * 0.64, h * 0.34)
+    if (pag.planta) this.desenharPlanta(c, x + w * 0.08, y + h * 0.15, w * 0.84, h * 0.5)
   }
 
-  /** A planta a lápis no verso: a casa, e o cômodo a mais com uma seta. */
+  /**
+   * A planta a lápis no verso da redação. É desenho de quem desenha bem:
+   * paredes grossas, portas com o arco de abrir, janelas, os móveis de cada
+   * cômodo, a cota em cima e o norte no canto. Na cozinha, cinco cadeiras.
+   * No fim do corredor, uma porta fechada e o cômodo a mais, tracejado.
+   *
+   * Por cima, árvores de giz de cera no corredor — de outra mão, de criança.
+   * "Aqui era a floresta."
+   */
   private desenharPlanta(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+    const X = (u: number) => x + u * w
+    const Y = (v: number) => y + v * h
+    const grafite = 'rgba(52,50,64,0.86)'
+    const claro = 'rgba(52,50,64,0.5)'
+    const fino = Math.max(0.8, w * 0.0026)
+    const esp = Math.max(2.2, w * 0.011)
     c.save()
-    c.strokeStyle = 'rgba(84,62,120,0.7)'
-    c.lineWidth = 1.5
-    c.strokeRect(x, y, w * 0.72, h)
-    c.beginPath()
-    c.moveTo(x + w * 0.3, y)
-    c.lineTo(x + w * 0.3, y + h * 0.62)
-    c.moveTo(x, y + h * 0.62)
-    c.lineTo(x + w * 0.72, y + h * 0.62)
-    c.moveTo(x + w * 0.5, y + h * 0.62)
-    c.lineTo(x + w * 0.5, y + h)
-    c.stroke()
-    // O cômodo a mais, tracejado
-    c.setLineDash([5, 4])
-    c.strokeRect(x + w * 0.72, y + h * 0.2, w * 0.28, h * 0.5)
-    c.setLineDash([])
-    // Árvores de giz no corredor
-    c.fillStyle = 'rgba(60,130,70,0.7)'
-    for (let i = 0; i < 3; i++) {
-      const ax = x + w * (0.08 + i * 0.08)
-      const ay = y + h * 0.78
+    c.lineCap = 'butt'
+    c.lineJoin = 'miter'
+
+    type Vao = [number, number]
+    // Parede horizontal em v, de u0 a u1, com vãos (portas) e janelas.
+    const paredeH = (v: number, u0: number, u1: number, vaos: Vao[] = [], janelas: Vao[] = []) => {
+      const cortes = [...vaos, ...janelas].sort((a, b) => a[0] - b[0])
+      let ini = u0
+      c.strokeStyle = grafite
+      c.lineWidth = esp
+      for (const [a, b] of [...cortes, [u1, u1] as Vao]) {
+        if (a > ini) {
+          c.beginPath()
+          c.moveTo(X(ini), Y(v))
+          c.lineTo(X(a), Y(v))
+          c.stroke()
+        }
+        ini = b
+      }
+      c.lineWidth = fino
+      for (const [a, b] of janelas) {
+        for (const d of [-esp / 2, 0, esp / 2]) {
+          c.beginPath()
+          c.moveTo(X(a), Y(v) + d)
+          c.lineTo(X(b), Y(v) + d)
+          c.stroke()
+        }
+      }
+    }
+    const paredeV = (u: number, v0: number, v1: number, vaos: Vao[] = [], janelas: Vao[] = []) => {
+      const cortes = [...vaos, ...janelas].sort((a, b) => a[0] - b[0])
+      let ini = v0
+      c.strokeStyle = grafite
+      c.lineWidth = esp
+      for (const [a, b] of [...cortes, [v1, v1] as Vao]) {
+        if (a > ini) {
+          c.beginPath()
+          c.moveTo(X(u), Y(ini))
+          c.lineTo(X(u), Y(a))
+          c.stroke()
+        }
+        ini = b
+      }
+      c.lineWidth = fino
+      for (const [a, b] of janelas) {
+        for (const d of [-esp / 2, 0, esp / 2]) {
+          c.beginPath()
+          c.moveTo(X(u) + d, Y(a))
+          c.lineTo(X(u) + d, Y(b))
+          c.stroke()
+        }
+      }
+    }
+    // Porta: a folha aberta a 90° e o arco que ela faz. `dir` é para que
+    // lado do vão ela abre (1 para baixo/direita, -1 para cima/esquerda).
+    const portaH = (v: number, a: number, b: number, dir: number) => {
+      const r = X(b) - X(a)
+      c.strokeStyle = grafite
+      c.lineWidth = fino
       c.beginPath()
-      c.moveTo(ax, ay - 12)
-      c.lineTo(ax - 6, ay + 4)
-      c.lineTo(ax + 6, ay + 4)
+      c.moveTo(X(a), Y(v))
+      c.lineTo(X(a), Y(v) + dir * r)
+      c.stroke()
+      c.strokeStyle = claro
+      c.beginPath()
+      c.arc(X(a), Y(v), r, dir > 0 ? 0 : -Math.PI / 2, dir > 0 ? Math.PI / 2 : 0)
+      c.stroke()
+    }
+    const portaV = (u: number, a: number, b: number, dir: number) => {
+      const r = Y(b) - Y(a)
+      c.strokeStyle = grafite
+      c.lineWidth = fino
+      c.beginPath()
+      c.moveTo(X(u), Y(a))
+      c.lineTo(X(u) + dir * r, Y(a))
+      c.stroke()
+      c.strokeStyle = claro
+      c.beginPath()
+      c.arc(X(u), Y(a), r, dir > 0 ? 0 : Math.PI / 2, dir > 0 ? Math.PI / 2 : Math.PI)
+      c.stroke()
+    }
+    const ret = (u0: number, v0: number, u1: number, v1: number, cor = claro) => {
+      c.strokeStyle = cor
+      c.lineWidth = fino
+      c.strokeRect(X(u0), Y(v0), X(u1) - X(u0), Y(v1) - Y(v0))
+    }
+    const linha = (u0: number, v0: number, u1: number, v1: number, cor = claro) => {
+      c.strokeStyle = cor
+      c.lineWidth = fino
+      c.beginPath()
+      c.moveTo(X(u0), Y(v0))
+      c.lineTo(X(u1), Y(v1))
+      c.stroke()
+    }
+
+    // --- Cota e título -------------------------------------------------------
+    linha(0.04, 0.045, 0.74, 0.045)
+    for (const u of [0.04, 0.4, 0.74]) linha(u - 0.008, 0.06, u + 0.008, 0.03)
+    const letra = (t: string, u: number, v: number, tam: number, alinhar: CanvasTextAlign = 'center', cor = grafite) => {
+      c.fillStyle = cor
+      c.font = `italic 500 ${tam}px ${FONT_FIM}`
+      c.textAlign = alinhar
+      c.fillText(t, X(u), Y(v))
+    }
+    const t = w * 0.034
+    letra('5,10', 0.22, 0.035, t * 0.8)
+    letra('4,20', 0.57, 0.035, t * 0.8)
+    letra('nossa casa', 0.98, 0.06, t * 1.05, 'right')
+    letra('esc. 1:100', 0.98, 0.115, t * 0.75, 'right', claro)
+
+    // --- Paredes --------------------------------------------------------------
+    // Externas
+    paredeH(0.1, 0.04, 0.74, [], [[0.1, 0.24], [0.5, 0.64]])
+    paredeH(0.9, 0.04, 0.74, [], [[0.08, 0.16], [0.42, 0.5], [0.6, 0.7]])
+    paredeV(0.04, 0.1, 0.9, [[0.48, 0.56]], [[0.2, 0.34]])
+    paredeV(0.74, 0.1, 0.9, [[0.48, 0.56]], [[0.18, 0.28]])
+    // Corredor, entre os dois lados da casa
+    paredeH(0.46, 0.04, 0.74, [[0.26, 0.32], [0.46, 0.52]])
+    paredeH(0.58, 0.04, 0.74, [[0.1, 0.15], [0.25, 0.29], [0.4, 0.45], [0.62, 0.67]])
+    // Divisórias
+    paredeV(0.4, 0.1, 0.46)
+    paredeV(0.22, 0.58, 0.9)
+    paredeV(0.34, 0.58, 0.9)
+    paredeV(0.54, 0.58, 0.9)
+
+    // Portas abrindo para dentro dos cômodos
+    portaH(0.46, 0.26, 0.32, -1)
+    portaH(0.46, 0.46, 0.52, -1)
+    portaH(0.58, 0.1, 0.15, 1)
+    portaH(0.58, 0.25, 0.29, 1)
+    portaH(0.58, 0.4, 0.45, 1)
+    portaH(0.58, 0.62, 0.67, 1)
+    // A da frente, abrindo para dentro do corredor
+    portaV(0.04, 0.48, 0.56, 1)
+    // A do fim do corredor: fechada. Uma linha só, e a chave desenhada.
+    linha(0.74, 0.48, 0.74, 0.56, grafite)
+    c.strokeStyle = grafite
+    c.lineWidth = fino * 1.4
+    c.beginPath()
+    c.moveTo(X(0.725), Y(0.52))
+    c.lineTo(X(0.735), Y(0.52))
+    c.stroke()
+
+    // --- Móveis ---------------------------------------------------------------
+    // Sala: piano encostado em cima, com as teclas; sofá; mesinha; estante;
+    // poltrona e o tapete tracejado.
+    ret(0.07, 0.115, 0.2, 0.16)
+    for (let i = 0; i < 12; i++) linha(0.075 + i * 0.01, 0.15, 0.075 + i * 0.01, 0.16)
+    ret(0.06, 0.22, 0.1, 0.4)
+    linha(0.072, 0.225, 0.072, 0.395)
+    ret(0.16, 0.27, 0.23, 0.33)
+    ret(0.36, 0.14, 0.39, 0.3)
+    for (const v of [0.18, 0.22, 0.26]) linha(0.36, v, 0.39, v)
+    ret(0.28, 0.34, 0.33, 0.41)
+    c.setLineDash([3, 3])
+    ret(0.13, 0.23, 0.3, 0.39, 'rgba(52,50,64,0.32)')
+    c.setLineDash([])
+    // Cozinha: bancada com fogão de quatro bocas e pia; geladeira; a mesa e
+    // as cadeiras. Cinco.
+    ret(0.42, 0.115, 0.72, 0.155)
+    ret(0.48, 0.118, 0.55, 0.152)
+    for (const [du, dv] of [[0.497, 0.127], [0.533, 0.127], [0.497, 0.143], [0.533, 0.143]] as const) {
+      c.beginPath()
+      c.arc(X(du), Y(dv), w * 0.0075, 0, Math.PI * 2)
+      c.stroke()
+    }
+    ret(0.61, 0.12, 0.67, 0.15)
+    ret(0.62, 0.125, 0.66, 0.145)
+    ret(0.685, 0.17, 0.72, 0.25)
+    linha(0.685, 0.2, 0.72, 0.2)
+    ret(0.5, 0.28, 0.64, 0.36)
+    for (const [cu, cv] of [[0.53, 0.25], [0.6, 0.25], [0.53, 0.37], [0.6, 0.37], [0.65, 0.31]] as const) {
+      ret(cu, cv, cu + 0.025, cv + 0.025)
+    }
+    // Quarto dos pais: cama de casal, dois travesseiros, guarda-roupa.
+    ret(0.09, 0.66, 0.2, 0.84)
+    ret(0.1, 0.67, 0.14, 0.7)
+    ret(0.15, 0.67, 0.19, 0.7)
+    linha(0.09, 0.72, 0.2, 0.72)
+    ret(0.05, 0.6, 0.08, 0.76)
+    linha(0.05, 0.6, 0.08, 0.76)
+    linha(0.08, 0.6, 0.05, 0.76)
+    // Banheiro: box com a diagonal, vaso.
+    ret(0.235, 0.79, 0.3, 0.885)
+    linha(0.235, 0.79, 0.3, 0.885)
+    c.strokeStyle = claro
+    c.beginPath()
+    c.ellipse(X(0.317), Y(0.83), w * 0.012, h * 0.022, 0, 0, Math.PI * 2)
+    c.stroke()
+    // Quarto da Lia e o meu: cama de solteiro, escrivaninha.
+    ret(0.36, 0.7, 0.42, 0.885)
+    ret(0.365, 0.705, 0.415, 0.735)
+    ret(0.46, 0.83, 0.53, 0.885)
+    ret(0.67, 0.7, 0.73, 0.885)
+    ret(0.675, 0.705, 0.725, 0.735)
+    ret(0.56, 0.83, 0.63, 0.885)
+    ret(0.585, 0.795, 0.61, 0.82)
+    // A cabana: duas cadeiras e o cobertor por cima, de cima.
+    c.setLineDash([2, 2])
+    ret(0.56, 0.64, 0.62, 0.72, 'rgba(52,50,64,0.4)')
+    c.setLineDash([])
+
+    // --- O cômodo a mais ------------------------------------------------------
+    c.strokeStyle = grafite
+    c.lineWidth = fino * 1.3
+    c.setLineDash([w * 0.012, w * 0.009])
+    c.strokeRect(X(0.74), Y(0.34), X(0.96) - X(0.74), Y(0.7) - Y(0.34))
+    c.setLineDash([])
+    letra('?', 0.85, 0.56, t * 2)
+
+    // --- Nomes dos cômodos, na minha letra --------------------------------------
+    letra('sala', 0.22, 0.215, t)
+    letra('cozinha', 0.57, 0.43, t)
+    letra('corredor', 0.415, 0.535, t * 0.8, 'center', claro)
+    letra('pais', 0.15, 0.885, t * 0.85)
+    letra('banh.', 0.28, 0.66, t * 0.75)
+    letra('Lia', 0.48, 0.66, t * 0.85)
+    letra('eu', 0.7, 0.66, t * 0.85)
+
+    // Norte
+    const nu = X(0.9)
+    const nv = Y(0.84)
+    const nr = w * 0.025
+    c.strokeStyle = claro
+    c.lineWidth = fino
+    c.beginPath()
+    c.arc(nu, nv, nr, 0, Math.PI * 2)
+    c.stroke()
+    c.fillStyle = grafite
+    c.beginPath()
+    c.moveTo(nu, nv - nr * 0.9)
+    c.lineTo(nu - nr * 0.35, nv + nr * 0.4)
+    c.lineTo(nu + nr * 0.35, nv + nr * 0.4)
+    c.closePath()
+    c.fill()
+    letra('N', 0.9, 0.84 - (nr * 1.25) / h, t * 0.7)
+
+    // --- Por cima: giz de cera, de outra mão ---------------------------------------
+    let semente = 11
+    const rnd = () => {
+      semente = (semente * 9301 + 49297) % 233280
+      return semente / 233280
+    }
+    c.lineCap = 'round'
+    for (const u of [0.17, 0.33, 0.5, 0.63]) {
+      const cx = X(u)
+      const cy = Y(0.475)
+      const r = w * 0.036
+      // Tronco marrom, torto
+      c.strokeStyle = 'rgba(120,74,40,0.75)'
+      c.lineWidth = w * 0.009
+      c.beginPath()
+      c.moveTo(cx + (rnd() - 0.5) * 2, cy + r * 0.6)
+      c.lineTo(cx + (rnd() - 0.5) * 3, Y(0.57))
+      c.stroke()
+      // Copa: primeiro uma bola torta pintada, depois o rabisco em volta,
+      // girando, do jeito que criança pinta — e passando da linha.
+      c.fillStyle = 'rgba(70,150,66,0.38)'
+      c.beginPath()
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2
+        const rr = r * (0.85 + rnd() * 0.3)
+        const px = cx + Math.cos(a) * rr
+        const py = cy + Math.sin(a) * rr * 0.92
+        if (i === 0) c.moveTo(px, py)
+        else c.lineTo(px, py)
+      }
+      c.closePath()
       c.fill()
+      c.strokeStyle = 'rgba(56,128,58,0.55)'
+      c.lineWidth = w * 0.007
+      c.beginPath()
+      for (let i = 0; i < 34; i++) {
+        const a = i * 0.55 + rnd() * 0.3
+        const rr = r * (0.25 + (i / 34) * 0.85 + (rnd() - 0.5) * 0.15)
+        const px = cx + Math.cos(a) * rr
+        const py = cy + Math.sin(a) * rr * 0.92
+        if (i === 0) c.moveTo(px, py)
+        else c.lineTo(px, py)
+      }
+      c.stroke()
     }
     c.restore()
   }
@@ -458,7 +728,7 @@ export class Leitor {
 
     for (const [i, b] of pag.blocos.entries()) {
       // Com desenho na página, o texto continua embaixo dele.
-      if (pag.planta && i === 1) ty = Math.max(ty, y + h * 0.7)
+      if (pag.planta && i === 1) ty = Math.max(ty, y + h * 0.69)
       escrever(b)
     }
 

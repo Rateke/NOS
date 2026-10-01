@@ -1,4 +1,5 @@
 import type { Scene, SceneCtx } from '../types'
+import type { Ponto } from '../../systems/salvo'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { PAL } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
@@ -6,30 +7,33 @@ import { musica } from '../../../engine/musica'
 import { principal } from '../../../engine/principal'
 import { Camada } from '../../ui/camada'
 import {
-  RADIO_ESTACAO, RADIO_BOLETIM, HOSPITAL_LIA, HOSPITAL_GRITO,
+  RADIO_ESTACAO, RADIO_BOLETIM, RADIO_DESTAQUE, ABERTURA_LIA, HOSPITAL_GRITO,
 } from '../../content/demoScript'
 import { PrologoScene } from './prologo'
 import { CasaScene } from './casa'
 
 export type VarianteHospital = 'abertura' | 'grito'
 
-type Fase = 'preto' | 'radio' | 'monitor' | 'voz' | 'saida'
+type Fase = 'preto' | 'sinal' | 'radio' | 'voz' | 'saida'
 
 const CPS = 34
 
 /**
- * O mundo real, que só existe como som.
+ * O mundo de fora, que só existe como som.
  *
- * Duas vezes na demo a tela fica preta e o jogo vira ouvido:
+ * Duas vezes na demo a tela fica preta e o jogo vira ouvido. Nenhuma das
+ * duas diz onde Liam está: que ele está em coma é coisa que o jogo só conta
+ * no fim. Antes disso, é pista para quem for juntando.
  *
- * - **abertura**: um boletim de rádio diz, em linguagem de jornal, tudo o
- *   que o jogador precisa saber para começar — incêndio, coma, um morto, o pai
- *   ileso. Depois o monitor do hospital e a voz da Lia. Ninguém diz quem
- *   morreu.
- * - **grito**: cinco segundos de nada absoluto (nenhuma tecla funciona), o
- *   monitor disparado e a Lia chamando a enfermeira.
+ * - **abertura**: o rádio dá a hora certa e um boletim em linguagem de
+ *   jornal — incêndio, uma pessoa morta, o pai ileso. Não diz quem morreu
+ *   nem quem foi levado. Depois, no escuro, a voz da Lia falando com o Liam,
+ *   brava, de um lugar que ela não diz qual é.
+ * - **grito**: cinco segundos de nada absoluto (nenhuma tecla funciona), um
+ *   bipe disparado e a Lia gritando que ele apertou a mão dela.
  *
- * Os bipes do monitor, nas duas, têm um trecho que não é ritmo de coração.
+ * Os bipes, nas duas — a hora certa do rádio, o aparelho do grito —, têm um
+ * trecho que não é ritmo de nada.
  */
 export class HospitalScene implements Scene {
   readonly id = 'demo-hospital'
@@ -46,7 +50,16 @@ export class HospitalScene implements Scene {
   private morseAte = 0
   private pulso = 0
 
-  constructor(private readonly variante: VarianteHospital = 'abertura') {}
+  readonly ponto: Ponto
+
+  constructor(private readonly variante: VarianteHospital = 'abertura') {
+    this.ponto = variante === 'abertura' ? 'abertura' : 'grito'
+  }
+
+  /** Os cinco segundos de preto depois do grito não abrem nem a pausa. */
+  podePausar(): boolean {
+    return !(this.variante === 'grito' && this.fase === 'preto')
+  }
 
   enter(ctx: SceneCtx): void {
     principal.cortar()
@@ -89,17 +102,19 @@ export class HospitalScene implements Scene {
       const espera = this.variante === 'grito' ? 5 : 0.8
       if (this.tFase >= espera) {
         if (this.variante === 'abertura') {
-          this.mudar('radio')
-          sons.radio(0.11, 0, 1.2)
+          // O rádio liga no meio da hora certa.
+          sons.radio(0.08, 0, 1.2)
+          this.comecarSinal(1)
         } else {
-          this.comecarMonitor(ctx, 0.42)
+          this.comecarSinal(0.42)
+          this.camada.mostrar(ctx.state, 'hospital')
         }
       }
       return
     }
 
     if (this.fase === 'radio') this.radio(dt, ctx)
-    else if (this.fase === 'monitor' || this.fase === 'voz') this.monitor(ctx)
+    else if (this.fase === 'sinal' || this.fase === 'voz') this.sinal(ctx)
     else if (this.fase === 'saida') this.sair(ctx)
   }
 
@@ -109,8 +124,10 @@ export class HospitalScene implements Scene {
     const frase = RADIO_BOLETIM[this.linha]
     if (frase === undefined) {
       if (this.tFase > 2.2) {
-        sons.radio(0, 0, 0.15)
-        this.comecarMonitor(ctx, 1)
+        // O rádio desliga. Fica o escuro, e alguém falando nele.
+        sons.radio(0, 0, 1.4)
+        this.mudar('voz')
+        this.dialogue.play(ABERTURA_LIA, () => this.mudar('saida'), 1.6)
       }
       return
     }
@@ -136,17 +153,23 @@ export class HospitalScene implements Scene {
 
   private desdeFrase = 0
 
-  private comecarMonitor(ctx: SceneCtx, intervalo: number): void {
-    this.mudar('monitor')
+  private comecarSinal(intervalo: number): void {
+    this.mudar('sinal')
     this.intervalo = intervalo
     this.proxBip = this.t + 0.4
-    this.camada.mostrar(ctx.state, 'hospital')
   }
 
   private bipes = 0
 
-  /** O coração no monitor. No quinto bipe, ele perde o ritmo — por um trecho. */
-  private monitor(ctx: SceneCtx): void {
+  /**
+   * Os bipes. Na abertura, a hora certa do rádio; no grito, um aparelho
+   * disparado. No quinto, os dois perdem o ritmo — por um trecho.
+   */
+  private sinal(ctx: SceneCtx): void {
+    if (this.fase === 'voz') {
+      if (this.dialogue.active && ctx.input.consumeConfirm()) this.dialogue.confirm()
+      if (this.variante === 'abertura') return
+    }
     if (this.t >= this.proxBip && this.t >= this.morseAte) {
       this.bipes++
       if (this.bipes === 5) {
@@ -161,22 +184,23 @@ export class HospitalScene implements Scene {
       }
     }
 
-    if (this.fase === 'monitor' && this.bipes >= 7 && this.t >= this.morseAte) {
+    if (this.fase === 'sinal' && this.bipes >= 7 && this.t >= this.morseAte) {
+      if (this.variante === 'abertura') {
+        // Depois da hora certa, o boletim.
+        this.mudar('radio')
+        sons.radio(0.11, 0, 0.6)
+        return
+      }
       this.mudar('voz')
-      const falas = this.variante === 'abertura' ? HOSPITAL_LIA : HOSPITAL_GRITO
-      this.dialogue.play(falas, () => {
+      this.dialogue.play(HOSPITAL_GRITO, () => {
         this.mudar('saida')
-        if (this.variante === 'grito') this.intervalo = 0.95
-      }, this.variante === 'grito' ? 1.3 : 0)
-      return
-    }
-    if (this.fase === 'voz' && this.dialogue.active && ctx.input.consumeConfirm()) {
-      this.dialogue.confirm()
+        this.intervalo = 0.95
+      }, 1.3)
     }
   }
 
   private sair(ctx: SceneCtx): void {
-    if (this.t >= this.proxBip) {
+    if (this.variante === 'grito' && this.t >= this.proxBip) {
       sons.bip()
       this.pulso = 1
       this.proxBip = this.t + this.intervalo
@@ -196,12 +220,12 @@ export class HospitalScene implements Scene {
     c.fillStyle = '#000'
     c.fillRect(0, 0, cssW, cssH)
 
-    if (this.fase === 'radio' || (this.fase === 'monitor' && this.variante === 'abertura' && this.tFase < 1.5)) {
+    if (this.variante === 'abertura' && (this.fase === 'sinal' || this.fase === 'radio' || (this.fase === 'voz' && this.tFase < 1.5))) {
       this.desenharBoletim(c, cssW, cssH)
     }
 
-    // O monitor não aparece. O que aparece é o som dele: uma linha que pulsa.
-    if (this.fase !== 'preto' && this.fase !== 'radio') {
+    // O aparelho não aparece. O que aparece é o som dele: uma linha que pulsa.
+    if (this.variante === 'grito' && this.fase !== 'preto') {
       const s = Math.max(1, cssW / 900)
       c.globalAlpha = 0.08 + this.pulso * 0.3
       c.fillStyle = '#cfd6e6'
@@ -218,8 +242,8 @@ export class HospitalScene implements Scene {
 
   private desenharBoletim(c: CanvasRenderingContext2D, cssW: number, cssH: number): void {
     const s = Math.max(15, Math.min(cssW / 52, 24))
-    const some = this.fase === 'monitor' ? Math.max(0, 1 - this.tFase / 1.4) : 1
-    const entra = this.fase === 'radio' ? Math.min(1, this.tFase / 1) : 1
+    const some = this.fase === 'voz' ? Math.max(0, 1 - this.tFase / 1.4) : 1
+    const entra = this.fase === 'sinal' ? Math.min(1, this.tFase / 1.5) : 1
     c.save()
     c.textAlign = 'center'
     c.globalAlpha = 0.5 * some * entra
@@ -229,6 +253,10 @@ export class HospitalScene implements Scene {
     c.fillText(RADIO_ESTACAO, cssW / 2, cssH * 0.16)
     c.letterSpacing = '0em'
 
+    if (this.fase === 'sinal') {
+      c.restore()
+      return
+    }
     c.font = `300 ${s}px ${FONT_BODY}`
     const visiveis = Math.min(this.linha + 1, RADIO_BOLETIM.length)
     const inicio = Math.max(0, visiveis - 5)
@@ -238,7 +266,7 @@ export class HospitalScene implements Scene {
       const texto = i === this.linha ? frase.slice(0, Math.floor(this.revelado)) : frase
       const atual = i === this.linha
       c.globalAlpha = (atual ? 0.95 : 0.42) * some
-      c.fillStyle = i === 4 ? '#f2ead8' : PAL.ink
+      c.fillStyle = i === RADIO_DESTAQUE ? '#f2ead8' : PAL.ink
       c.fillText(texto, cssW / 2, y)
       y += s * 2
     }

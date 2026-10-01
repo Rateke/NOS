@@ -160,10 +160,10 @@ export const MESA_ABERTURA: Line[] = [
 /** As falas da noite: primeiro os dois, depois Lia, depois a função de Liam. */
 export const MESA_CONFRONTO: Line[] = [
   { speaker: 'Adrian', text: 'Ninguém vai sair antes de a gente conversar.', style: 'speech' },
-  { speaker: 'Evelyn', text: 'Eu não estou pedindo.', style: 'speech' },
-  { speaker: 'Adrian', text: 'Você está levando meus filhos.', style: 'speech' },
-  { speaker: 'Evelyn', text: 'Eu estou levando os meus para fora daqui.', style: 'speech' },
-  { speaker: 'Lia', text: 'Fala a verdade pelo menos uma vez. Fala por que a porta tá trancada.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Eu não tô pedindo, Adrian. Eu tô avisando.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Você vai pegar os meus filhos e sair no meio da noite? Assim?', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Vou. Eu vou tirar eles daqui. Faz anos que eu devia ter feito isso.', style: 'speech' },
+  { speaker: 'Lia', text: 'Ah, agora você quer conversar? Então conversa, pai. Conta pra ele por que a porta da frente tá trancada. Conta! Ou tá com vergonha?', style: 'speech' },
   { speaker: 'Adrian', text: 'Liam. Explica pra sua irmã por que a gente precisa ficar junto.', style: 'speech' },
   { text: 'Ele olha pra mim como se eu soubesse a resposta.' },
   { text: 'Eu sempre sei a resposta.' },
@@ -178,15 +178,16 @@ export const PUXAO_ADRIAN: string[] = [
 ]
 
 export const PUXAO_EVELYN: string[] = [
-  'Liam, olha pra mim.',
-  'Você não precisa resolver isso.',
-  'Isso não é seu pra carregar.',
-  'Filho, pega sua irmã.',
+  'Liam, olha pra mim. Pra mim.',
+  'Não é você que tem que resolver isso, filho.',
+  'Sai do meio, por favor. Vem pra cá.',
+  'Pega a mochila da sua irmã. A gente vai.',
 ]
 
 export const PUXAO_LIA: string[] = [
-  'Não escuta ele.',
-  'Liam, anda.',
+  'Para de olhar pra ele, idiota!',
+  'Liam, anda logo, caramba!',
+  'Você vai ficar aí parado de novo?',
 ]
 
 /** O que ele pensa enquanto tenta ficar no meio. Vai desmoronando. */
@@ -331,8 +332,8 @@ export const CASA_PORTA_FIM: Line[][] = [
 
 /** O tema de trás para a frente, no piano da sala. */
 export const CASA_MELODIA: Line[] = [
-  { speaker: 'Voz', text: 'Isso.', style: 'speech' },
-  { speaker: 'Voz', text: 'Ele te ensinou descendo. Eu te ensinei subindo.', style: 'speech' },
+  { speaker: 'Voz', text: 'Isso! Assim mesmo. Você lembrou.', style: 'speech' },
+  { speaker: 'Voz', text: 'Ele sempre tocava ela descendo, né? Eu tocava ao contrário pra você, subindo, quando você não conseguia dormir.', style: 'speech' },
   { text: 'Assim a música não termina no chão.' },
 ]
 
@@ -359,36 +360,56 @@ export const CASA_PRONTO: Line[] = [
   { text: 'Então por que eu desenhei um?' },
 ]
 
-// --- Abertura: o rádio e o hospital ---------------------------------------
+// --- Abertura: o rádio e a voz no escuro --------------------------------------
 
 /**
  * O que o jogador precisa saber antes de qualquer outra coisa: houve um
- * incêndio, Liam está em coma, alguém morreu e o pai saiu ileso. O boletim
- * não diz quem morreu — é com essa pergunta que se joga o resto.
+ * incêndio numa casa, alguém morreu e o pai saiu ileso. O boletim não diz
+ * quem morreu, nem quem foi levado, nem para onde — é com essas perguntas
+ * que se joga o resto.
+ *
+ * O que NÃO pode estar aqui: que Liam está em coma. Isso o jogo só diz no
+ * fim. Até lá é pista, para quem for juntando.
  */
-export const RADIO_ESTACAO = 'RÁDIO VALE FM  ·  7h02'
+export const RADIO_ESTACAO = 'RÁDIO VALE FM  ·  7h00'
 export const RADIO_BOLETIM: string[] = [
   'Bom dia. São sete horas desta quinta-feira.',
   'Na noite de terça, um incêndio atingiu uma casa no bairro Jardim das Acácias.',
   'O fogo começou na cozinha, por volta das dez e quarenta.',
-  'Um adolescente de catorze anos foi levado ao Hospital Regional em estado grave. Segue em coma.',
+  'Os bombeiros chegaram em vinte minutos.',
+  'Duas pessoas foram socorridas e levadas ao Hospital Regional.',
   'Uma pessoa morreu no local.',
   'O pai, que saiu para buscar ajuda, não se feriu.',
   'A família não quis dar entrevista.',
 ]
+/** A linha do boletim que fica mais clara que as outras. */
+export const RADIO_DESTAQUE = 5
 
-export const HOSPITAL_LIA: Line[] = [
+/**
+ * A Lia, no escuro, depois do rádio. Ela não diz onde está nem por que ele
+ * não responde: quem ouve pela primeira vez acha que ela fala com ele
+ * através de uma porta. Ela xinga, porque é assim que ela gosta das
+ * pessoas — e só no fim pede.
+ */
+export const ABERTURA_LIA: Line[] = [
   { speaker: 'Lia', text: 'Liam.', style: 'speech' },
-  { speaker: 'Lia', text: 'A médica disse que você escuta a gente. Então escuta.', style: 'speech' },
-  { speaker: 'Lia', text: 'Eu trouxe o seu caderno. Tá aqui, do lado da cama.', style: 'speech' },
-  { speaker: 'Lia', text: 'Não precisa aguentar nada. Só volta.', style: 'speech' },
+  { speaker: 'Lia', text: 'Ei. Eu sei que você tá me ouvindo. Você sempre ouve tudo, então nem adianta fingir.', style: 'speech' },
+  { speaker: 'Lia', text: 'Você é muito idiota, sabia? Se meter no meio deles de novo. Ninguém te pediu isso, Liam. Ninguém!', style: 'speech' },
+  { speaker: 'Lia', text: 'E agora eu tenho que ficar aqui falando sozinha, que nem uma doida.', style: 'speech' },
+  { speaker: 'Lia', text: 'Eu trouxe o seu caderno. Aquele que você esconde embaixo do colchão. Eu li, tá? Inteirinho. Pode ficar bravo.', style: 'speech' },
+  { speaker: 'Lia', text: '...Fica bravo, então. Briga comigo. Faz qualquer coisa.', style: 'speech' },
+  { speaker: 'Lia', text: 'Volta logo, seu idiota.', style: 'speech' },
+  { speaker: 'Lia', text: '...Por favor.', style: 'speech' },
 ]
 
-/** Depois do grito: cinco segundos de nada, e então isto. */
+/**
+ * Depois do grito: cinco segundos de nada, um bipe disparado, e isto. Ainda
+ * não diz onde. Diz o bastante para quem já vinha desconfiando.
+ */
 export const HOSPITAL_GRITO: Line[] = [
   { speaker: 'Lia', text: 'Liam?', style: 'speech' },
-  { speaker: 'Lia', text: 'Liam, você mexeu a mão. Você mexeu.', style: 'speech' },
-  { speaker: 'Lia', text: 'Enfermeira! ENFERMEIRA!', style: 'speech' },
+  { speaker: 'Lia', text: 'Liam! Você apertou a minha mão. Apertou, eu senti!', style: 'speech' },
+  { speaker: 'Lia', text: 'Alguém vem aqui! Por favor! Ele mexeu!', style: 'speech' },
 ]
 
 // --- A casa: a chave, a mãe, o reflexo ---------------------------------------
@@ -425,7 +446,7 @@ export const LIAM_ECO: Line[] = [
 
 export const EVELYN_DEPOIS_ECO: Line[] = [
   { speaker: 'Evelyn', text: '...', style: 'speech' },
-  { speaker: 'Evelyn', text: 'Foi ele que te ensinou a falar assim.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Você falou igualzinho a ele, sabia? Até o jeito.', style: 'speech' },
   { speaker: 'Evelyn', text: 'Tudo bem, filho. Esquece o que eu perguntei. Vai guardar suas coisas.', style: 'speech' },
 ]
 
@@ -465,7 +486,7 @@ export const SOMBRA_REFLEXO: Line[] = [
 export const MESA_RADIO: Line[] = [
   { text: 'O rádio em cima da geladeira toca uma música alegre, alta demais pra esta cozinha.' },
   { text: 'Eu giro o botão pra abaixar. A música para. Entra uma voz.' },
-  { text: '"...o fogo começou na cozinha, por volta das dez e quarenta. Um adolescente de catorze anos..."', style: 'read' },
+  { text: '"...o fogo começou na cozinha, por volta das dez e quarenta. Uma pessoa morreu no..."', style: 'read' },
   { text: 'Eu olho o relógio da parede. São dez e quinze.' },
   { text: 'Eu desligo o rádio.' },
   { text: 'Ele continua tocando a música alegre.' },
@@ -547,7 +568,7 @@ export const DEPOIS_SECRETARIA_ANTES: Line[] = [
 export const DEPOIS_RECADO: Line[] = [
   { speaker: 'Evelyn', text: 'Filho, é a mãe. Tô saindo do primeiro turno agora.', style: 'speech', onde: 'secretária eletrônica' },
   { speaker: 'Evelyn', text: 'Tem comida na geladeira, é só esquentar. Janta sem esperar ninguém, tá?', style: 'speech', onde: 'secretária eletrônica' },
-  { speaker: 'Evelyn', text: 'E, Liam... você não é o homem da casa. Você não precisa ser.', style: 'speech', onde: 'secretária eletrônica' },
+  { speaker: 'Evelyn', text: 'E, Liam... o seu pai falou de novo aquela história de você ser o homem da casa, né? Esquece isso. Você tem catorze anos, filho. Não é trabalho seu.', style: 'speech', onde: 'secretária eletrônica' },
   { speaker: 'Evelyn', text: 'Eu volto mais tarde. Te amo.', style: 'speech', onde: 'secretária eletrônica' },
 ]
 

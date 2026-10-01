@@ -100,7 +100,8 @@ for (let i = 0; i < 40; i++) {
   if (pronto && (await caixas()).length > 0) break
   await page.waitForTimeout(250)
 }
-esperar('o menu se monta após o primeiro toque', (await caixas()).length, 3)
+esperar('o menu se monta após o primeiro toque', (await caixas()).length, 2)
+esperar('sem jogo salvo: só começar e sair', (await page.evaluate(() => window.__nos?.scene?.acoes ?? [])).join(','), 'novo,sair')
 if (OUT) await page.screenshot({ path: `${OUT}/a0-menu.png` })
 {
   const c = await caixas()
@@ -291,6 +292,9 @@ if (OUT) await page.screenshot({ path: `${OUT}/g-pico.png` })
 
 // --- Dentro: arrumar faz os recortes andarem; parar é a saída -----------
 esperar('o pico corta para dentro da cabeça', await esperarFase('dentro', 30000), true)
+// O primeiro quarto de segundo de cada recorte não aceita toque (para
+// ninguém pular sem querer): espera ele assentar.
+await page.waitForTimeout(500)
 const montagem = () => page.evaluate(() => {
   const m = window.__nos?.scene?.montagem
   return m ? { arrumados: m.arrumados, fase: m.faseAtual } : null

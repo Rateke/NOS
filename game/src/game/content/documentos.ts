@@ -116,13 +116,14 @@ export const DOC_RECEITAS: Documento = {
     {
       mancha: true,
       blocos: [
-        { texto: 'Bolo de fubá', letra: 'titulo' },
-        { texto: '3 ovos · 2 xícaras de fubá · 1 de açúcar · 1 de leite · ½ de óleo · 1 colher de fermento.', letra: 'evelyn', respiro: 0.6 },
-        { texto: 'Bate tudo. Forno médio, 40 minutos. Não abre o forno antes.', letra: 'evelyn' },
+        { texto: 'Bolo de chocolate', letra: 'titulo' },
+        { texto: '3 ovos · 2 xícaras de farinha · 1 ½ de açúcar · 1 de chocolate em pó · 1 de leite morno · ½ de óleo · 1 colher de fermento.', letra: 'evelyn', respiro: 0.6 },
+        { texto: 'Bate tudo, menos a farinha e o fermento. Esses vão na mão, devagar. Forno médio, 40 minutos. Não abre o forno antes.', letra: 'evelyn' },
+        { texto: 'Calda: 4 colheres de chocolate, 1 de manteiga, meia xícara de leite. Ferve até engrossar e joga quente, com o bolo ainda na forma.', letra: 'evelyn' },
         { texto: 'Forno médio = 180 graus. Eu medi. 40 min exatos.', letra: 'liam', respiro: 0.5 },
         { texto: 'o Liam abriu o forno pra ver kkkkk', letra: 'lia' },
         { texto: 'Só uma vez.', letra: 'liam' },
-        { texto: 'e canela por cima!!', letra: 'elisa', alinhar: 'dir', respiro: 1.2 },
+        { texto: 'e granulado por cima!!', letra: 'elisa', alinhar: 'dir', respiro: 1.2 },
       ],
     },
     {
@@ -184,7 +185,7 @@ export const DOC_CARTA_ESCOLA: Documento = {
         { texto: 'Pra mim, a minha família é a coisa mais importante que existe.', letra: 'liam', respiro: 0.4 },
         { texto: 'Reunidos no jantar a gente é quatro, e às vezes parece mais.', letra: 'liam' },
         { texto: 'Esse ano meu pai me ensinou piano, e ele diz que eu escuto melhor que todo mundo.', letra: 'liam' },
-        { texto: 'Com a minha mãe eu aprendi o bolo de fubá, que é o melhor bolo.', letra: 'liam' },
+        { texto: 'Com a minha mãe eu aprendi o bolo de chocolate, que é o melhor bolo.', letra: 'liam' },
         { texto: 'Irmã eu tenho uma, a Lia, que tem a minha idade e fala tudo o que pensa.', letra: 'liam' },
         { texto: 'Se alguém briga lá em casa, eu ajudo a acalmar, porque eu sou calmo.', letra: 'liam' },
         { texto: 'O jantar é às oito, e ninguém levanta antes de todo mundo terminar.', letra: 'liam' },
@@ -324,7 +325,7 @@ export const DOC_CADERNO_LIA: Documento = {
         { texto: 'pra mãe: por que você ainda tá aqui?', letra: 'lia', riscado: true },
         { texto: 'pra mãe: você tá bem?', letra: 'lia' },
         { texto: 'pro Liam: por que você sempre fica do lado dele?', letra: 'lia' },
-        { texto: 'pra E.: onde você tá?', letra: 'lia' },
+        { texto: 'pra quem escreveu de lápis roxo no livro de receitas: quem é você? não é ninguém daqui de casa. eu conheço a letra de todo mundo.', letra: 'lia' },
       ],
     },
     {

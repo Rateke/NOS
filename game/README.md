@@ -32,6 +32,11 @@ npm run preview    # serve o build em :4173
 npm test           # joga a fatia inteira num navegador real e confere tudo
 ```
 
+Testes de ponta a ponta, num Chromium de verdade: `test/demo.mjs` (a demo
+inteira no teclado), `test/mouse.mjs` (a mesma só no mouse),
+`test/salvar.mjs` (salvar, continuar, pausar, sair) e `test/playthrough.mjs`
+(a fatia antiga do quarto).
+
 O teste aponta para `http://localhost:4173` por padrão: rode o `preview` antes,
 ou passe `URL=file:///caminho/para/dist/nos.html`. `OUT=<pasta>` salva capturas
 de cada momento.
@@ -84,6 +89,8 @@ os três caminhos são testados de ponta a ponta.
 | Tocar o piano | clicar na tecla | A S D F G H J K | tocar na tecla |
 | Abrir um fio no Tear | tocar a melodia | tocar a melodia | tocar a melodia |
 | Examinar um vestígio | clicar nele | E perto dele | tocar nele |
+| Pausar | ícone no canto de cima | Esc ou P | ícone no canto de cima |
+| Abrir o caderno | ícone no canto de baixo | C ou Tab | ícone no canto de baixo |
 
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
@@ -94,6 +101,60 @@ O jogo **abre em preto absoluto**: uma linha piscando, e nada mais. O primeiro
 toque acende tudo de uma vez — a música entra, o corredor em fuga aparece ao
 fundo e o título se monta, depois os itens do menu, um a um. Quem já viu a
 abertura pula tudo com um toque.
+
+O menu tem três itens:
+
+- **Continuar** — só aparece quando há jogo salvo. Embaixo, onde ele parou e
+  há quanto tempo (*"a mesa · salvo há 5 minutos"*).
+- **Só mais um** — começa do início. Se houver jogo salvo, a primeira escolha
+  só avisa que ele vai ser apagado; a segunda confirma.
+- **Sair** — fecha o jogo (ver abaixo).
+
+### Salvar
+
+O jogo **salva sozinho**, na chegada de cada parte: o rádio, a música, a casa,
+a mesa, o Tear, depois do grito, a casa sem música e o fim. Não existe botão de
+salvar — numa história que se assiste tanto quanto se joga, um menu de salvar
+no meio da cena quebra a cena. Um fio que dá uma volta e vira nó aparece por
+três segundos no canto de cima, com *salvo* do lado (no preto do rádio e do
+grito, o jogo salva sem mostrar nada).
+
+O que fica guardado é o que Liam sabia **ao chegar** na parte: quem continua
+começa a parte do começo. As partes da demo duram poucos minutos. O salvo vive
+no navegador (`localStorage`, chave `nos:salvo`, com número de versão para
+migrar no jogo completo); numa janela anônima, ou embutido numa página que não
+deixa guardar, ele vale só enquanto a aba estiver aberta. Depois do fim, ao
+voltar para o menu, o salvo é apagado — a história terminou.
+
+Para o jogo completo, um capítulo novo entra em dois lugares:
+`ORDEM_PONTOS` (`src/game/systems/salvo.ts`) e `PONTOS`
+(`src/game/scenes/pontos.ts`), e a cena declara `readonly ponto`.
+
+### Pausa e Sair
+
+**Esc** (ou P, ou o ícone de pausa no canto de cima, que aparece para quem
+mexe o mouse ou joga no toque) congela a cena onde ela estiver — o quadro e o
+som param juntos e voltam do mesmo ponto. Esconder a aba também pausa. A pausa
+tem *Continuar*, *Voltar ao menu* e *Sair*. Ela só não abre nos cinco segundos
+de preto depois do grito, em que nada funciona de propósito.
+
+**Sair**, na versão de computador, fecha a janela: o empacotador (Electron,
+Tauri, NW.js) expõe `window.nosNativo.sair()` num script de pré-carga, e
+`src/engine/plataforma.ts` chama essa função. No navegador uma página não pode
+fechar a própria aba; aí fica uma tela preta com *"Tudo bem parar um pouco."*
+e o aviso de que o jogo está salvo — um clique volta ao menu.
+
+### Trilha própria
+
+Para tocar uma gravação que não pode ir junto com o jogo (o *Unravel*
+acústico, por exemplo): com o menu aberto, **arraste os arquivos de música
+para a janela**. Um arquivo vira a trilha de fundo; com dois, o que tiver
+"completo" no nome (ou o maior) é a versão com todos os instrumentos, que
+entra por cima só nos picos (o grito e o fecho). Os arquivos ficam guardados
+no navegador de quem arrastou e **nunca vão para o repositório nem para o
+site publicado**. **Delete**, no menu, tira a trilha própria e volta o piano
+sintetizado. Não há item no menu para isso de propósito: é ferramenta de
+quem apresenta, não de quem joga.
 
 A trilha do menu é uma peça própria: quatro compassos lentos em ré menor
 (Dm–Si♭–Fá–Sol menor), arpejo na mão esquerda e uma melodia esparsa por cima,
@@ -115,13 +176,20 @@ diálogo.
 do prólogo é o que abre os fios no porão.** O presente vira a ferramenta, na
 mesma interface.
 
-0. **O rádio.** Tela preta. Um boletim diz, em linguagem de jornal, tudo o que
-   o jogador precisa para começar: incêndio na cozinha às 22h40, um menino de
-   catorze anos em coma, **uma pessoa morreu**, o pai saiu ileso. Ninguém diz
-   quem morreu. Depois, só som: o monitor do hospital e a voz da Lia (*"Não
-   precisa aguentar nada. Só volta."*). A primeira vez que cada camada do
-   mundo aparece — hospital, lembrança, a casa, o Dentro — ganha uma anotação
-   a lápis no canto.
+0. **O rádio.** Tela preta. A hora certa (os bipes perdem o ritmo num trecho)
+   e um boletim em linguagem de jornal: incêndio na cozinha às 22h40, duas
+   pessoas levadas ao hospital, **uma pessoa morreu**, o pai saiu ileso.
+   Ninguém diz quem morreu, nem quem foi levado. Depois, no escuro, a voz da
+   Lia falando com o Liam — brava, xingando, e só no fim pedindo
+   (*"Volta logo, seu idiota. ...Por favor."*). Ela não diz de onde fala:
+   quem joga pela primeira vez acha que é através de uma porta.
+
+   **Que o Liam está em coma, o jogo só conta no fim.** Até lá é pista, para
+   quem for juntando: o caderno pergunta *"Voltar de onde?"*, a casa é
+   anotada como *"a casa, na minha cabeça"*, e depois do grito um bipe
+   dispara e a Lia grita que ele apertou a mão dela. A primeira vez que cada
+   camada do mundo aparece — lembrança, a casa, o Dentro, lá fora — ganha uma
+   anotação a lápis no canto.
 
 1. **A Música.** Sala de estar, o único ambiente quente da obra. Adrian ensina
    um tema em ré menor, em três frases que crescem (4, 5 e 7 notas), num piano
@@ -172,8 +240,8 @@ mesma interface.
 
    **A mensagem escondida.** Em vários lugares, sem nenhum texto apontando,
    o jogo diz *"preciso de ajuda, não me deixa cair"*: as primeiras letras
-   das frases da redação; os bipes do monitor do hospital, que perdem o ritmo
-   num trecho de Morse; o poste da rua, que pisca sempre na mesma ordem; a
+   das frases da redação; os bipes da hora certa no rádio e do aparelho
+   depois do grito, que perdem o ritmo num trecho de Morse; o poste da rua, que pisca sempre na mesma ordem; a
    resposta do outro lado da porta do fim, que completa as três batidas de
    Liam; cinco casas em branco nas palavras cruzadas; e a marca de caneta
    numa folha arrancada do diário.
@@ -225,7 +293,8 @@ mesma interface.
    clique, ou o dedo) deixa sair *EU NÃO QUERO.* letra por letra; soltar cedo
    é engolir, e o pai repete o pedido. Cheio, vira uma onda branca: todos os
    fios arrebentam. **Cinco segundos de preto**, em que nenhuma tecla
-   funciona. O monitor dispara; a Lia chama a enfermeira.
+   funciona. Um bipe dispara; a Lia grita que ele apertou a mão dela e chama
+   alguém.
 
 7. **A casa sem música.** Tudo fora do lugar, as cores reais das coisas
    (dessaturadas), geladeira, relógio e chuva. A sombra de Liam no chão ficou
@@ -234,15 +303,8 @@ mesma interface.
    sombra. A única cor da casa é a luz âmbar da secretária eletrônica: um
    recado da mãe, de terça às 17h40. *"Eu volto mais tarde."*
 
-**Abertura** — o quarto de Liam, o diário e a porta que nunca esteve trancada.
-
-**Trilha própria** — escolhe arquivos de música do próprio computador: o piano
-sozinho como trilha de fundo e, se houver, a versão com todos os
-instrumentos, que entra por cima só nos picos (o grito e o fecho). Os
-arquivos ficam guardados no navegador de quem escolheu e **nunca vão para o
-repositório nem para o site publicado** — é assim que dá para apresentar com
-uma gravação que não pode ser distribuída junto com o jogo. Sem arquivo, toca
-o piano sintetizado: grave, lento, sem crescer.
+**A fatia antiga** — o quarto de Liam, o diário e a porta que nunca esteve
+trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 
 ## Onde mexer
 
@@ -276,6 +338,10 @@ o piano sintetizado: grave, lento, sem crescer.
 | Etiquetas, anotação de camada, escolha lenta | `src/game/ui/` |
 | A casa depois do grito | `src/game/world/casa.ts` (`*_DEPOIS`) |
 | Trilha de fundo (sintetizada ou arquivos próprios) | `src/engine/principal.ts`, `src/engine/trilhaPropria.ts` |
+| Menu (Continuar, Só mais um, Sair) | `src/game/scenes/title.ts`, `src/game/ui/lista.ts` |
+| Salvar e os pontos de salvamento | `src/game/systems/salvo.ts`, `src/game/scenes/pontos.ts` |
+| Pausa, ícone de pausa, nó do salvo | `src/game/ui/pausa.ts` |
+| Sair (despedida e versão de computador) | `src/game/scenes/despedida.ts`, `src/engine/plataforma.ts` |
 
 Para escrever falas novas basta editar `script.ts`; nenhum outro arquivo
 precisa ser aberto.
@@ -307,15 +373,17 @@ a janela é fria e **não anima**, porque a manhã lá fora está congelada.
 `?debug=1` na URL expõe `window.__nos` com o estado e a cena atual.
 
 `?cena=<id>` começa direto numa cena, sem rejogar tudo — útil para conferir um
-trecho durante a produção. Os ids são `prologo`, `casa`, `mesa`, `tear` e
-`fim`. `?segredos=melodia,nome` começa com esses segredos achados (para
+trecho durante a produção. Os ids são os pontos de salvamento (`abertura`,
+`prologo`, `casa`, `mesa`, `tear`, `grito`, `depois`, `fim`), mais `hospital`
+(= `abertura`) e `quarto` (a fatia antiga). Entrar assim também grava o jogo. `?segredos=melodia,nome` começa com esses segredos achados (para
 conferir o fecho). Nenhum deles tem efeito no jogo normal.
 
 ## Limites conhecidos
 
-- Na Abertura só o quarto de Liam existe; a porta leva ao cartão de capítulo.
+- Na fatia antiga só o quarto de Liam existe; a porta leva ao cartão de capítulo.
 - A música é toda sintetizada no navegador (piano por harmônicos, drone,
   reverberação gerada); não há áudio gravado.
-- Sem salvamento, sem menu de opções, sem suporte a controle.
+- Um lugar de salvo só (sem vários perfis), sem menu de opções, sem suporte a
+  controle.
 - As fontes (Bodoni Moda, Spectral e Cormorant Garamond) vão embutidas no
   arquivo; o jogo funciona sem rede.

@@ -6,10 +6,40 @@ import { principal } from '../../engine/principal'
 import { trilhaPropria } from '../../engine/trilhaPropria'
 import { Particulas } from '../world/particulas'
 import { PAL, WORLD_W, WORLD_H } from '../../engine/constants'
-import { OpeningScene } from './opening'
 import { HospitalScene } from './demo/hospital'
+import { DespedidaScene } from './despedida'
+import { PONTOS } from './pontos'
+import { salvo, haQuanto } from '../systems/salvo'
+import type { Salvo } from '../systems/salvo'
+import { desenharLista, navegarLista } from '../ui/lista'
 
 type Fase = 'espera' | 'abrindo' | 'pronto' | 'saindo'
+type Acao = 'continuar' | 'novo' | 'sair'
+
+/** O menu aberto agora, para quem soltar um arquivo de música na janela. */
+let menuAberto: TitleScene | null = null
+let ouvindoArquivos = false
+
+function ehAudio(f: File): boolean {
+  return f.type.startsWith('audio/') || /\.(mp3|ogg|oga|wav|m4a|aac|flac|opus|weba|webm)$/i.test(f.name)
+}
+
+/**
+ * Arrastar arquivos de música para a janela, com o menu aberto, troca a
+ * trilha (ver engine/trilhaPropria.ts). Não tem item no menu de propósito:
+ * é para quem apresenta o jogo, não para quem joga. Fora do menu o arquivo
+ * solto é só ignorado — e nunca abre por cima do jogo.
+ */
+function ouvirArquivos(): void {
+  if (ouvindoArquivos) return
+  ouvindoArquivos = true
+  window.addEventListener('dragover', (e) => e.preventDefault())
+  window.addEventListener('drop', (e) => {
+    e.preventDefault()
+    const arquivos = Array.from(e.dataTransfer?.files ?? []).filter(ehAudio)
+    if (arquivos.length > 0) menuAberto?.receberTrilha(arquivos)
+  })
+}
 
 /** Ponto de fuga do corredor do fundo. */
 const FUGA = { x: WORLD_W / 2, y: 104 }
@@ -42,50 +72,71 @@ export class TitleScene implements Scene {
   private abertura = 0
   private bateu = false
 
-  private readonly itens: { rotulo: string; nota: string; cena?: () => Scene }[] = [
-    { rotulo: 'Só mais um', nota: 'demo · a música, a casa, o Tear e o que vem depois', cena: () => new HospitalScene('abertura') },
-    { rotulo: 'Abertura', nota: 'o quarto de Liam', cena: () => new OpeningScene() },
-    { rotulo: 'Trilha própria', nota: '' },
-  ]
+  private itens: { acao: Acao; rotulo: string }[] = []
+  /** O que está salvo, lido quando o menu abre. */
+  private guardado: Salvo | null = null
+  /** "Só mais um" com jogo salvo pede uma segunda escolha antes de apagar. */
+  private confirmandoNovo = false
+  /** Achou a porta do menu nesta visita: o segredo sobrevive ao jogo novo. */
+  private achouPorta = false
+  /** Uma linha passageira no pé do menu (a trilha própria entrou, saiu). */
+  private aviso: { texto: string; t: number } | null = null
+  /** Volta do jogo: o som já existe, não precisa do toque inicial. */
+  private readonly direto: boolean
 
-  /**
-   * Arquivos de música escolhidos no computador de quem joga. Ficam só no
-   * navegador desta máquina — ver engine/trilhaPropria.ts.
-   */
-  private seletor: HTMLInputElement | null = null
-  private carregando = false
-
-  private notaTrilha(): string {
-    if (this.carregando) return 'carregando...'
-    if (!trilhaPropria.pronta) return 'usar arquivos de música deste computador (piano, e a versão completa se tiver)'
-    const nome = trilhaPropria.nomes.piano ?? 'arquivo'
-    const extra = trilhaPropria.temCompleto ? ' + versão completa' : ''
-    return `tocando: ${nome}${extra}  ·  clique para trocar  ·  Delete remove`
+  constructor(opcoes: { direto?: boolean } = {}) {
+    this.direto = opcoes.direto === true
   }
 
-  private escolherTrilha(): void {
-    if (!this.seletor) {
-      const el = document.createElement('input')
-      el.type = 'file'
-      el.accept = 'audio/*'
-      el.multiple = true
-      el.style.display = 'none'
-      el.addEventListener('change', () => {
-        const arquivos = Array.from(el.files ?? [])
-        el.value = ''
-        if (arquivos.length === 0) return
-        this.carregando = true
-        void trilhaPropria.escolher(arquivos)
-          .then(() => principal.recomecar(0.8))
-          .catch(() => undefined)
-          .finally(() => {
-            this.carregando = false
-          })
-      })
-      document.body.appendChild(el)
-      this.seletor = el
+  enter(ctx: SceneCtx): void {
+    menuAberto = this
+    ouvirArquivos()
+    this.achouPorta = ctx.state.segredos.has('porta-menu')
+    this.montarItens()
+    if (this.direto) this.abrir()
+  }
+
+  private montarItens(): void {
+    this.guardado = salvo.ler()
+    this.itens = [
+      ...(this.guardado ? [{ acao: 'continuar' as const, rotulo: 'Continuar' }] : []),
+      { acao: 'novo', rotulo: 'Só mais um' },
+      { acao: 'sair', rotulo: 'Sair' },
+    ]
+    this.sel = 0
+    this.confirmandoNovo = false
+  }
+
+  /** Exposto para os testes: a ação de cada item, na ordem. */
+  get acoes(): Acao[] {
+    return this.itens.map((i) => i.acao)
+  }
+
+  private nota(acao: Acao): string {
+    if (acao === 'continuar' && this.guardado) {
+      return `${PONTOS[this.guardado.ponto].nome}  ·  salvo ${haQuanto(this.guardado.quando)}`
     }
-    this.seletor.click()
+    if (acao === 'novo') {
+      if (this.confirmandoNovo) return 'isso apaga o jogo salvo  ·  escolha de novo para começar'
+      return this.guardado ? 'começar do início' : 'demo · a música, a casa, o Tear e o que vem depois'
+    }
+    return 'fechar o jogo'
+  }
+
+  /** Arquivos soltos na janela viram a trilha. */
+  receberTrilha(arquivos: File[]): void {
+    if (this.fase === 'espera' || this.fase === 'saindo') return
+    this.aviso = { texto: 'carregando a trilha...', t: 0 }
+    void trilhaPropria.escolher(arquivos)
+      .then(() => {
+        principal.recomecar(0.8)
+        const nome = trilhaPropria.nomes.piano ?? 'arquivo'
+        const extra = trilhaPropria.temCompleto ? ' + versão completa' : ''
+        this.aviso = { texto: `trilha própria: ${nome}${extra}`, t: 0 }
+      })
+      .catch(() => {
+        this.aviso = { texto: 'não deu para abrir esse arquivo', t: 0 }
+      })
   }
 
   update(dt: number, ctx: SceneCtx): void {
@@ -133,41 +184,57 @@ export class TitleScene implements Scene {
     if (this.abertura > 0.6 && !this.bateu) {
       this.bateu = true
       audio.bater(3, 0)
+      this.achouPorta = true
       if (ctx.state.descobrir('porta-menu')) window.setTimeout(() => audio.segredo(), 1400)
     }
 
-    if (ctx.input.consumeKey('ArrowUp') || ctx.input.consumeKey('KeyW')) this.mover(-1)
-    if (ctx.input.consumeKey('ArrowDown') || ctx.input.consumeKey('KeyS')) this.mover(1)
+    if (this.aviso) this.aviso.t += dt
 
-    const tap = ctx.input.consumeTap()
-    let clicou = false
-    if (tap) {
-      const i = this.caixas.findIndex(
-        (r) => tap.x >= r.x && tap.x <= r.x + r.w && tap.y >= r.y && tap.y <= r.y + r.h,
-      )
-      if (i >= 0) {
-        this.sel = i
-        clicou = true
-      }
-    }
-
-    if (this.sel === 2 && ctx.input.consumeKey('Delete') && trilhaPropria.pronta) {
+    // Delete tira a trilha própria e devolve o piano do jogo.
+    if (ctx.input.consumeKey('Delete') && trilhaPropria.pronta) {
       void trilhaPropria.remover().then(() => principal.recomecar(0.8))
+      this.aviso = { texto: 'trilha própria removida', t: 0 }
     }
 
-    if (clicou || ctx.input.consumeConfirm()) {
-      const item = this.itens[this.sel]
-      if (!item?.cena) {
-        this.escolherTrilha()
-        return
-      }
-      this.fase = 'saindo'
-      this.desde = 0
-      musica.nota(146.83, 0.6, 5)
-      principal.parar(2)
-      musica.setPad(0.2, 2)
-      ctx.transition(item.cena(), 2.2, 0.6)
+    const r = navegarLista(ctx.input, this.itens.length, this.sel, this.caixas)
+    if (r.moveu) {
+      this.sel = r.sel
+      this.confirmandoNovo = false
+      audio.interact()
     }
+    if (r.escolhido < 0) return
+    this.sel = r.escolhido
+    const acao = this.itens[this.sel]?.acao
+    if (!acao) return
+
+    if (acao === 'novo' && this.guardado && !this.confirmandoNovo) {
+      this.confirmandoNovo = true
+      audio.interact()
+      return
+    }
+
+    this.fase = 'saindo'
+    this.desde = 0
+    menuAberto = null
+    musica.setPad(0.2, 2)
+    if (acao === 'sair') {
+      musica.nota(73.42, 0.5, 5)
+      principal.parar(2)
+      ctx.transition(new DespedidaScene(), 2.2, 0.6)
+      return
+    }
+    musica.nota(146.83, 0.6, 5)
+    principal.parar(2)
+    if (acao === 'continuar' && this.guardado) {
+      ctx.state.restaurar(this.guardado.estado)
+      if (this.achouPorta) ctx.state.descobrir('porta-menu')
+      ctx.transition(PONTOS[this.guardado.ponto].criar(), 2.2, 0.6)
+      return
+    }
+    salvo.apagar()
+    ctx.state.zerar()
+    if (this.achouPorta) ctx.state.descobrir('porta-menu')
+    ctx.transition(new HospitalScene('abertura'), 2.2, 0.6)
   }
 
   /** O primeiro toque: é aqui que o som do jogo começa a existir. */
@@ -184,11 +251,6 @@ export class TitleScene implements Scene {
     musica.setPad(0.22, 8)
     // Se havia trilha própria guardada, ela toca; senão, o piano sintetizado.
     void trilhaPropria.carregarGuardada().finally(() => principal.tocar(0.8))
-  }
-
-  private mover(d: number): void {
-    this.sel = (this.sel + d + this.itens.length) % this.itens.length
-    audio.interact()
   }
 
   render(ctx: SceneCtx): void {
@@ -345,35 +407,26 @@ export class TitleScene implements Scene {
     c.fillRect(cssW / 2 - fio / 2, cssH * 0.3 + tam * 0.2, fio, 1)
 
     const s = Math.max(14, Math.min(cssW / 58, 24))
-    let y = cssH * 0.58
-    this.caixas = []
-    for (const [i, item] of this.itens.entries()) {
-      const a = Math.max(0, Math.min(1, (this.desde - 2.4 - i * 0.45) / 1.2)) * luz
-      const ativo = i === this.sel && this.fase === 'pronto'
-      this.caixas.push({ x: cssW * 0.24, y: y - s * 1.3, w: cssW * 0.52, h: s * 2.6 })
+    c.restore()
+    this.caixas = desenharLista(c, {
+      itens: this.itens.map((item) => ({ rotulo: item.rotulo, nota: this.nota(item.acao) })),
+      sel: this.sel,
+      cssW,
+      y0: cssH * 0.58,
+      s,
+      t: this.t,
+      alfa: (i) => Math.max(0, Math.min(1, (this.desde - 2.4 - i * 0.45) / 1.2)) * luz,
+      vivo: this.fase === 'pronto',
+    })
+    c.save()
+    c.textAlign = 'center'
 
-      c.globalAlpha = a * (ativo ? 1 : 0.42)
-      c.fillStyle = ativo ? PAL.ink : PAL.inkDim
-      c.font = `${ativo ? 400 : 300} ${s * (ativo ? 1.16 : 1.04)}px ${FONT_TITLE}`
-      c.letterSpacing = '0.16em'
-      c.fillText(item.rotulo.toUpperCase(), cssW / 2, y)
-      c.letterSpacing = '0em'
-
-      if (ativo) {
-        // Marcador: dois fios que se abrem a partir do item selecionado.
-        const pulso = 0.5 + Math.sin(this.t * 2.2) * 0.22
-        c.globalAlpha = a * pulso
-        c.fillStyle = PAL.accent
-        const larg = s * 3.2
-        c.fillRect(cssW / 2 - larg - s * 4.6, y - s * 0.34, larg, 1)
-        c.fillRect(cssW / 2 + s * 4.6, y - s * 0.34, larg, 1)
-
-        c.globalAlpha = a * 0.5
-        c.fillStyle = PAL.inkDim
-        c.font = `300 italic ${s * 0.72}px ${FONT_BODY}`
-        c.fillText(item.cena ? item.nota : this.notaTrilha(), cssW / 2, y + s * 1.5)
-      }
-      y += s * 3.7
+    if (this.aviso && this.aviso.t < 5) {
+      const a = Math.min(1, this.aviso.t / 0.4, (5 - this.aviso.t) / 1) * luz
+      c.globalAlpha = a * 0.6
+      c.fillStyle = PAL.accent
+      c.font = `italic 300 ${s * 0.72}px ${FONT_BODY}`
+      c.fillText(this.aviso.texto, cssW / 2, cssH - s * 4)
     }
 
     const aPe = Math.max(0, Math.min(1, (this.desde - 4) / 1.6)) * luz

@@ -3,7 +3,7 @@ import type { GameState } from '../systems/state'
 
 /**
  * A primeira vez que cada camada do mundo aparece — uma lembrança, o Dentro,
- * o hospital — ganha uma anotação a lápis no canto, na letra do Liam. Depois
+ * o mundo de fora — ganha uma anotação a lápis no canto, na letra do Liam. Depois
  * disso o jogador já sabe ler a camada pelo olho e pelo ouvido, e a
  * anotação não volta.
  */
@@ -12,7 +12,8 @@ export type IdCamada = 'lembranca' | 'dentro' | 'hospital' | 'casa'
 const TEXTO: Record<IdCamada, string> = {
   lembranca: '(lembrança)',
   dentro: '(dentro)',
-  hospital: '(hospital)',
+  // O mundo de fora. Não diz "hospital": isso só se descobre no fim.
+  hospital: '(lá fora)',
   casa: '(a casa, na minha cabeça)',
 }
 
