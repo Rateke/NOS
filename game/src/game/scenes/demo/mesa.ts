@@ -388,6 +388,8 @@ export class MesaScene implements Scene {
     if (this.tensao >= 1) {
       // O pai vira para ele. Começa a gritaria.
       this.fase = 'gritaria'
+      // O pai corta qualquer pensamento no meio: a gritaria não espera.
+      this.dialogue.play([])
       sons.iniciarCacofonia()
       this.tGritaria = 0
       this.idxGrito = 0
@@ -535,6 +537,7 @@ export class MesaScene implements Scene {
   /** O preto depois dos gritos, e então a fuga. */
   private fundo(dt: number, ctx: SceneCtx): void {
     this.tFundo += dt
+    if (this.dialogue.active && ctx.input.consumeConfirm()) this.dialogue.confirm()
     ctx.input.consumeTap()
     if (this.tFundo > 1.6 && !this.dialogue.active && this.fase === 'fundo') {
       this.fase = 'fuga'
