@@ -1,6 +1,6 @@
 import type { Scene, SceneCtx } from './types'
 import { FONT_BODY, FONT_TITLE } from '../systems/dialogue'
-import { audio } from '../../engine/audio'
+import { audio, sons } from '../../engine/audio'
 import { musica } from '../../engine/musica'
 import { principal } from '../../engine/principal'
 import { trilhaPropria } from '../../engine/trilhaPropria'
@@ -47,6 +47,21 @@ const FUGA = { x: WORLD_W / 2, y: 104 }
 const ANEIS = 9
 /** Segundos parado no menu até a porta do fim abrir. */
 const ESPERA_PORTA = 40
+/** O que se pode digitar no menu. */
+const PALAVRAS_MENU = ['nos', 'ajuda', 'elisa', 'lia', 'liam'] as const
+
+/** O fim do que foi digitado já é o começo (duas letras ou mais) de uma palavra. */
+function meioDePalavra(digitado: string): boolean {
+  return PALAVRAS_MENU.some((w) => {
+    for (let n = Math.min(w.length, digitado.length); n >= 2; n--) {
+      if (digitado.endsWith(w.slice(0, n))) return true
+    }
+    return false
+  })
+}
+
+/** Segundos segurando o dedo parado até o menu responder. */
+const SEGURAR = 5
 
 /**
  * Menu.
@@ -82,6 +97,21 @@ export class TitleScene implements Scene {
   private achouPorta = false
   /** Uma linha passageira no pé do menu (a trilha própria entrou, saiu). */
   private aviso: { texto: string; t: number } | null = null
+  // --- Segredos do menu ---
+  /** O que foi digitado no menu, as últimas letras. */
+  private digitado = ''
+  private achadosMenu = new Set<string>()
+  /** Segundos com o dedo (ou o mouse) apertado fora das opções. */
+  private segurando = 0
+  private ultimoPonteiro: { x: number; y: number } | null = null
+  /** Segundos desde que o acento caiu (0 = no lugar). */
+  private acento = 0
+  /** A Elisa aparecendo na porta do fim, enquanto durar. */
+  private elisaAte = 0
+  /** O corredor para quando alguém segura a respiração. */
+  private tCorredor = 0
+  private corAviso = ''
+
   /** Volta do jogo: o som já existe, não precisa do toque inicial. */
   private readonly direto: boolean
   /** Já terminou uma vez: o título lembra. */
@@ -136,6 +166,17 @@ export class TitleScene implements Scene {
   receberTrilha(arquivos: File[]): void {
     if (this.fase === 'espera' || this.fase === 'saindo') return
     this.aviso = { texto: 'carregando a trilha...', t: 0 }
+    // Só o arquivo do fone da Lia: a trilha do menu fica como está.
+    if (arquivos.every((f) => /lia|fone/i.test(f.name))) {
+      void trilhaPropria.escolher(arquivos)
+        .then(() => {
+          this.avisar(`no fone da Lia: ${arquivos[0]?.name ?? 'arquivo'}`, '#d06e80')
+        })
+        .catch(() => {
+          this.aviso = { texto: 'não deu para abrir esse arquivo', t: 0 }
+        })
+      return
+    }
     void trilhaPropria.escolher(arquivos)
       .then(() => {
         principal.recomecar(0.8)
@@ -188,7 +229,7 @@ export class TitleScene implements Scene {
     // Quem espera sem fazer nada vê a porta do fim abrir — e alguém nela.
     if (ctx.input.consumeAny()) this.parado = 0
     else this.parado += dt
-    const alvo = this.parado > ESPERA_PORTA ? 1 : 0
+    const alvo = this.parado > ESPERA_PORTA || this.t < this.elisaAte ? 1 : 0
     this.abertura += (alvo - this.abertura) * Math.min(1, dt * (alvo ? 0.5 : 3))
     if (this.abertura > 0.6 && !this.bateu) {
       this.bateu = true
@@ -198,6 +239,7 @@ export class TitleScene implements Scene {
     }
 
     if (this.aviso) this.aviso.t += dt
+    this.segredosDoMenu(dt, ctx)
 
     // Delete tira a trilha própria e devolve o piano do jogo.
     if (ctx.input.consumeKey('Delete') && trilhaPropria.pronta) {
@@ -245,6 +287,96 @@ export class TitleScene implements Scene {
     ctx.state.zerar()
     if (this.achouPorta) ctx.state.descobrir('porta-menu')
     ctx.transition(new HospitalScene('abertura'), 2.2, 0.6)
+  }
+
+  /**
+   * O menu esconde coisas. Digitar certas palavras, ou segurar o dedo
+   * parado fora das opções, faz alguma coisa acontecer. Nada avisa.
+   */
+  private segredosDoMenu(dt: number, ctx: SceneCtx): void {
+    if (this.acento > 0) this.acento += dt
+    // O que se digita.
+    const teclas = ctx.input.teclasNovas()
+    for (const code of teclas) {
+      const m = /^Key([A-Z])$/.exec(code)
+      if (!m || !m[1]) continue
+      this.digitado = (this.digitado + m[1].toLowerCase()).slice(-8)
+      for (const palavra of PALAVRAS_MENU) {
+        if (this.digitado.endsWith(palavra)) this.palavra(palavra)
+      }
+      // Quem está digitando não está escolhendo: no menu o E não confirma
+      // (espaço e Enter confirmam), e um S no meio de uma palavra não desce.
+      if (code === 'KeyE' && !teclas.some((t) => t === 'Space' || t === 'Enter' || t === 'NumpadEnter')) {
+        ctx.input.consumeConfirm()
+      }
+      if (code === 'KeyS' && meioDePalavra(this.digitado)) ctx.input.consumeKey('KeyS')
+    }
+    // Segurar parado, fora das opções.
+    const p = ctx.input.pointer
+    const dentro = p && this.caixas.some((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)
+    if (ctx.input.pointerDown && p && !dentro) {
+      this.ultimoPonteiro = { ...p }
+      const antes = this.segurando
+      this.segurando += dt
+      if (antes < SEGURAR && this.segurando >= SEGURAR) {
+        sons.respiro(false, 2.2, 1.2)
+        audio.heartbeat(0.12)
+        this.avisar('Quatro pra dentro. Quatro pra fora. — a mãe ensinou isso antes de tudo.', '#e2a95e')
+      } else if (Math.floor(antes / 1.1) !== Math.floor(this.segurando / 1.1) && this.segurando < SEGURAR) {
+        audio.heartbeat(0.06 + this.segurando * 0.02)
+      }
+    } else {
+      this.segurando = 0
+    }
+    // O corredor para enquanto alguém segura.
+    if (this.segurando < 0.4) this.tCorredor += dt
+  }
+
+  private palavra(p: string): void {
+    const primeira = !this.achadosMenu.has(p)
+    this.achadosMenu.add(p)
+    if (p === 'nos') {
+      this.acento = 0.001
+      musica.nota(146.83, 0.5, 5)
+      musica.nota(174.61, 0.35, 5)
+      this.avisar('Sem o acento, nós vira nos. Como em: ele nos ama.', PAL.accent)
+    } else if (p === 'ajuda') {
+      sons.morse('AJUDA', 0.2)
+      this.avisar(primeira ? 'Alguém ouviu.' : 'Alguém ouviu. De novo.', PAL.accent)
+    } else if (p === 'elisa') {
+      this.elisaAte = this.t + 7
+      audio.bater(3, 0)
+      this.avisar('Eu também cortei o meu. — E.', '#b49ade')
+    } else if (p === 'lia') {
+      this.avisar('(do outro lado da parede, a música dela, baixinho)', '#d06e80')
+      const parar = sons.musicaDaLia(0.35)
+      window.setTimeout(parar, 9000)
+    } else if (p === 'liam') {
+      this.avisar('Ainda tô aqui.', '#aab0bd')
+    }
+  }
+
+  private avisar(texto: string, cor: string): void {
+    this.aviso = { texto, t: 0.001 }
+    this.corAviso = cor
+  }
+
+  /** O acento caindo do Ó, girando, até sumir embaixo do título. */
+  private acentoCaindo(c: CanvasRenderingContext2D, xTit: number, yTit: number, tam: number): void {
+    const inteiro = c.measureText('NOS').width
+    const n = c.measureText('N').width
+    const o = c.measureText('O').width
+    const ox = xTit - inteiro / 2 + n + o / 2
+    const t = this.acento
+    const cai = Math.min(1, t / 1.4)
+    const y = yTit - tam * 0.9 + cai * cai * tam * 1.5
+    c.save()
+    c.globalAlpha *= Math.max(0, 1 - Math.max(0, t - 1.2) / 1.5)
+    c.translate(ox + t * tam * 0.06, y)
+    c.rotate(t * 2.2)
+    c.textAlign = 'center'
+    c.fillText('´', 0, 0)
+    c.restore()
   }
 
   /** O primeiro toque: é aqui que o som do jogo começa a existir. */
@@ -307,7 +439,7 @@ export class TitleScene implements Scene {
     c.restore()
 
     for (let i = 0; i < ANEIS; i++) {
-      const z = ((i / ANEIS + this.t * 0.028) % 1 + 1) % 1
+      const z = ((i / ANEIS + this.tCorredor * 0.028) % 1 + 1) % 1
       const escala = Math.exp(z * 3.3)
       const lw = 30 * escala
       const lh = 21 * escala
@@ -395,47 +527,6 @@ export class TitleScene implements Scene {
     c.restore()
   }
 
-  /**
-   * Na segunda vez, o S se soltou: fica pendurado por um fio embaixo do NÓ,
-   * balançando devagar.
-   */
-  private tituloPendurado(c: CanvasRenderingContext2D, cx: number, y: number, tam: number): void {
-    const inteiro = c.measureText('NÓS').width
-    const no = c.measureText('NÓ').width
-    const x0 = cx - inteiro / 2
-    c.textAlign = 'left'
-    c.fillText('NÓ', x0, y)
-    const larguraS = c.measureText('S').width
-    // O fio sai da borda do Ó — é o nó que ainda segura o S.
-    const px = x0 + no - larguraS * 0.02
-    const py = y - tam * 0.42
-    const queda = tam * 0.5
-    const ang = -0.32 + Math.sin(this.t * 0.9) * 0.08
-    const fx = px - Math.sin(ang) * queda
-    const fy = py + Math.cos(ang) * queda
-    c.save()
-    c.strokeStyle = PAL.accent
-    c.fillStyle = PAL.accent
-    c.globalAlpha *= 0.8
-    c.lineWidth = Math.max(1, tam * 0.012)
-    c.beginPath()
-    c.moveTo(px, py)
-    c.quadraticCurveTo((px + fx) / 2 + tam * 0.03, (py + fy) / 2, fx, fy)
-    c.stroke()
-    c.beginPath()
-    c.arc(px, py, Math.max(1.5, tam * 0.02), 0, Math.PI * 2)
-    c.fill()
-    c.restore()
-    c.save()
-    c.translate(fx, fy)
-    c.rotate(-ang * 0.9 + 0.1)
-    c.textAlign = 'center'
-    c.textBaseline = 'top'
-    c.fillText('S', 0, -tam * 0.12)
-    c.restore()
-    c.textAlign = 'center'
-  }
-
   private drawMenu(ctx: SceneCtx, luz: number): void {
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
@@ -449,15 +540,40 @@ export class TitleScene implements Scene {
     c.fillStyle = PAL.ink
     c.font = `400 ${tam}px ${FONT_TITLE}`
     c.letterSpacing = `${0.26 - aTit * 0.04}em`
-    if (this.deNovo) this.tituloPendurado(c, cssW / 2 + tam * 0.12, cssH * 0.3, tam)
-    else c.fillText('NÓS', cssW / 2 + tam * 0.12, cssH * 0.3)
+    const xTit = cssW / 2 + tam * 0.12
+    const yTit = cssH * 0.3
+    // Quem digita "nos" vê o acento cair: sem ele, nós vira só um pronome.
+    const semAcento = this.acento > 0 && this.acento < 9
+    c.fillText(semAcento ? 'NOS' : 'NÓS', xTit, yTit)
+    if (semAcento) this.acentoCaindo(c, xTit, yTit, tam)
     c.letterSpacing = '0em'
 
-    // Fio fino sob o título
+    // Fio fino sob o título. Depois de zerar, ele está cortado no meio.
     c.globalAlpha = aTit * 0.35
     c.fillStyle = PAL.accent
     const fio = tam * 1.4 * aTit
-    c.fillRect(cssW / 2 - fio / 2, cssH * 0.3 + tam * 0.2, fio, 1)
+    const yFio = cssH * 0.3 + tam * 0.2
+    if (this.deNovo) {
+      const vao = tam * 0.12
+      c.fillRect(cssW / 2 - fio / 2, yFio, fio / 2 - vao, 1)
+      c.fillRect(cssW / 2 + vao, yFio, fio / 2 - vao, 1)
+      // As pontas desfiadas.
+      for (const [x, d] of [[cssW / 2 - vao, -1], [cssW / 2 + vao, 1]] as const) {
+        for (let k = 0; k < 3; k++) c.fillRect(x + d * k * 2, yFio + (k - 1) * 2, d * 4, 1)
+      }
+    } else {
+      c.fillRect(cssW / 2 - fio / 2, yFio, fio, 1)
+    }
+    // Segurando: um anel que enche em volta do dedo (ou do mouse).
+    if (this.segurando > 0.4 && this.ultimoPonteiro) {
+      const k = Math.min(1, this.segurando / SEGURAR)
+      c.globalAlpha = 0.5
+      c.strokeStyle = '#e2a95e'
+      c.lineWidth = 2
+      c.beginPath()
+      c.arc(this.ultimoPonteiro.x, this.ultimoPonteiro.y, 22, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2)
+      c.stroke()
+    }
 
     const s = Math.max(14, Math.min(cssW / 58, 24))
     c.restore()
@@ -476,8 +592,8 @@ export class TitleScene implements Scene {
 
     if (this.aviso && this.aviso.t > 0 && this.aviso.t < 5) {
       const a = Math.min(1, this.aviso.t / 0.4, (5 - this.aviso.t) / 1) * luz
-      c.globalAlpha = a * 0.6
-      c.fillStyle = PAL.accent
+      c.globalAlpha = a * 0.75
+      c.fillStyle = this.corAviso || PAL.accent
       c.font = `italic 300 ${s * 0.72}px ${FONT_BODY}`
       c.fillText(this.aviso.texto, cssW / 2, cssH - s * 4)
     }

@@ -12,13 +12,14 @@
     "test": "node test/playthrough.mjs",
     "build:single": "npm run build && node scripts/build-single.mjs",
     "test:demo": "node test/demo.mjs",
-    "test:all": "npm test && npm run test:demo && npm run test:mouse && npm run test:escolha && npm run test:salvar && npm run test:som && npm run test:celular && npm run test:segunda",
+    "test:all": "npm test && npm run test:demo && npm run test:mouse && npm run test:escolha && npm run test:salvar && npm run test:som && npm run test:celular && npm run test:segunda && npm run test:violoncelo",
     "test:mouse": "node test/mouse.mjs",
     "test:escolha": "node test/escolha.mjs",
     "test:salvar": "node test/salvar.mjs",
     "test:som": "node test/som.mjs",
     "test:celular": "node test/celular.mjs",
-    "test:segunda": "node test/segunda.mjs"
+    "test:segunda": "node test/segunda.mjs",
+    "test:violoncelo": "node test/violoncelo.mjs"
   },
   "devDependencies": {
     "@fontsource/bodoni-moda": "^5.3.0",

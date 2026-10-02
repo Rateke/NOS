@@ -20,6 +20,7 @@ export const SEGREDOS = [
   'caderno',      // esperar na última página, em branco, do caderno de Amélia
   'marcas',       // esperar na folha arrancada do diário: ficou a marca da caneta
   'radio',        // abaixar o rádio da cozinha, que já sabe do incêndio
+  'partitura',    // depois do grito, tocar a partitura roxa no violoncelo até o fim
 ] as const
 
 export type Segredo = (typeof SEGREDOS)[number]

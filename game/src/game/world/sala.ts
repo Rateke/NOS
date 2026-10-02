@@ -45,6 +45,8 @@ export interface EstadoSala {
   vulto?: number
   /** Quanto o retrato de cima do sofá está torto, em radianos (0 = reto). */
   retratoTorto?: number
+  /** 0..1: o quinto retrato de volta ao prego, depois da partitura. */
+  quintoRetrato?: number
 }
 
 const PAREDE_FRIA: RGB = [22, 26, 38]
@@ -78,6 +80,19 @@ export function drawSalaFundo(c: CanvasRenderingContext2D, e: EstadoSala): void 
   radiador(c, 42, 112, 52, k)
   // Onde ficava o quinto retrato: só o papel mais claro e o prego.
   marcaDeQuadro(c, 252, 56, 18, 22)
+  const quinto = e.quintoRetrato ?? 0
+  if (quinto > 0) {
+    // O quinto retrato, de volta: uma pessoa só, e um brilho roxo em volta.
+    c.save()
+    c.globalAlpha = quinto
+    const g = c.createRadialGradient(261, 67, 2, 261, 67, 26)
+    g.addColorStop(0, 'rgba(180,154,222,0.35)')
+    g.addColorStop(1, 'rgba(180,154,222,0)')
+    c.fillStyle = g
+    c.fillRect(235, 41, 52, 52)
+    quadro(c, 252, 56, 18, 22, { figuras: 1, moldura: [96, 80, 120] })
+    c.restore()
+  }
   drawRetratos(c, k)
   retratoDoSofa(c, k, e.retratoTorto ?? 0)
   quadroMar(c, 292, 36, 76, 28, k)

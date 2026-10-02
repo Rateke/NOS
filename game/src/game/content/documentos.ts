@@ -72,7 +72,7 @@ const DIARIO_PAGINAS: Pagina[] = [
       segredo: 'marcas',
       blocos: [
         { texto: '(a folha de cima foi arrancada; ficou a marca da caneta)', letra: 'pequeno' },
-        { texto: 'não me deixa cair', letra: 'marca', respiro: 1.2 },
+        { texto: 'não me deixem cair', letra: 'marca', respiro: 1.2 },
       ],
     },
   },

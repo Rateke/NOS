@@ -5,6 +5,7 @@ import {
   DOC_DIARIO, DOC_DIARIO_CONTRACAPA, DOC_RECEITAS, DOC_JORNAL, DOC_CARTA_ESCOLA, DOC_CADERNO_LIA,
 } from '../content/documentos'
 import type { RGB } from './arte'
+import { VIOLONCELO_PEGAR, QUINTO_RETRATO_VAZIO } from '../content/violoncelo'
 import {
   rgb, clarear, ret, sorteio, papelDeParede, lambri, assoalho, porta, quadro, cantos,
 } from './arte'
@@ -56,7 +57,7 @@ export interface VestigioCasa {
   /** Está na parede do fundo: Liam vira de costas para a câmera para olhar. */
   naParede?: boolean
   /** Em vez de só ler: sentar ao piano, entrar na cabana, ouvir o recado. */
-  acao?: 'piano' | 'cabana' | 'secretaria' | 'conversaLia' | 'no'
+  acao?: 'piano' | 'cabana' | 'secretaria' | 'conversaLia' | 'no' | 'violoncelo'
   /** O que Liam fica sabendo ao olhar (vira linha no caderno). */
   aprende?: string
   /** Só existe quando o corredor já esticou até este comprimento. */
@@ -85,6 +86,10 @@ export interface EstadoComodo {
   vulto?: number
   /** O retrato grande da sala, torto (radianos). */
   retratoTorto?: number
+  /** O violoncelo fora do gancho, na mão do Liam. */
+  celloFora?: boolean
+  /** 0..1: o quinto retrato de volta na parede da sala. */
+  quintoRetrato?: number
 }
 
 export interface Comodo {
@@ -148,6 +153,7 @@ export function comodoSala(depois = false): Comodo {
     k: depois ? 0.12 : K_SALA, t: e.t, tecla: e.tecla, brilhoTecla: e.brilhoTecla, vulto: e.vulto,
     // Depois do grito ninguém endireita mais nada.
     retratoTorto: depois ? 0.2 : e.retratoTorto,
+    quintoRetrato: e.quintoRetrato,
   })
   return {
     id: 'sala',
@@ -298,6 +304,10 @@ const SALA_DEPOIS: VestigioCasa[] = [
       { text: 'Ninguém dobrou.' },
       { text: 'Ninguém vai dobrar.' },
     ],
+  },
+  {
+    id: 'quinto-retrato', x: 266, rotulo: 'Olhar', naParede: true,
+    linhas: QUINTO_RETRATO_VAZIO,
   },
   {
     id: 'd-livro', x: 438, rotulo: 'Abrir',
@@ -971,7 +981,7 @@ export function comodoQuarto(depois = false): Comodo {
       if (depois) cabanaCaida(c)
       else cabana(c, t)
       paredeDePlantas(c, 100, 26, e.vistos.has('plantas+'))
-      violoncelo(c, 246, 24, depois)
+      if (!e.celloFora) violoncelo(c, 246, 24, depois)
       luarNoChao(c, 330, CHAO + 1, 56)
       sombraDeContato(c, 194, CHAO, 84)
       sombraDeContato(c, 324, CHAO, 54)
@@ -1443,8 +1453,9 @@ function tapeteQuarto(c: CanvasRenderingContext2D): void {
 // --- Quarto da Lia ---------------------------------------------------------
 
 export const LIA_W = 400
-const PAREDE_LIA: RGB = [40, 26, 38]
-const LAMBRI_LIA: RGB = [32, 22, 32]
+/** Azul petróleo escuro, que quase não se vê embaixo dos rabiscos. */
+const PAREDE_LIA: RGB = [26, 40, 48]
+const LAMBRI_LIA: RGB = [20, 28, 36]
 const CHAO_LIA: RGB = [34, 28, 34]
 /** O espelho da porta do armário, em pixels de mundo. */
 export const ESPELHO = { x: 326, y: 64, w: 20, h: 72 }
@@ -1478,6 +1489,13 @@ export function comodoLia(depois = false, temBilhete = false): Comodo {
         }]
         : []),
       {
+        id: 'lia-volta', x: 124, rotulo: 'Olhar', naParede: true,
+        linhas: [
+          { text: 'Em cima de todos os rabiscos dela, tinta fresca, ainda escorrendo: VOLTA.' },
+          { text: 'Ninguém entrou aqui. A tinta está molhada mesmo assim.' },
+        ],
+      },
+      {
         id: 'lia-espelho-depois', x: ESPELHO.x + ESPELHO.w / 2, rotulo: 'Olhar', naParede: true,
         linhas: [
           { text: 'Alguém cobriu o espelho com um lençol.' },
@@ -1506,6 +1524,34 @@ export function comodoLia(depois = false, temBilhete = false): Comodo {
         deNovo: [
           { text: 'De perto: o pai foi apagado com borracha.' },
           { text: 'O papel ficou mais fino no lugar dele. Quase rasgou.' },
+        ],
+      },
+      {
+        id: 'lia-fotos', x: 128, rotulo: 'Olhar', naParede: true,
+        linhas: [
+          { text: 'Fotos coladas com fita na parede. Ela com as amigas, fazendo careta.' },
+          { text: 'Ela e eu, pequenos, sujos de bolo de chocolate.' },
+          { text: 'Em todas que tem o pai, o rosto dele foi riscado de caneta. Com força. O papel rasgou.' },
+        ],
+      },
+      {
+        id: 'lia-rabiscos', x: 206, rotulo: 'Ler', naParede: true,
+        linhas: [
+          { text: 'A parede inteira escrita. A mãe desistiu de pintar.' },
+          { text: 'Nome de banda, letra de música, palavrão riscado por cima de palavrão.' },
+        ],
+        deNovo: [
+          { text: 'No meio de tudo, pequeno, na letra dela:' },
+          { text: '"não é culpa sua, L."' },
+          { text: 'L de Liam. Ou de Lia. Ela não ia escrever isso pra ela mesma.' },
+          { text: '...Ia?' },
+        ],
+      },
+      {
+        id: 'lia-tv', x: 368, rotulo: 'Olhar',
+        linhas: [
+          { text: 'A TV velha dela, sem antena. Só chiado.' },
+          { text: 'Ela deixa ligada pra dormir. Diz que o chiado é melhor que o silêncio desta casa.' },
         ],
       },
       {
@@ -1545,9 +1591,13 @@ export function comodoLia(depois = false, temBilhete = false): Comodo {
       rodape(c, 0, LIA_W, CHAO, LAMBRI_LIA)
       cantos(c, LIA_W, CHAO, WORLD_H, PAREDE_LIA)
       porta(c, 44, CHAO, { cor: [52, 34, 44], luz: true })
+      rabiscosLia(c, depois)
       varalDeLuzes(c, t, depois)
       posteres(c, 66)
+      polaroides(c, 108, 40)
       tapeteLia(c)
+      baguncaLia(c, t)
+      tvChiando(c, 368, t, depois)
       camaLia(c, 104, depois)
       if (!depois) malaAberta(c, LIA_MALA_X - 26)
       else {
@@ -1599,6 +1649,198 @@ function varalDeLuzes(c: CanvasRenderingContext2D, t: number, depois: boolean): 
     const cor = CORES_LUZES[i % CORES_LUZES.length] ?? '255,220,180'
     ret(c, x, Math.round(y), 2, 2, `rgba(${cor},${depois ? 0.25 : 0.4 + a * 0.6})`)
   }
+}
+
+/**
+ * As paredes da Lia: tudo escrito. Nome de banda, letra de música, desenho,
+ * estrela, coração riscado, palavrão coberto por outro palavrão — e, pequeno,
+ * no meio de tudo, um recado. Depois do grito, alguém escreveu por cima, em
+ * tinta fresca: VOLTA.
+ */
+function rabiscosLia(c: CanvasRenderingContext2D, depois: boolean): void {
+  const r = sorteio(41)
+  const cores = ['rgba(236,232,220,0.55)', 'rgba(240,120,160,0.5)', 'rgba(250,210,90,0.45)', 'rgba(120,220,210,0.45)', 'rgba(20,16,20,0.6)']
+  const livre = (x: number, y: number): boolean =>
+    !(x > 262 && x < 306 && y < 70) && !(x > 222 && x < 252 && y < 60) && !(x > 60 && x < 100 && y < 68) && !(x > 30 && x < 58)
+  c.save()
+  c.lineCap = 'round'
+  // Rabiscos soltos: assinaturas, espirais, setas.
+  for (let i = 0; i < 46; i++) {
+    let x = 20 + r() * 360
+    let y = 20 + r() * 76
+    if (!livre(x, y)) continue
+    c.strokeStyle = cores[Math.floor(r() * cores.length)] ?? cores[0] ?? '#fff'
+    c.lineWidth = r() < 0.3 ? 1.4 : 0.8
+    c.beginPath()
+    c.moveTo(x, y)
+    const passos = 4 + Math.floor(r() * 6)
+    for (let k = 0; k < passos; k++) {
+      x += (r() - 0.3) * 6
+      y += (r() - 0.5) * 5
+      c.lineTo(x, y)
+    }
+    c.stroke()
+  }
+  // Estrelas, corações, um olho, uma caveira pequena.
+  for (let i = 0; i < 14; i++) {
+    const x = 20 + r() * 360
+    const y = 22 + r() * 70
+    if (!livre(x, y)) continue
+    c.strokeStyle = cores[Math.floor(r() * 4)] ?? '#fff'
+    c.lineWidth = 0.8
+    c.beginPath()
+    const tipo = i % 4
+    if (tipo === 0) {
+      for (let k = 0; k <= 5; k++) {
+        const a = -Math.PI / 2 + (k * 4 * Math.PI) / 5
+        const px = x + Math.cos(a) * 4
+        const py = y + Math.sin(a) * 4
+        if (k === 0) c.moveTo(px, py)
+        else c.lineTo(px, py)
+      }
+    } else if (tipo === 1) {
+      c.moveTo(x, y + 3)
+      c.lineTo(x - 3, y)
+      c.arc(x - 1.5, y - 1, 1.6, Math.PI, 0)
+      c.arc(x + 1.5, y - 1, 1.6, Math.PI, 0)
+      c.lineTo(x, y + 3)
+      c.moveTo(x - 4, y + 3)
+      c.lineTo(x + 4, y - 3)
+    } else if (tipo === 2) {
+      c.ellipse(x, y, 5, 2.5, 0, 0, Math.PI * 2)
+      c.moveTo(x + 1.2, y)
+      c.arc(x, y, 1.2, 0, Math.PI * 2)
+    } else {
+      c.arc(x, y, 3, Math.PI, 0)
+      c.lineTo(x + 3, y + 3)
+      c.lineTo(x - 3, y + 3)
+      c.closePath()
+      c.moveTo(x - 1, y)
+      c.arc(x - 1.2, y, 0.6, 0, Math.PI * 2)
+      c.moveTo(x + 1.8, y)
+      c.arc(x + 1.2, y, 0.6, 0, Math.PI * 2)
+    }
+    c.stroke()
+  }
+  // Palavras, em pichação.
+  c.textAlign = 'left'
+  const palavras: [string, number, number, string, number][] = [
+    ['LIA', 112, 28, 'rgba(240,120,160,0.7)', -0.12],
+    ['SAI', 196, 26, 'rgba(236,232,220,0.6)', 0.1],
+    ['LIVRE', 340, 30, 'rgba(250,210,90,0.55)', -0.08],
+    ['NÃO ENTRA', 66, 84, 'rgba(236,232,220,0.5)', 0.05],
+    ['CANSEI', 316, 92, 'rgba(120,220,210,0.55)', -0.1],
+    ['* * *', 172, 94, 'rgba(240,120,160,0.6)', 0],
+  ]
+  for (const [txt, x, y, cor, ang] of palavras) {
+    c.save()
+    c.translate(x, y)
+    c.rotate(ang)
+    c.font = 'bold 8px monospace'
+    c.fillStyle = cor
+    c.fillText(txt, 0, 0)
+    c.restore()
+  }
+  // O recado, pequeno, quase escondido.
+  c.font = '5px monospace'
+  c.fillStyle = 'rgba(236,232,220,0.5)'
+  c.fillText('nao e culpa sua, L.', 194, 70)
+  if (depois) {
+    // Tinta fresca, por cima de tudo.
+    c.save()
+    c.translate(120, 74)
+    c.rotate(-0.06)
+    c.font = 'bold 22px monospace'
+    c.fillStyle = 'rgba(240,90,140,0.75)'
+    c.fillText('VOLTA', 0, 0)
+    for (let i = 0; i < 6; i++) c.fillRect(6 + i * 13, 1, 1.4, 4 + r() * 10)
+    c.restore()
+  }
+  c.restore()
+}
+
+/** Polaroides coladas com fita, em cima da cama. */
+function polaroides(c: CanvasRenderingContext2D, x: number, y: number): void {
+  const fotos: [number, number, number, string][] = [
+    [0, 0, -0.1, '#7a6a90'], [14, 3, 0.08, '#8a5a50'], [28, -1, -0.05, '#5a7a80'], [42, 2, 0.12, '#806a50'],
+  ]
+  for (const [dx, dy, ang, cor] of fotos) {
+    c.save()
+    c.translate(x + dx + 6, y + dy + 7)
+    c.rotate(ang)
+    ret(c, -6, -7, 12, 14, '#e8e2d4')
+    ret(c, -5, -6, 10, 9, cor)
+    ret(c, -3, -4, 2, 2, 'rgba(240,210,190,0.7)')
+    ret(c, 1, -3, 2, 2, 'rgba(240,210,190,0.7)')
+    // Fita no alto.
+    ret(c, -2, -8, 4, 2, 'rgba(240,236,200,0.5)')
+    c.restore()
+  }
+  // O pai, riscado de caneta numa delas.
+  c.strokeStyle = 'rgba(10,10,14,0.9)'
+  c.lineWidth = 1
+  c.beginPath()
+  c.moveTo(x + 44, y + 5)
+  c.lineTo(x + 50, y + 11)
+  c.moveTo(x + 50, y + 5)
+  c.lineTo(x + 44, y + 11)
+  c.stroke()
+}
+
+/** Roupa no chão, latinha, tênis, um skate encostado, discos. */
+function baguncaLia(c: CanvasRenderingContext2D, t: number): void {
+  // Moletom e calça jogados.
+  ret(c, 210, CHAO + 4, 16, 4, '#3a3a52')
+  ret(c, 214, CHAO + 2, 8, 3, '#3a3a52')
+  ret(c, 236, CHAO + 6, 14, 3, '#5a2a3a')
+  // Tênis, um em pé e um deitado.
+  ret(c, 256, CHAO + 5, 7, 3, '#d4d0c6')
+  ret(c, 256, CHAO + 8, 7, 1, '#f0ece2')
+  ret(c, 266, CHAO + 6, 3, 6, '#d4d0c6')
+  // Latinhas.
+  ret(c, 352, CHAO + 4, 3, 5, '#a83040')
+  ret(c, 352, CHAO + 4, 3, 1, '#d8d0c8')
+  c.save()
+  c.translate(346, CHAO + 9)
+  c.rotate(1.5)
+  ret(c, 0, 0, 3, 5, '#3a6aa0')
+  c.restore()
+  // O skate encostado na parede, perto da porta.
+  c.save()
+  c.translate(66, CHAO)
+  c.rotate(-0.25)
+  ret(c, -2, -34, 5, 34, '#2a2a30')
+  ret(c, -2, -34, 5, 2, '#f05a8c')
+  ret(c, -3, -30, 7, 2, '#8a8a90')
+  ret(c, -3, -6, 7, 2, '#8a8a90')
+  c.restore()
+  // Discos empilhados e um fora da capa.
+  ret(c, 330, CHAO + 2, 14, 2, '#1a1418')
+  ret(c, 331, CHAO, 12, 2, '#5a3a6a')
+  ret(c, 332, CHAO - 2, 10, 2, '#2a4a5a')
+  c.fillStyle = '#0a0a0c'
+  c.beginPath()
+  c.ellipse(324, CHAO + 8, 6, 2, 0, 0, Math.PI * 2)
+  c.fill()
+  ret(c, 323, CHAO + 8, 2, 1, 'rgba(220,60,90,0.8)')
+  void t
+}
+
+/** A TV de tubo num caixote, sem antena, chiando. */
+function tvChiando(c: CanvasRenderingContext2D, x: number, t: number, depois: boolean): void {
+  ret(c, x - 12, CHAO - 14, 24, 14, '#5a4030')
+  ret(c, x - 12, CHAO - 14, 24, 1, '#7a5a40')
+  ret(c, x - 10, CHAO - 34, 20, 20, '#1a1a1e')
+  ret(c, x - 8, CHAO - 32, 13, 14, '#2a2a30')
+  const r = sorteio(Math.floor(t * 18))
+  for (let i = 0; i < 40; i++) {
+    const v = Math.floor(80 + r() * 150)
+    c.fillStyle = depois ? `rgba(${v},${v},${v},0.35)` : `rgb(${v},${v},${v})`
+    c.fillRect(x - 8 + Math.floor(r() * 13), CHAO - 32 + Math.floor(r() * 14), 1, 1)
+  }
+  ret(c, x + 6, CHAO - 30, 2, 2, '#4a4a50')
+  ret(c, x + 6, CHAO - 26, 2, 2, '#4a4a50')
+  ret(c, x + 6, CHAO - 21, 2, 1, depois ? '#401010' : '#e04040')
 }
 
 function posteres(c: CanvasRenderingContext2D, x: number): void {
@@ -1722,10 +1964,15 @@ function janelaLia(c: CanvasRenderingContext2D, x: number, y: number, t: number)
   ret(c, x + 24, y + 16, 5, 2, aceso ? '#f0d8a0' : '#3a3428')
   ret(c, x + w / 2 - 1, y, 2, h, '#2a2030')
   ret(c, x, y + h / 2 - 1, w, 2, '#2a2030')
-  // Cortina caída para um lado, mexendo com a corrente de ar.
+  // No lugar da cortina, uma bandeira velha pendurada de qualquer jeito:
+  // listras desbotadas e um canto escuro com pontinhos.
   const v = Math.round(Math.sin(t * 0.9) * 1.2)
-  ret(c, x - 6 + v, y - 4, 7, h + 10, '#6a2c3e')
-  ret(c, x - 5 + v, y - 4, 1, h + 10, '#7e3a4e')
+  for (let i = 0; i < 9; i++) {
+    ret(c, x - 10 + v, y - 4 + i * 5, 14, 5, i % 2 === 0 ? '#8a2a34' : '#d8ccb4')
+  }
+  ret(c, x - 10 + v, y - 4, 8, 18, '#22305a')
+  for (let k = 0; k < 6; k++) ret(c, x - 9 + v + (k % 3) * 2 + (Math.floor(k / 3) % 2), y - 2 + Math.floor(k / 3) * 6 + (k % 2) * 2, 1, 1, '#e8e0d0')
+  ret(c, x + 3 + v, y - 4, 1, 45, 'rgba(0,0,0,0.25)')
 }
 
 function armarioLia(c: CanvasRenderingContext2D, x: number, depois: boolean): void {
@@ -1877,6 +2124,10 @@ const CORREDOR_DEPOIS: VestigioCasa[] = [
 ]
 
 const QUARTO_DEPOIS: VestigioCasa[] = [
+  {
+    id: 'violoncelo', x: 246, rotulo: 'Tocar', naParede: true, acao: 'violoncelo',
+    linhas: VIOLONCELO_PEGAR,
+  },
   {
     id: 'd-cabana', x: 58, rotulo: 'Olhar',
     linhas: [

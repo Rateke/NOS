@@ -40,7 +40,9 @@ Tear numa segunda partida, salvando cada uma), `test/salvar.mjs` (salvar,
 continuar, pausar, sair), `test/celular.mjs` (em pé e deitado, só no
 toque), `test/som.mjs` (vozes audíveis, grito mais
 alto que fala, nada estoura na briga), `test/segunda.mjs` (o que muda
-quando o jogo lembra que você já terminou) e `test/playthrough.mjs` (a fatia
+quando o jogo lembra que você já terminou), `test/violoncelo.mjs` (os
+segredos do menu, a partitura até o fim e o quinto retrato) e
+`test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
 O teste aponta para `http://localhost:4173` por padrão: rode o `preview` antes,
@@ -206,7 +208,9 @@ para a janela**. Um arquivo vira a trilha de fundo; com dois, o que tiver
 "completo" no nome (ou o maior) é a versão com todos os instrumentos, que
 entra por cima só nos picos (o grito e o fecho). Os arquivos ficam guardados
 no navegador de quem arrastou e **nunca vão para o repositório nem para o
-site publicado**. **Delete**, no menu, tira a trilha própria e volta o piano
+site publicado**. Um arquivo com *lia* ou *fone* no nome não mexe na trilha
+do menu: ele vira a música do fone da Lia, a que toca quando os dois dividem
+o fone. **Delete**, no menu, tira a trilha própria e volta o piano
 sintetizado. Não há item no menu para isso de propósito: é ferramenta de
 quem apresenta, não de quem joga.
 
@@ -364,12 +368,20 @@ mesma interface.
    folha rasgada vai para o caderno de Liam. Nada avisa antes que isso pode
    acontecer.
 
-   **O quarto da Lia**, no corredor, com a porta cheia de adesivos. Ela
+   **O quarto da Lia**, no corredor, com a porta cheia de adesivos. Por
+   dentro é o quarto de uma adolescente que não pede licença: parede
+   escura riscada de canetinha (*LIA*, *SAI*, *LIVRE*, *NÃO ENTRA*,
+   *CANSEI*, símbolos, setas), uma bandeira listrada no lugar da cortina,
+   um varal de polaroides com fita crepe, roupa e papel no chão e uma TV
+   velha chiando no canto. Ela
    está arrumando a mala e xinga ele por entrar sem bater. Manda ele passar
    as coisas — a foto da família (*"Essa não. Ele tá nela."*), o fone, o
    desenho que ele fez com sete anos —, senta na beirada da cama, manda ele
    sentar do lado, divide o fone (o fio liga as duas orelhas) e por um minuto a casa
-   não existe (a música dela toca, abafada, num lado só), até o pai gritar da
+   não existe (a música dela toca, abafada, num lado só — uma peça própria,
+   piano lento em sol maior com eco de quarto; quem quiser outra música no
+   fone arrasta um arquivo com *lia* ou *fone* no nome, ver *Trilha
+   própria*), até o pai gritar da
    cozinha. Então ela chama ele para ir junto, hoje, para a tia Catarina. A
    resposta dele, **na primeira vez, sai com a voz do pai** (*"Não posso
    deixar o pai sozinho."*); ela joga o travesseiro (*"VOCÊ É IGUALZINHO A
@@ -418,19 +430,22 @@ mesma interface.
    uma quarta letra, a lápis roxo, aparece onde não devia.
 
    **A mensagem escondida.** Em vários lugares, sem nenhum texto apontando,
-   o jogo diz *"preciso de ajuda, não me deixa cair"*: as primeiras letras
-   das frases da redação; os bipes da hora certa no rádio e do aparelho
-   depois do grito, que perdem o ritmo num trecho de Morse; o poste da rua, que pisca sempre na mesma ordem; a
-   resposta do outro lado da porta do fim, que completa as três batidas de
-   Liam; cinco casas em branco nas palavras cruzadas; e a marca de caneta
-   numa folha arrancada do diário.
+   o jogo diz *"preciso de ajuda, não me deixem cair"*: as primeiras letras
+   das frases da redação (PRECISO na primeira página, DE AJUDA na segunda);
+   os bipes da hora certa no rádio e do aparelho depois do grito, que perdem
+   o ritmo num trecho de Morse (AJUDA); o poste da rua, que pisca sempre na
+   mesma ordem (SOS); a resposta do outro lado da porta do fim, que completa
+   as três batidas de Liam; cinco casas em branco nas palavras cruzadas; e a
+   marca de caneta numa folha arrancada do diário, que só aparece para quem
+   espera na página: *"não me deixem cair"*.
 
-   A demo tem **treze segredos**, e nada no jogo avisa que existem — só o
+   A demo tem **catorze segredos**, e nada no jogo avisa que existem — só o
    fecho conta quantos você achou. (Spoiler, para quem for testar: olhar e
    ler de novo o que já foi visto; bater mais de uma vez; esperar no menu;
    contar os pratos; abaixar o rádio da cozinha; ler o jornal até o fim;
    esperar na última página do caderno da bisavó e na folha em branco do
-   diário; e prestar atenção no que a voz diz dentro da cabana.)
+   diário; prestar atenção no que a voz diz dentro da cabana; e tocar até o
+   fim a partitura que aparece embaixo do violoncelo, depois do grito.)
 
 3. **A Mesa.** Começa no meio: um prato estoura na parede antes de qualquer
    palavra, e a primeira fala já é gritada e xingada (*"VOCÊ NÃO VAI LEVAR
@@ -554,6 +569,20 @@ mesma interface.
    do rádio: *"...o adolescente de treze anos segue internado..."*). No
    quarto da Lia, o espelho está coberto com um lençol, e quem guardou o
    bilhete lê: *"se mudar de ideia, a gente tá na tia Catarina. — L."*
+   Na parede dela, por cima dos rabiscos, um *VOLTA* grande, de tinta
+   fresca; e, na segunda partida, embaixo de um dos rabiscos, um recado
+   pequeno: *"não é culpa sua, L."*
+
+   **O violoncelo.** O do bisavô ficou torto no gancho do quarto de Liam.
+   Agora dá para tirar da parede, sentar na cama e tocar (A S D F G H J K,
+   ou tocando nas notas do braço). Embaixo dele, no chão, uma partitura a
+   lápis roxo — *"pra quando você não conseguir dormir — E."* — com a letra
+   de cada nota embaixo e a próxima marcada. Errar volta para o começo, sem
+   bronca: aqui ninguém corrige. Quem toca até o fim ouve o piano da sala
+   responder sozinho, em ré maior, pela primeira vez; e na sala, no prego
+   onde faltava um retrato, volta **o quinto retrato** — uma mulher que ele
+   nunca viu, com as mãos do jeito que ele segura as dele. Atrás, a lápis
+   roxo: *"você tocou até o fim. eu escutei. — E."*
 
 10. **Os créditos e o colapso.** Os créditos sobem com o tema no piano,
     terminando em ré maior (segurar espaço ou o dedo acelera). A tela pisca
@@ -566,9 +595,9 @@ mesma interface.
 **A segunda partida.** (Spoiler.) Tudo o que muda na segunda vez só muda
 depois de **zerar** a demo: quem começou, cansou e saiu continua com o
 jogo salvo, mas sem nada disso. Quem termina a demo e aperta *Só mais um*
-de novo não volta para a mesma casa: volta para uma casa que lembra. O S do
-título se soltou e fica pendurado por um fio embaixo do NÓ, e o tema do menu
-volta um pouco fora do tom. O pai abre a aula com *"De novo, filho?"* e,
+de novo não volta para a mesma casa: volta para uma casa que lembra. O fio
+fino embaixo do título aparece cortado no meio, com as pontas desfiadas, e o
+tema do menu volta um pouco fora do tom. O pai abre a aula com *"De novo, filho?"* e,
 quando Liam acerta, *"Você já sabe essa. Eu sei que sabe."* A Lia, no rádio,
 diz que fala a mesma coisa todo dia. A sombra aparece logo na entrada da
 casa (*"Você já esteve aqui."*), o relógio do corredor já começa parado nas
@@ -581,6 +610,15 @@ fora da segunda partida: quem sai para o menu no meio da cozinha ou do Tear
 encontra, ao voltar, *"Fugir também é escolher."*; e quem vem passando as
 falas sem ler ouve a sombra, no Dentro, numa fala que não dá para pular:
 *"Você nem lê mais. Só quer que acabe. Igual a ele."*
+
+**Os segredos do menu.** (Spoiler.) Com o menu aberto, digitar algumas
+palavras faz coisas: *nos* derruba o acento do título (*"Sem o acento, nós
+vira nos. Como em: ele nos ama."*); *ajuda* toca o Morse dos bipes; *elisa*
+abre a porta do corredor ao fundo, alguém aparece, bate e deixa um recado
+roxo; *lia* põe a música do fone dela tocando baixinho do outro lado da
+parede; *liam* responde *"Ainda tô aqui."* E segurar o clique (ou o dedo)
+fora dos itens por cinco segundos congela o corredor, faz o coração bater e
+traz a respiração da mãe: *"Quatro pra dentro. Quatro pra fora."*
 
 **A fatia antiga** — o quarto de Liam, o diário e a porta que nunca esteve
 trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
@@ -619,6 +657,10 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | Créditos, colapso e pós-créditos | `src/game/scenes/demo/fim.ts` (`COLAPSO`, `ECOS`) |
 | O quarto da Lia (falas) | `src/game/content/quartoLia.ts` |
 | O quarto da Lia (arte, espelho, nós da casa depois) | `src/game/world/casa.ts` (`comodoLia`, `ESPELHO`, `NOS`) |
+| Os rabiscos, polaroides e a TV do quarto da Lia | `src/game/world/casa.ts` (`rabiscosLia`, `polaroides`, `tvChiando`) |
+| A música do fone da Lia | `src/engine/audio.ts` (`musicaDaLia`); arquivo próprio em `src/engine/trilhaPropria.ts` |
+| O violoncelo, a partitura e o quinto retrato | `src/game/content/violoncelo.ts` (`PARTITURA`); a cena em `src/game/scenes/demo/casa.ts` (`aoCello`) |
+| A mensagem escondida (acróstico, cruzadas, marca do diário) | `src/game/content/documentos.ts`; o Morse em `src/engine/audio.ts` (`morse`); o poste em `src/game/world/sala.ts` (`posteAceso`) |
 | Os sustos (silêncio, rosto, estouro) | `src/game/scenes/demo/casa.ts` (`iniciarSusto`), `src/engine/audio.ts` (`susto`) |
 | A respiração (ritmo, tolerância, desenho) | `src/game/ui/respiracao.ts`; a crise da casa em `content/crise.ts`, a da cozinha em `content/noite.ts` |
 | **A segunda partida**, o vulto, o cheiro, "Ninguém veio", a pressa | `src/game/content/deNovo.ts`; o que o jogo lembra em `src/game/systems/memoria.ts` |
@@ -634,7 +676,7 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | Etiquetas, anotação de camada, escolha lenta | `src/game/ui/` |
 | A casa depois do grito | `src/game/world/casa.ts` (`*_DEPOIS`) |
 | Trilha de fundo (sintetizada ou arquivos próprios) | `src/engine/principal.ts`, `src/engine/trilhaPropria.ts` |
-| Menu (Continuar, Só mais um, Sair) | `src/game/scenes/title.ts`, `src/game/ui/lista.ts` |
+| Menu (Continuar, Só mais um, Sair) e os segredos do menu | `src/game/scenes/title.ts` (`segredosDoMenu`), `src/game/ui/lista.ts` |
 | Salvar e os pontos de salvamento | `src/game/systems/salvo.ts`, `src/game/scenes/pontos.ts` |
 | Pausa, ícone de pausa, nó do salvo | `src/game/ui/pausa.ts` |
 | Sair (despedida e versão de computador) | `src/game/scenes/despedida.ts`, `src/engine/plataforma.ts` |

@@ -1,4 +1,4 @@
-import { audio } from './audio'
+import { audio, definirFone } from './audio'
 
 /**
  * Trilha própria: arquivos de música escolhidos por quem joga, no próprio
@@ -12,12 +12,21 @@ import { audio } from './audio'
  * Dois arquivos: o piano sozinho (a trilha de fundo) e, se houver, a versão
  * com todos os instrumentos, que entra por cima nos picos. Os dois tocam
  * juntos desde o começo, alinhados; a versão completa só fica muda.
+ *
+ * E um terceiro, à parte: um arquivo com "lia" ou "fone" no nome vira a
+ * música que toca no fone da Lia, no quarto dela, no lugar da composição
+ * do jogo.
  */
 
 const BANCO = 'nos-trilha'
 const LOJA = 'arquivos'
 
-type Papel = 'piano' | 'completo'
+type Papel = 'piano' | 'completo' | 'fone'
+
+/** Pelo nome, o arquivo que vai para o fone da Lia. */
+function pareceFone(nome: string): boolean {
+  return /lia|fone/i.test(nome)
+}
 
 function abrirBanco(): Promise<IDBDatabase> {
   return new Promise((ok, falha) => {
@@ -81,7 +90,7 @@ class TrilhaPropria {
     if (this.carregou) return
     this.carregou = true
     try {
-      for (const papel of ['piano', 'completo'] as const) {
+      for (const papel of ['piano', 'completo', 'fone'] as const) {
         const blob = await buscar(papel)
         if (blob) await this.decodificar(papel, blob, (blob as File).name ?? papel)
       }
@@ -96,13 +105,26 @@ class TrilhaPropria {
     const buf = await ctx.decodeAudioData(await blob.arrayBuffer())
     this.buffers[papel] = buf
     this.nomes[papel] = nome
+    if (papel === 'fone') definirFone(buf)
   }
 
   /**
    * Um ou dois arquivos escolhidos. Com dois, o que tiver "completo" no
    * nome (ou o maior, na falta disso) é a versão cheia.
    */
-  async escolher(arquivos: File[]): Promise<void> {
+  async escolher(todos: File[]): Promise<void> {
+    if (todos.length === 0) return
+    // O do fone da Lia vai para o lugar dele, e não mexe na trilha.
+    const doFone = todos.find((f) => pareceFone(f.name))
+    if (doFone) {
+      await this.decodificar('fone', doFone, doFone.name)
+      try {
+        await guardar('fone', doFone)
+      } catch {
+        /* sem armazenamento: vale só para esta visita */
+      }
+    }
+    const arquivos = todos.filter((f) => f !== doFone)
     if (arquivos.length === 0) return
     this.parar(0.3)
     let piano = arquivos[0]
@@ -119,8 +141,10 @@ class TrilhaPropria {
       }
     }
     if (!piano) return
-    this.buffers = {}
-    this.nomes = {}
+    const fone = this.buffers.fone
+    const nomeFone = this.nomes.fone
+    this.buffers = fone ? { fone } : {}
+    this.nomes = nomeFone ? { fone: nomeFone } : {}
     await this.decodificar('piano', piano, piano.name)
     if (completo) await this.decodificar('completo', completo, completo.name)
     try {
@@ -135,9 +159,11 @@ class TrilhaPropria {
     this.parar(0.3)
     this.buffers = {}
     this.nomes = {}
+    definirFone(null)
     try {
       await guardar('piano', null)
       await guardar('completo', null)
+      await guardar('fone', null)
     } catch {
       /* nada a apagar */
     }

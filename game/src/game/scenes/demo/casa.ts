@@ -38,6 +38,10 @@ import { CadernoUI } from '../../ui/cadernoUI'
 import { Escolha } from '../../ui/escolha'
 import { memoria } from '../../systems/memoria'
 import { Respiracao } from '../../ui/respiracao'
+import {
+  PARTITURA, PARTITURA_TITULO, VIOLONCELO_DE_NOVO, VIOLONCELO_TERMINOU, QUINTO_RETRATO, QUINTO_RETRATO_VAZIO,
+} from '../../content/violoncelo'
+import { FONT_FIM } from '../../systems/dialogue'
 import { desenharSusto, DURACAO_SUSTO } from '../../ui/rostoSusto'
 import { CRISE_ABRE, CRISE_PASSOU, CRISE_NAO_PASSOU } from '../../content/crise'
 import {
@@ -187,6 +191,22 @@ export class CasaScene implements Scene {
   private susto: { tipo: 'espelho' | 'retrato'; t: number; flashou: boolean; onFim: () => void } | null = null
   /** Quantos sustos já aconteceram (para os testes). */
   sustos = 0
+
+  // --- O violoncelo (depois do grito) ---
+  private cello = (() => {
+    const p = new Piano()
+    p.instrumento = 'violoncelo'
+    return p
+  })()
+  /** Sentado na cama com o violoncelo (exposto para os testes). */
+  tocandoCello = false
+  /** Quantas notas da partitura já foram, em sequência. */
+  partituraIdx = 0
+  private arcoCello = 0
+  private arcoCelloDir = 1
+  private pegouCello = false
+  /** 0..1: o quinto retrato aparecendo na sala. */
+  private quinto = 0
 
   // --- A chegada do pai ---
   private retratoTorto = RETRATO_TORTO
@@ -355,6 +375,10 @@ export class CasaScene implements Scene {
     if (this.depois && this.atual) this.animarNos(dt)
     this.olharVulto(dt)
     this.batimento()
+    this.cello.update(dt)
+    this.arcoCello += (this.arcoCelloDir - this.arcoCello) * Math.min(1, dt * 6)
+    const querQuinto = this.jogo?.sabe.has('partitura') ? 1 : 0
+    this.quinto += (querQuinto - this.quinto) * Math.min(1, dt * 0.6)
     this.poeiraNoAr(dt)
     if (this.susto) {
       this.rodarSusto(dt, ctx)
@@ -406,6 +430,10 @@ export class CasaScene implements Scene {
     }
     this.liam.costas = this.deCostas || this.tocando
     if (this.saindo) return
+    if (this.tocandoCello) {
+      this.aoCello(ctx)
+      return
+    }
 
     if (this.tocando) {
       this.aoPiano(ctx)
@@ -534,6 +562,17 @@ export class CasaScene implements Scene {
     if (v.id === 'lia-espelho' && this.espelhoEstado === 'armado') {
       this.achados.add(v.id)
       this.dispararEspelho()
+      return
+    }
+    if (v.acao === 'violoncelo') {
+      this.achados.add(v.id)
+      this.dialogue.play(this.pegouCello ? VIOLONCELO_DE_NOVO : v.linhas, () => this.sentarComCello())
+      this.pegouCello = true
+      return
+    }
+    if (v.id === 'quinto-retrato') {
+      this.achados.add(v.id)
+      this.dialogue.play(this.jogo?.sabe.has('partitura') ? QUINTO_RETRATO : QUINTO_RETRATO_VAZIO)
       return
     }
     if (v.acao === 'no') {
@@ -989,6 +1028,157 @@ export class CasaScene implements Scene {
     this.vulto += (quer - this.vulto) * Math.min(1, dt * (quer ? 0.8 : 5))
     // Só conta como visto se a janela estava na tela e o poste aceso.
     if (this.vulto > 0.6 && this.liam.x < 230 && posteAceso(this.t)) this.vultoVisto = true
+  }
+
+  // --- O violoncelo ----------------------------------------------------
+
+  /** Senta na beira da cama com o violoncelo entre os joelhos. */
+  private sentarComCello(): void {
+    this.tocandoCello = true
+    this.partituraIdx = 0
+    this.destino = null
+    this.liam.andando = 0
+    this.liam.pose = 'sentado'
+    this.liam.x = 236
+    this.liam.y = 133
+    this.liam.olhar = 0
+    this.liam.costas = false
+    sons.pisada(0.5)
+  }
+
+  private levantarCello(): void {
+    this.tocandoCello = false
+    this.liam.pose = 'de-pe'
+    this.liam.y = this.atual.passoY
+  }
+
+  private aoCello(ctx: SceneCtx): void {
+    const n = this.cello.ler(ctx.input, ctx.display)
+    const confirmou = ctx.input.consumeConfirm()
+    const sair = ctx.input.consumeKey('Escape')
+      || ctx.input.consumeKey('ArrowLeft')
+      || ctx.input.consumeKey('ArrowRight')
+      || ctx.input.consumeKey('ArrowDown')
+    if (n !== null) {
+      this.arcoCelloDir = -this.arcoCelloDir
+      if (!this.jogo?.sabe.has('partitura')) {
+        if (PARTITURA[this.partituraIdx] === n) {
+          this.partituraIdx++
+          if (this.partituraIdx >= PARTITURA.length) this.terminouPartitura()
+        } else {
+          // Errou: a partitura volta para o começo, sem bronca. Aqui ninguém corrige.
+          this.partituraIdx = PARTITURA[0] === n ? 1 : 0
+        }
+      }
+      return
+    }
+    // Um clique fora das notas, E, Esc ou uma seta: devolve o violoncelo.
+    if (confirmou || sair) this.levantarCello()
+  }
+
+  /**
+   * Tocou até o fim. A última nota fica lá em cima; e lá embaixo o piano da
+   * sala responde sozinho, em ré maior — o tema aberto, pela primeira vez.
+   */
+  private terminouPartitura(): void {
+    this.jogo?.aprender('partitura')
+    this.segredo('partitura')
+    const maior = [146.83, 185.0, 220.0, 293.66, 369.99, 440.0, 587.33]
+    maior.forEach((f, i) => window.setTimeout(() => musica.nota(f, 0.5 - i * 0.03, 6), 1400 + i * 140))
+    window.setTimeout(() => musica.nota(73.42, 0.6, 7), 1400)
+    this.dialogue.play(VIOLONCELO_TERMINOU)
+  }
+
+  /** O violoncelo entre os joelhos dele, e o arco correndo nas cordas. */
+  private desenharCelloNaMao(w: CanvasRenderingContext2D): void {
+    const x = Math.round(this.liam.x) + 1
+    const y = Math.round(this.liam.y)
+    // Espigão no chão, corpo entre os joelhos, e o braço subindo inclinado
+    // ao lado da cabeça, do jeito que se segura de verdade — nunca na cara.
+    w.fillStyle = '#8a8478'
+    w.fillRect(x - 1, y + 14, 1, 20)
+    w.fillStyle = '#6a3416'
+    w.beginPath()
+    w.ellipse(x, y + 4, 6, 5, 0, 0, Math.PI * 2)
+    w.ellipse(x, y + 12, 7, 6, 0, 0, Math.PI * 2)
+    w.fill()
+    w.fillStyle = '#9a5a26'
+    w.fillRect(x - 3, y + 9, 2, 4)
+    w.fillRect(x + 2, y + 9, 2, 4)
+    w.fillStyle = '#141010'
+    for (let k = 0; k <= 22; k++) w.fillRect(x + Math.round((k * 7) / 22), y + 1 - k, 2, 1)
+    w.fillStyle = '#2a1a12'
+    w.fillRect(x + 7, y - 25, 3, 4)
+    w.fillStyle = 'rgba(226,218,200,0.55)'
+    for (let k = 0; k <= 16; k++) w.fillRect(x + Math.round((k * 7) / 22), y + 7 - k, 1, 1)
+    w.fillStyle = '#d8c8a0'
+    w.fillRect(x - 3, y + 10, 7, 1)
+    // O arco, deitado, indo e voltando.
+    const bx = x + Math.round(this.arcoCello * 6)
+    w.strokeStyle = 'rgba(40,26,18,0.95)'
+    w.lineWidth = 1
+    w.beginPath()
+    w.moveTo(bx - 12, y + 6)
+    w.lineTo(bx + 12, y + 8)
+    w.stroke()
+    w.strokeStyle = 'rgba(230,220,196,0.7)'
+    w.beginPath()
+    w.moveTo(bx - 12, y + 7)
+    w.lineTo(bx + 12, y + 9)
+    w.stroke()
+  }
+
+  /**
+   * A partitura a lápis roxo, na tela: as notas da frase, cada uma com a
+   * letra que se aperta embaixo. As já tocadas ficam escuras; a próxima,
+   * marcada.
+   */
+  private desenharPartitura(c: CanvasRenderingContext2D, cssW: number, cssH: number): void {
+    const feita = this.jogo?.sabe.has('partitura') ?? false
+    const larg = Math.min(cssW * 0.62, 600)
+    const alt = Math.min(cssH * 0.24, 150)
+    const x0 = (cssW - larg) / 2
+    const y0 = cssH * 0.07
+    const LETRAS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K']
+    c.save()
+    c.fillStyle = 'rgba(232,224,204,0.94)'
+    c.fillRect(x0, y0, larg, alt)
+    c.fillStyle = 'rgba(0,0,0,0.12)'
+    c.fillRect(x0 + larg - 3, y0, 3, alt)
+    const s = Math.max(12, alt * 0.12)
+    c.textAlign = 'center'
+    c.fillStyle = '#5a3c8a'
+    c.font = `italic 500 ${s}px ${FONT_FIM}`
+    c.fillText(PARTITURA_TITULO, x0 + larg / 2, y0 + s * 1.3)
+    // A pauta.
+    const topo = y0 + alt * 0.34
+    const passo = alt * 0.075
+    c.fillStyle = 'rgba(60,50,70,0.45)'
+    for (let k = 0; k < 5; k++) c.fillRect(x0 + 16, topo + k * passo, larg - 32, 1)
+    const n = PARTITURA.length
+    for (let i = 0; i < n; i++) {
+      const grau = PARTITURA[i] ?? 0
+      const nx = x0 + 34 + (i / (n - 1)) * (larg - 68)
+      const ny = topo + 4 * passo - grau * (passo / 2)
+      const tocada = feita || i < this.partituraIdx
+      const proxima = !feita && i === this.partituraIdx
+      c.fillStyle = tocada ? '#2a1a40' : 'rgba(106,74,154,0.85)'
+      c.beginPath()
+      c.ellipse(nx, ny, passo * 0.62, passo * 0.45, -0.3, 0, Math.PI * 2)
+      c.fill()
+      c.fillRect(nx + passo * 0.55, ny - passo * 2.6, 1.5, passo * 2.6)
+      if (proxima) {
+        c.strokeStyle = `rgba(217,178,95,${0.6 + Math.sin(performance.now() / 180) * 0.35})`
+        c.lineWidth = 2
+        c.beginPath()
+        c.arc(nx, ny, passo * 1.2, 0, Math.PI * 2)
+        c.stroke()
+      }
+      c.fillStyle = tocada ? 'rgba(42,26,64,0.5)' : '#5a3c8a'
+      c.font = `600 ${Math.round(s * 0.95)}px ${FONT_BODY}`
+      c.fillText(LETRAS[grau] ?? '', nx, y0 + alt - s * 0.6)
+    }
+    c.restore()
   }
 
   /** O "!" do susto, em cima da cabeça dele. */
@@ -1698,6 +1888,8 @@ export class CasaScene implements Scene {
       hora: this.horaDaCasa(),
       vulto: this.vulto,
       retratoTorto: this.retratoTorto,
+      celloFora: this.tocandoCello,
+      quintoRetrato: this.quinto,
     }
 
     w.fillStyle = '#020306'
@@ -1717,6 +1909,7 @@ export class CasaScene implements Scene {
       }
     }
     if (!this.escondido) this.liam.draw(w, this.atual.luzX, 'rgba(210,200,230,0.32)')
+    if (this.tocandoCello) this.desenharCelloNaMao(w)
     this.atual.desenharFrente?.(w, estado)
     this.po.draw(w, true)
     w.restore()
@@ -1745,7 +1938,13 @@ export class CasaScene implements Scene {
 
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
-    if (this.tocando) {
+    if (this.tocandoCello) {
+      // Com fala na tela, a fala fica em cima; a partitura espera.
+      if (!this.dialogue.active) this.desenharPartitura(c, cssW, cssH)
+      const prox = this.jogo?.sabe.has('partitura') ? undefined : PARTITURA[this.partituraIdx]
+      this.cello.draw(ctx.display, prox !== undefined ? { destaque: prox } : {})
+      this.cello.drawDica(ctx.display, ctx.input.touchMode ? 'toque a partitura  ·  toque fora das notas para levantar' : 'toque a partitura  ·  A S D F G H J K  ·  E ou Esc levanta')
+    } else if (this.tocando) {
       this.piano.draw(ctx.display, {})
       this.piano.drawDica(ctx.display, ctx.input.touchMode ? 'toque o que quiser  ·  toque fora das teclas para levantar' : 'toque o que quiser  ·  A S D F G H J K  ·  E ou Esc levanta')
     } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa && !this.respiracao.ativa) {
@@ -1891,7 +2090,7 @@ export class CasaScene implements Scene {
       : this.avisouCozinha ? CASA_OBJETIVO_COZINHA : CASA_OBJETIVO_INICIAL
     const vistos = [...this.achados].filter((a) => !a.endsWith('+') && a !== 'melodia-dele').length
     c.fillText(
-      `${objetivo}  ·  ${vistos} vestígios  ·  ← → anda · E usa · C caderno`,
+      `${objetivo}  ·  ${vistos} ${vistos === 1 ? 'vestígio' : 'vestígios'}  ·  ← → anda · E usa · C caderno`,
       cssW / 2, cssH - s * 2,
     )
     c.restore()

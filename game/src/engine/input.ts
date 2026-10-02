@@ -205,6 +205,11 @@ export class Input {
     return v
   }
 
+  /** As teclas apertadas neste quadro, sem consumir (para quem lê o que se digita). */
+  teclasNovas(): string[] {
+    return [...this.tapped]
+  }
+
   /** Alguma tecla ou toque neste quadro, sem consumir. */
   peekAny(): boolean {
     return this.anyQueued || this.down.size > 0 || this.pointerDown

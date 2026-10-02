@@ -19,7 +19,7 @@ export interface OpcoesPiano {
 }
 
 /** O que soa e o que aparece na tela: o teclado do pai ou o violino do Liam. */
-export type Instrumento = 'piano' | 'violino'
+export type Instrumento = 'piano' | 'violino' | 'violoncelo'
 
 /**
  * O piano.
@@ -80,6 +80,9 @@ export class Piano {
     if (this.instrumento === 'violino') {
       // O violino, uma oitava acima do piano: arco atacado, curto e cheio.
       musica.arco('violino', f * 2, 1.25, 2.7 - this.tremor * 0.6, 'piano', 0.05)
+    } else if (this.instrumento === 'violoncelo') {
+      // O violoncelo, na altura do piano: longo, grave, cheio de madeira.
+      musica.arco('violoncelo', f, 2.2, 3.2, 'piano', 0.07)
     } else {
       musica.nota(f, 1)
       musica.nota(f / 2, 0.2)
@@ -94,7 +97,7 @@ export class Piano {
     const c = display.ctx
     const { cssW, cssH } = display
     const fantasma = opcoes.fantasma ?? false
-    if (this.instrumento === 'violino') {
+    if (this.instrumento !== 'piano') {
       this.desenharBraco(c, cssW, cssH, opcoes)
       return
     }
@@ -164,7 +167,8 @@ export class Piano {
     const lt = larg / 8
     const alt = Math.min(lt * 0.9, cssH * 0.075)
     const x0 = (cssW - larg) / 2
-    const y0 = cssH - alt - Math.max(34, cssH * 0.09)
+    // Alto o bastante para os nomes das notas não ficarem embaixo da dica.
+    const y0 = cssH - alt - Math.max(52, cssH * 0.13)
     const treme = this.tremor > 0 ? (Math.random() - 0.5) * this.tremor * 3 : 0
     c.save()
     c.translate(0, treme)

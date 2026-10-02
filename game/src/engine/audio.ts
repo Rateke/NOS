@@ -5,6 +5,15 @@
  */
 import { musica } from './musica'
 
+/** O arquivo que alguém escolheu para tocar no fone da Lia (engine/trilhaPropria.ts). */
+let foneProprio: AudioBuffer | null = null
+export function definirFone(b: AudioBuffer | null): void {
+  foneProprio = b
+}
+function audioDoFone(): AudioBuffer | null {
+  return foneProprio
+}
+
 export class Audio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
@@ -1438,81 +1447,119 @@ export class SonsNos {
   }
 
   /**
-   * A música da Lia no fone: diferente de tudo no jogo. Dó maior, violão
-   * dedilhado, uma bateria fraquinha, e a melodia simples por cima — abafada,
-   * porque vem de um fone só. Devolve quem corta.
+   * A música da Lia no fone: diferente de tudo no jogo. Sol maior, um piano
+   * lento e delicado, arpejos soltos e uma melodia que quase não aparece,
+   * com muito eco — do tipo que se ouve deitado olhando o teto. Composição
+   * original. Sai abafada, porque vem de um fone só; `volume` baixo serve
+   * para ouvir de longe (no menu, do outro lado da parede).
+   *
+   * Se houver um arquivo guardado para o fone (ver engine/trilhaPropria.ts),
+   * toca ele no lugar. Devolve quem corta.
    */
-  musicaDaLia(): () => void {
+  musicaDaLia(volume = 0.9): () => void {
     const ctx = this.ctx
     const out = this.out
-    const b = this.buf()
-    if (!ctx || !out || !b) return () => undefined
+    if (!ctx || !out) return () => undefined
     const g = ctx.createGain()
     g.gain.value = 0
     const fone = ctx.createBiquadFilter()
     fone.type = 'lowpass'
-    fone.frequency.value = 3200
+    fone.frequency.value = 3400
     g.connect(fone).connect(out)
     const t0 = ctx.currentTime + 0.05
-    g.gain.linearRampToValueAtTime(0.9, t0 + 1.2)
-    const bpm = 92
-    const tempo = 60 / bpm / 2
-    // Dó, Sol, Lá menor, Fá — o acorde que nenhuma música da casa toca.
-    const acordes = [[130.81, 164.81, 196.0, 261.63], [98.0, 123.47, 146.83, 196.0], [110.0, 130.81, 164.81, 220.0], [87.31, 110.0, 130.81, 174.61]]
-    const melodia = [523.25, 0, 587.33, 659.25, 0, 587.33, 523.25, 0, 493.88, 0, 523.25, 587.33, 0, 0, 440, 0]
-    const dedilhar = (f: number, quando: number, v: number): void => {
-      const o = ctx.createOscillator()
-      o.type = 'triangle'
-      o.frequency.value = f
-      const o2 = ctx.createOscillator()
-      o2.type = 'sawtooth'
-      o2.frequency.value = f * 2.001
-      const lp = ctx.createBiquadFilter()
-      lp.type = 'lowpass'
-      lp.frequency.setValueAtTime(2600, quando)
-      lp.frequency.exponentialRampToValueAtTime(500, quando + 0.6)
-      const e = ctx.createGain()
-      e.gain.setValueAtTime(0.0001, quando)
-      e.gain.linearRampToValueAtTime(v, quando + 0.005)
-      e.gain.exponentialRampToValueAtTime(0.0001, quando + 1.1)
-      const e2 = ctx.createGain()
-      e2.gain.value = 0.15
-      o.connect(lp)
-      o2.connect(e2).connect(lp)
-      lp.connect(e).connect(g)
-      o.start(quando)
-      o2.start(quando)
-      o.stop(quando + 1.2)
-      o2.stop(quando + 1.2)
-    }
-    const bater = (quando: number, grave: boolean): void => {
+    g.gain.linearRampToValueAtTime(volume, t0 + 1.4)
+
+    // O arquivo de quem quiser outra música no fone.
+    const proprio = audioDoFone()
+    if (proprio) {
       const src = ctx.createBufferSource()
-      src.buffer = b
-      const f = ctx.createBiquadFilter()
-      f.type = grave ? 'lowpass' : 'highpass'
-      f.frequency.value = grave ? 180 : 6000
-      const e = ctx.createGain()
-      e.gain.setValueAtTime(grave ? 0.5 : 0.06, quando)
-      e.gain.exponentialRampToValueAtTime(0.0001, quando + (grave ? 0.18 : 0.05))
-      src.connect(f).connect(e).connect(g)
-      src.start(quando, Math.random(), 0.2)
+      src.buffer = proprio
+      src.loop = true
+      src.connect(g)
+      src.start(t0)
+      return () => {
+        const t = ctx.currentTime
+        g.gain.cancelScheduledValues(t)
+        g.gain.setValueAtTime(g.gain.value, t)
+        g.gain.linearRampToValueAtTime(0, t + 0.25)
+        window.setTimeout(() => src.stop(), 400)
+      }
     }
-    // Doze segundos agendados de uma vez: a cena corta antes.
-    for (let i = 0; i < 64; i++) {
-      const quando = t0 + i * tempo
-      const acorde = acordes[Math.floor(i / 8) % acordes.length] ?? acordes[0] ?? []
-      dedilhar(acorde[[0, 2, 1, 3, 2, 1, 3, 2][i % 8] ?? 0] ?? 130.81, quando, 0.09)
-      if (i % 4 === 0) bater(quando, true)
-      if (i % 2 === 1) bater(quando, false)
-      const m = melodia[i % melodia.length] ?? 0
-      if (m && i >= 8) dedilhar(m, quando, 0.07)
+
+    // Um quarto pequeno de eco: o piano nunca para de soar de verdade.
+    const eco = ctx.createConvolver()
+    const len = Math.floor(ctx.sampleRate * 3.2)
+    const ir = ctx.createBuffer(2, len, ctx.sampleRate)
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch)
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2)
     }
+    eco.buffer = ir
+    const ecoG = ctx.createGain()
+    ecoG.gain.value = 0.55
+    eco.connect(ecoG).connect(g)
+
+    const nota = (quando: number, f: number, forca: number, dur = 3.6): void => {
+      const env = ctx.createGain()
+      env.gain.setValueAtTime(0.0001, quando)
+      env.gain.linearRampToValueAtTime(0.08 * forca, quando + 0.012)
+      env.gain.exponentialRampToValueAtTime(0.0001, quando + dur)
+      env.connect(g)
+      env.connect(eco)
+      for (const [h, v] of [[1, 1], [2, 0.32], [3, 0.12], [4.02, 0.05]] as const) {
+        const o = ctx.createOscillator()
+        o.type = 'sine'
+        o.frequency.value = f * h
+        o.detune.value = (Math.random() - 0.5) * 4
+        const og = ctx.createGain()
+        og.gain.value = v
+        o.connect(og).connect(env)
+        o.start(quando)
+        o.stop(quando + dur + 0.05)
+      }
+    }
+
+    // Quatro acordes, dois compassos cada: sol, mi menor, dó, ré.
+    const COMPASSO = 3.4
+    const acordes: { baixo: number; voz: number[]; melodia: [number, number, number][] }[] = [
+      { baixo: 98.0, voz: [246.94, 293.66, 369.99], melodia: [[0.2, 587.33, 2.6], [1.9, 493.88, 2.4], [3.6, 440.0, 4.5]] },
+      { baixo: 82.41, voz: [196.0, 246.94, 293.66], melodia: [[0.4, 392.0, 2.2], [1.8, 493.88, 2.2], [3.4, 587.33, 4.8]] },
+      { baixo: 130.81, voz: [329.63, 392.0, 493.88], melodia: [[0.0, 659.25, 2.2], [1.2, 587.33, 2], [2.6, 493.88, 2.2], [4.2, 392.0, 4.2]] },
+      { baixo: 146.83, voz: [392.0, 440.0, 587.33], melodia: [[0.6, 440.0, 2.6], [2.4, 369.99, 5.2]] },
+    ]
+    const VOLTA = acordes.length * 2 * COMPASSO
+    let proxima = t0
+    const agendar = (inicio: number): void => {
+      acordes.forEach((a, i) => {
+        const tc = inicio + i * 2 * COMPASSO
+        nota(tc, a.baixo, 0.9, 6.5)
+        nota(tc + 0.02, a.baixo * 2, 0.35, 5.5)
+        // Arpejo solto, nunca exatamente no tempo.
+        for (let k = 0; k < 8; k++) {
+          const v = a.voz[[0, 1, 2, 1, 0, 2, 1, 2][k] ?? 0] ?? 0
+          const quando = tc + k * (COMPASSO / 4) + (Math.random() - 0.5) * 0.05
+          nota(quando, i === 3 && k < 3 && v === 392.0 ? 392.0 : v, 0.32 + (k % 4 === 0 ? 0.12 : 0), 3.2)
+        }
+        // O ré do último acorde chega no fá sustenido depois do sol suspenso.
+        if (i === 3) nota(tc + COMPASSO, 369.99, 0.3, 3.8)
+        for (const [dt, f, dur] of a.melodia) nota(tc + dt, f, 0.62, dur)
+      })
+    }
+    const timer = window.setInterval(() => {
+      if (ctx.currentTime > proxima - 6) {
+        agendar(proxima)
+        proxima += VOLTA
+      }
+    }, 500)
+    agendar(proxima)
+    proxima += VOLTA
     return () => {
+      window.clearInterval(timer)
       const t = ctx.currentTime
       g.gain.cancelScheduledValues(t)
       g.gain.setValueAtTime(g.gain.value, t)
-      g.gain.linearRampToValueAtTime(0, t + 0.04)
-      fone.disconnect()
+      g.gain.linearRampToValueAtTime(0, t + 0.25)
+      window.setTimeout(() => g.disconnect(), 3000)
     }
   }
 
