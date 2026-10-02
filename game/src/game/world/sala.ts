@@ -43,6 +43,8 @@ export interface EstadoSala {
   brilhoTecla?: number
   /** 0..1: alguém parado embaixo do poste, lá fora. */
   vulto?: number
+  /** Quanto o retrato de cima do sofá está torto, em radianos (0 = reto). */
+  retratoTorto?: number
 }
 
 const PAREDE_FRIA: RGB = [22, 26, 38]
@@ -77,6 +79,7 @@ export function drawSalaFundo(c: CanvasRenderingContext2D, e: EstadoSala): void 
   // Onde ficava o quinto retrato: só o papel mais claro e o prego.
   marcaDeQuadro(c, 252, 56, 18, 22)
   drawRetratos(c, k)
+  retratoDoSofa(c, k, e.retratoTorto ?? 0)
   quadroMar(c, 292, 36, 76, 28, k)
   // O relógio da sala parou nas dez e quarenta. Ninguém comentou.
   relogioParado(c, 441, 52, 8, 10, 40, k)
@@ -327,6 +330,37 @@ function luzDaRua(c: CanvasRenderingContext2D, t: number, vulto: number): void {
     c.fillRect(lx - 70, ly - 40, 140, 140)
     c.restore()
   }
+}
+
+/** O prego do retrato em cima do sofá, de onde ele gira quando fica torto. */
+export const PREGO_RETRATO = { x: 310, y: 83 }
+
+/**
+ * O retrato da família pendurado em cima do sofá, na altura de quem sobe
+ * no assento. É o que fica torto — e é o que Liam corre para endireitar
+ * quando ouve a chave do pai.
+ */
+function retratoDoSofa(c: CanvasRenderingContext2D, k: number, torto: number): void {
+  const moldura: RGB = k > 0.5 ? [92, 70, 52] : [70, 62, 60]
+  const { x, y } = PREGO_RETRATO
+  const qx = x - 11
+  const qy = y + 3
+  if (Math.abs(torto) > 0.002) {
+    // A marca de papel mais claro, onde ele ficava reto.
+    c.fillStyle = 'rgba(255,240,220,0.06)'
+    c.fillRect(qx, qy, 22, 17)
+    c.save()
+    c.translate(x, y)
+    c.rotate(torto)
+    c.translate(-x, -y)
+  }
+  // O arame do prego até a moldura.
+  c.fillStyle = 'rgba(20,18,20,0.7)'
+  c.fillRect(x - 7, y + 2, 6, 1)
+  c.fillRect(x + 1, y + 2, 6, 1)
+  quadro(c, qx, qy, 22, 17, { figuras: 4, moldura })
+  if (Math.abs(torto) > 0.002) c.restore()
+  ret(c, x - 1, y, 2, 2, 'rgba(150,140,120,0.9)')
 }
 
 function drawRetratos(c: CanvasRenderingContext2D, k: number): void {

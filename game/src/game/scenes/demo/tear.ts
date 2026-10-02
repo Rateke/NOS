@@ -614,7 +614,8 @@ export class TearScene implements Scene {
     this.proxGritoEscolha = 0.2
     this.escolhaFalada = false
     // Na primeira vez, as mãos não obedecem: todo mundo vive o não escolher.
-    this.travada = !memoria.viuEscolha
+    // Até zerar a demo, as mãos não obedecem: só depois dá para escolher.
+    this.travada = !memoria.terminou
     sons.iniciarFogo()
     sons.fogo(0.06, 1)
     sons.iniciarCacofonia()

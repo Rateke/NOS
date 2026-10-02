@@ -83,6 +83,8 @@ export interface EstadoComodo {
   hora?: { h: number; m: number; parado: boolean }
   /** 0..1: alguém embaixo do poste, lá fora (só a sala mostra). */
   vulto?: number
+  /** O retrato grande da sala, torto (radianos). */
+  retratoTorto?: number
 }
 
 export interface Comodo {
@@ -144,6 +146,8 @@ const K_SALA = 0.34
 export function comodoSala(depois = false): Comodo {
   const estado = (e: EstadoComodo) => ({
     k: depois ? 0.12 : K_SALA, t: e.t, tecla: e.tecla, brilhoTecla: e.brilhoTecla, vulto: e.vulto,
+    // Depois do grito ninguém endireita mais nada.
+    retratoTorto: depois ? 0.2 : e.retratoTorto,
   })
   return {
     id: 'sala',

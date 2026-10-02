@@ -2,7 +2,7 @@
  * A escolha do Tear numa segunda partida: as mãos obedecem.
  *
  * Na primeira vez ninguém consegue escolher (o teste da demo cobre isso).
- * Aqui o navegador já lembra que viu a escolha: a seta, a tecla ou o clique
+ * Aqui o navegador já lembra que a demo foi zerada: a seta, a tecla ou o clique
  * salvam uma, e o fio da outra queima. Pula direto para a lei do pai.
  *
  *   npm run build && npm run preview &
@@ -24,7 +24,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 /** Abre o Tear já com a escolha vista uma vez, e vai até ela. */
 async function ateAEscolha() {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } })
-  await ctx.addInitScript(() => localStorage.setItem('nos:demo', JSON.stringify({ viuEscolha: true })))
+  await ctx.addInitScript(() => localStorage.setItem('nos:demo', JSON.stringify({ viuEscolha: true, terminou: true })))
   const page = await ctx.newPage()
   const errs = []
   page.on('pageerror', (e) => errs.push(String(e)))

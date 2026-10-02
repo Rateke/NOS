@@ -6,7 +6,7 @@ import {
   comodoCorredor, comodoQuarto, comodoSala, comodoLia, CORREDOR_BASE, CORREDOR_MAX,
   ESPELHO, LIA_MALA_X, brilhoDoEspelho, NOS, desenharNo,
 } from '../../world/casa'
-import { PIANO, BANCO_Y, posteAceso } from '../../world/sala'
+import { PIANO, BANCO_Y, posteAceso, PREGO_RETRATO } from '../../world/sala'
 import type { Line } from '../../world/types'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
@@ -94,6 +94,11 @@ function madrugada(): boolean {
   const h = new Date().getHours()
   return h >= 0 && h < 5
 }
+
+/** Quanto o retrato de cima do sofá está torto quando o pai chega (radianos). */
+const RETRATO_TORTO = 0.2
+/** Onde ficam os pés de Liam em pé no assento do sofá. */
+const ASSENTO_SOFA = 134
 
 /** Quantas coisas lidas até o peito fechar. */
 const LIMITE_CRISE = 7
@@ -217,6 +222,12 @@ export class CasaScene implements Scene {
   sustos = 0
   private rostoSusto = new Figura({ ...VISUAL.liam, x: 0, y: 0, altura: 30, cor: { roupa: '#1a1e2a', cabelo: '#0a0b10', pele: '#c9b4a8', sombra: 'rgba(0,0,0,0)' } })
 
+  // --- A chegada do pai ---
+  private retratoTorto = RETRATO_TORTO
+  /** O pulinho do susto, e o "!" em cima da cabeça. */
+  private puloLiam = 0
+  private exclamacao = 0
+
   // --- A segunda vez, o vulto, o cheiro, a crise ---
   /** Já terminou a demo uma vez: a casa lembra. */
   private outraVez = false
@@ -310,7 +321,8 @@ export class CasaScene implements Scene {
     this.montar()
     this.atual = this.comodos.get('sala') as Comodo
     this.visitados.add('sala')
-    this.liam.x = 300
+    // Antes do pai chegar ele está perto do piano; a chave faz ele correr.
+    this.liam.x = this.depois ? 300 : 168
     this.liam.y = this.atual.passoY
     musica.desafinado = 0
     musica.abafado = 0.15
@@ -369,6 +381,7 @@ export class CasaScene implements Scene {
     this.camada.update(dt)
     this.reflexo = Math.max(0, this.reflexo - dt * 0.5)
     this.jolt = Math.max(0, this.jolt - dt * 1.4)
+    this.exclamacao = Math.max(0, this.exclamacao - dt)
     this.liaQuarto.update(dt)
     this.reflexoLiam.update(dt)
     this.moverTravesseiro(dt)
@@ -783,34 +796,90 @@ export class CasaScene implements Scene {
     }
   }
 
-  /** A chave gira, e Liam vai sozinho endireitar o retrato. */
+  /**
+   * O pai chegando. O chaveiro, a fechadura, a porta da frente: Liam leva um
+   * susto, entende quem é, e corre endireitar o retrato torto da sala antes
+   * de o pai entrar. Ninguém mandou.
+   */
   private cutChave(dt: number): void {
-    if (this.passoCut === 0 && this.tCut > 1.1) {
+    const chao = this.atual.passoY
+    if (this.passoCut <= 2) {
+      this.puloLiam = Math.max(0, this.puloLiam - dt * 5)
+      this.liam.y = chao - Math.round(Math.sin(Math.min(1, this.puloLiam) * Math.PI) * 3)
+    }
+    if (this.passoCut === 0 && this.tCut > 0.9) {
       this.passoCut = 1
-      sons.chave()
-      this.dialogue.play(CASA_CHAVE, undefined, 0.9)
+      this.tCut = 0
+      sons.chegada()
       return
     }
-    if (this.passoCut === 1 && !this.dialogue.active) {
-      const alvo = 243
+    // A fechadura gira: o susto.
+    if (this.passoCut === 1 && this.tCut > 1.12) {
+      this.passoCut = 2
+      this.puloLiam = 1
+      this.exclamacao = 0.9
+      this.liam.tremor = 1.4
+      this.liam.olhar = 1
+      this.jolt = 0.35
+      audio.heartbeat(0.26)
+      this.dialogue.play(CASA_CHAVE)
+      return
+    }
+    if (this.passoCut === 2) {
+      this.liam.tremor = Math.max(0.3, this.liam.tremor - dt)
+      if (this.dialogue.active) return
+      // Corre até o sofá, embaixo do retrato torto.
+      const alvo = PREGO_RETRATO.x
       const d = alvo - this.liam.x
       if (Math.abs(d) > 1.5) {
-        this.liam.x += Math.sign(d) * VELOCIDADE * 1.2 * dt
+        this.liam.x += Math.sign(d) * Math.min(Math.abs(d), VELOCIDADE * 2.6 * dt)
         this.liam.olhar = Math.sign(d)
-        this.liam.andando = 1
+        this.liam.andando = 1.6
         return
       }
-      this.passoCut = 2
+      this.liam.andando = 0
+      this.passoCut = 3
       this.tCut = 0
-      this.liam.costas = true
-      this.liam.braco = 0.8
-      audio.interact()
       return
     }
-    if (this.passoCut === 2 && this.tCut > 0.9) {
-      this.passoCut = 3
-      this.liam.braco = 0
+    // Sobe no assento do sofá, num pulo.
+    if (this.passoCut === 3) {
+      const p = Math.min(1, this.tCut / 0.32)
+      this.liam.y = Math.round(chao + (ASSENTO_SOFA - chao) * p - Math.sin(p * Math.PI) * 7)
+      if (p >= 1) {
+        this.passoCut = 4
+        this.tCut = 0
+        this.liam.costas = true
+        this.liam.braco = 0.9
+        audio.interact()
+      }
+      return
+    }
+    // As mãos no quadro: ele balança, passa do ponto, volta, para reto.
+    if (this.passoCut === 4) {
+      const t = this.tCut
+      this.retratoTorto = t > 1 ? 0 : RETRATO_TORTO * Math.exp(-4.6 * t) * Math.cos(8.5 * t)
+      this.liam.braco = 0.9 + Math.sin(t * 17) * 0.06 * Math.max(0, 1 - t)
+      if (t > 1.15) {
+        this.passoCut = 5
+        this.tCut = 0
+        this.retratoTorto = 0
+        this.liam.braco = 0
+        this.liam.tremor = 0
+        sons.tique(true, 0.6)
+      }
+      return
+    }
+    // Desce do sofá e se vira para a porta bem na hora em que o pai fala.
+    if (this.passoCut === 5) {
+      const p = Math.min(1, this.tCut / 0.28)
+      this.liam.y = Math.round(ASSENTO_SOFA + (chao - ASSENTO_SOFA) * p - Math.sin(p * Math.PI) * 4)
+      if (p < 1) return
+      this.passoCut = 6
+      this.liam.y = chao
       this.liam.costas = false
+      this.liam.olhar = 1
+      sons.pisada(0.8)
       this.dialogue.play(CASA_CHAVE_DEPOIS, () => {
         this.dialogue.play(CASA_ABERTURA, () => {
           this.dialogue.play(CASA_PAREDE, () => {
@@ -844,7 +913,8 @@ export class CasaScene implements Scene {
       this.passoCut = 1
       this.etiquetas.apresentar(ctx.state, 'Evelyn')
       this.dialogue.play(EVELYN_PERGUNTA, () => {
-        const primeira = !memoria.viuEvelyn
+        // Até zerar a demo, a frase do pai sai sempre. Só depois ele responde.
+        const primeira = !memoria.terminou
         this.escolha.abrir({
           opcoes: EVELYN_OPCOES,
           escrita: primeira ? 4 : 40,
@@ -948,10 +1018,30 @@ export class CasaScene implements Scene {
       this.vulto = 0
       return
     }
-    const quer = !this.outraVez && !this.achados.has('janela') && this.liam.x > 104 ? 1 : 0
+    // Enquanto o pai chega, a rua está vazia: ninguém pode achar que era ele.
+    const quer = !this.outraVez && this.cutscene !== 'chave' && !this.achados.has('janela') && this.liam.x > 104 ? 1 : 0
     this.vulto += (quer - this.vulto) * Math.min(1, dt * (quer ? 0.8 : 5))
     // Só conta como visto se a janela estava na tela e o poste aceso.
     if (this.vulto > 0.6 && this.liam.x < 230 && posteAceso(this.t)) this.vultoVisto = true
+  }
+
+  /** O "!" do susto, em cima da cabeça dele. */
+  private desenharExclamacao(ctx: SceneCtx, cam: number): void {
+    const c = ctx.display.ctx
+    const x = ctx.display.toScreenX(this.liam.x - cam)
+    const y = ctx.display.toScreenY(this.liam.y - this.liam.altura - 6)
+    const s = Math.max(18, ctx.display.cssH * 0.05)
+    const sobe = (0.9 - this.exclamacao) * s * 0.3
+    c.save()
+    c.globalAlpha = Math.min(1, this.exclamacao / 0.25)
+    c.textAlign = 'center'
+    c.font = `700 ${s}px ${FONT_BODY}`
+    c.lineWidth = Math.max(2, s * 0.14)
+    c.strokeStyle = '#05060a'
+    c.strokeText('!', x, y - sobe)
+    c.fillStyle = '#f4f1e8'
+    c.fillText('!', x, y - sobe)
+    c.restore()
   }
 
   /** Poeira boiando na luz de cada cômodo: a casa nunca está parada. */
@@ -1185,7 +1275,7 @@ export class CasaScene implements Scene {
     this.liaQuarto.olhar = -1
     this.liam.olhar = 1
     this.dialogue.play(LIA_CONVITE, () => {
-      const primeira = !memoria.viuLia
+      const primeira = !memoria.terminou
       this.escolha.abrir({
         opcoes: LIA_CONVITE_OPCOES,
         escrita: primeira ? 4 : 40,
@@ -1614,6 +1704,7 @@ export class CasaScene implements Scene {
       sinal: this.sinal,
       hora: this.horaDaCasa(),
       vulto: this.vulto,
+      retratoTorto: this.retratoTorto,
     }
 
     w.fillStyle = '#020306'
@@ -1680,6 +1771,7 @@ export class CasaScene implements Scene {
     this.drawEstrela(ctx)
     this.escolha.draw(c, cssW, cssH)
     if (susto > 0) this.drawPassos(c, cssW, cssH, susto)
+    if (this.exclamacao > 0) this.desenharExclamacao(ctx, cam)
     this.respiracao.draw(c, cssW, cssH, ctx.input.touchMode)
     this.dialogue.render(c, cssW, cssH)
     this.leitor.render(c, cssW, cssH)

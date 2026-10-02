@@ -308,12 +308,17 @@ mesma interface.
    papel de parede vira floresta e os retratos vão perdendo gente. No fim
    está a **porta que não abre**.
 
-   **Cenas que o jogador só assiste.** Ao entrar, a chave gira na porta da
-   frente e Liam anda sozinho até o retrato e o endireita, antes de pensar.
+   **Cenas que o jogador só assiste.** Ao entrar, o chaveiro, a chave
+   raspando na fechadura, duas voltas, a porta da frente abrindo e batendo:
+   o pai chegou. Liam leva um susto (um pulinho e um "!" em cima da cabeça),
+   corre até o retrato grande da sala, que está torto, e endireita com as
+   duas mãos — o quadro balança, passa do ponto e para reto — antes de o pai
+   dizer *"Cheguei."*. Ninguém mandou.
    No corredor, a mãe sai da cozinha e pergunta se ele arrumaria uma mochila.
    As respostas dele começam a se escrever devagar — e, **na primeira vez que
    alguém joga, sempre**, sai antes da boca dele a frase do pai, na cor do
-   fio do pai. Nas partidas seguintes ele às vezes chega antes. Logo depois,
+   fio do pai. Só **depois de zerar a demo** ele consegue responder com uma
+   das opções dele (sair no meio e voltar não conta). Logo depois,
    o reflexo no vidro do retrato está branco: é a primeira fala da sombra.
 
    **Cada pessoa é apresentada por uma etiqueta**, na letra do Adrian, presa
@@ -475,7 +480,7 @@ mesma interface.
    subindo, ← para a mãe, → para a Lia. **Na primeira vez as mãos não
    obedecem** — todo mundo vive o não escolher: no fim Liam se oferece no
    lugar (*"Se tem que queimar alguém, queima o meu!"*) e o fogo sobe pelos
-   dois fios. Nas partidas seguintes dá para escolher, e o fio da outra
+   dois fios. Depois de zerar a demo dá para escolher, e o fio da outra
    queima. Nos três casos o jogo não diz quem morreu.
 
 7. **Dentro, de novo.** Cinza caindo no vácuo, e a conversa inteira com a
@@ -521,7 +526,9 @@ mesma interface.
     quarto de hospital, Liam deitado, a Lia dormindo na cadeira, o monitor
     bipando. O dedo dele mexe. Volta para o menu.
 
-**A segunda partida.** (Spoiler.) Quem termina a demo e aperta *Só mais um*
+**A segunda partida.** (Spoiler.) Tudo o que muda na segunda vez só muda
+depois de **zerar** a demo: quem começou, cansou e saiu continua com o
+jogo salvo, mas sem nada disso. Quem termina a demo e aperta *Só mais um*
 de novo não volta para a mesma casa: volta para uma casa que lembra. O S do
 título se soltou e fica pendurado por um fio embaixo do NÓ, e o tema do menu
 volta um pouco fora do tom. O pai abre a aula com *"De novo, filho?"* e,
@@ -529,7 +536,9 @@ quando Liam acerta, *"Você já sabe essa. Eu sei que sabe."* A Lia, no rádio,
 diz que fala a mesma coisa todo dia. A sombra aparece logo na entrada da
 casa (*"Você já esteve aqui."*), o relógio do corredor já começa parado nas
 22h40 e o poste está vazio (*"Da outra vez tinha."*). Na cozinha, *"Eu sei o
-que vem agora. Saber não ajuda em nada."* E, depois do fogo, a sombra lembra
+que vem agora. Saber não ajuda em nada."* Com a mãe, ele finalmente consegue
+responder; no quarto da Lia, também; e no Tear as mãos obedecem. E,
+depois do fogo, a sombra lembra
 quem ele salvou da outra vez — e diz se ele fez igual. Mais duas coisas,
 fora da segunda partida: quem sai para o menu no meio da cozinha ou do Tear
 encontra, ao voltar, *"Fugir também é escolher."*; e quem vem passando as

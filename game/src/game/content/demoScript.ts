@@ -411,11 +411,12 @@ export const HOSPITAL_GRITO: Line[] = [
 /** A chave na porta. O corpo de Liam arruma antes de ele pensar. */
 export const CASA_CHAVE: Line[] = [
   { text: 'A chave na porta da frente.' },
+  { text: 'O pai chegou.' },
 ]
 export const CASA_CHAVE_DEPOIS: Line[] = [
+  { speaker: 'Adrian', text: 'Cheguei.', style: 'speech', onde: 'da porta' },
   { text: 'Eu arrumei o retrato antes de pensar.' },
   { text: 'Ninguém mandou. Ninguém nunca precisa mandar.' },
-  { speaker: 'Adrian', text: 'Cheguei.', style: 'speech', onde: 'da porta' },
 ]
 
 /** Pelo vão da cozinha, baixo. É a frase que vai sair da boca de Liam. */

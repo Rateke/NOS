@@ -487,6 +487,98 @@ export class SonsNos {
   }
 
   /**
+   * O pai chegando: o chaveiro balançando, a chave raspando até entrar, a
+   * fechadura girando duas voltas, a maçaneta, a porta da frente abrindo
+   * pesada e fechando — e os passos dele no hall. Dura uns três segundos e
+   * meio; tem de ser impossível confundir com outra coisa.
+   */
+  chegada(): void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b) return
+    const t0 = ctx.currentTime
+    const ruido = (quando: number, dur: number, f: number, q: number, v: number, ate?: number): void => {
+      const src = ctx.createBufferSource()
+      src.buffer = b
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.setValueAtTime(f, t0 + quando)
+      if (ate) bp.frequency.linearRampToValueAtTime(ate, t0 + quando + dur)
+      bp.Q.value = q
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0.0001, t0 + quando)
+      g.gain.linearRampToValueAtTime(v, t0 + quando + Math.min(0.01, dur / 4))
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + quando + dur)
+      src.connect(bp).connect(g).connect(out)
+      src.start(t0 + quando, Math.random() * 2, dur + 0.05)
+    }
+    const tim = (quando: number, f: number, v: number): void => {
+      const o = ctx.createOscillator()
+      o.type = 'sine'
+      o.frequency.value = f
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0.0001, t0 + quando)
+      g.gain.linearRampToValueAtTime(v, t0 + quando + 0.003)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + quando + 0.22)
+      o.connect(g).connect(out)
+      o.start(t0 + quando)
+      o.stop(t0 + quando + 0.25)
+    }
+    // O chaveiro balançando na mão dele.
+    for (let i = 0; i < 9; i++) tim(i * 0.045 + Math.random() * 0.02, 2600 + Math.random() * 2600, 0.035)
+    // A chave procurando o buraco e entrando, raspando.
+    ruido(0.5, 0.08, 2200, 6, 0.12)
+    ruido(0.66, 0.3, 1400, 4, 0.16, 3200)
+    // A fechadura: duas voltas, estalo seco e o corpo da porta respondendo.
+    for (const q of [1.1, 1.38]) {
+      ruido(q, 0.06, 1500, 3, 0.4)
+      ruido(q + 0.02, 0.09, 700, 2, 0.22)
+      tim(q + 0.01, 1900, 0.04)
+    }
+    // A maçaneta abaixando.
+    ruido(1.75, 0.05, 2600, 8, 0.2)
+    ruido(1.82, 0.05, 2100, 8, 0.16)
+    // A porta abrindo devagar: a dobradiça rangendo.
+    const r = ctx.createOscillator()
+    r.type = 'sawtooth'
+    r.frequency.setValueAtTime(330, t0 + 1.9)
+    r.frequency.linearRampToValueAtTime(470, t0 + 2.3)
+    r.frequency.linearRampToValueAtTime(300, t0 + 2.75)
+    const rbp = ctx.createBiquadFilter()
+    rbp.type = 'bandpass'
+    rbp.frequency.value = 1150
+    rbp.Q.value = 6
+    const rg = ctx.createGain()
+    rg.gain.setValueAtTime(0.0001, t0 + 1.9)
+    rg.gain.linearRampToValueAtTime(0.045, t0 + 2.05)
+    rg.gain.linearRampToValueAtTime(0.03, t0 + 2.5)
+    rg.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.8)
+    r.connect(rbp).connect(rg).connect(out)
+    r.start(t0 + 1.9)
+    r.stop(t0 + 2.85)
+    // O vento da rua entrando, e a chuva mais alta por um instante.
+    ruido(1.95, 0.9, 900, 0.6, 0.06)
+    // A porta batendo atrás dele.
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.setValueAtTime(120, t0 + 2.95)
+    o.frequency.exponentialRampToValueAtTime(48, t0 + 3.2)
+    const og = ctx.createGain()
+    og.gain.setValueAtTime(0.0001, t0 + 2.95)
+    og.gain.linearRampToValueAtTime(0.3, t0 + 2.96)
+    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.3)
+    o.connect(og).connect(out)
+    o.start(t0 + 2.95)
+    o.stop(t0 + 3.35)
+    ruido(2.95, 0.12, 400, 1, 0.25)
+    // As chaves jogadas no aparador.
+    for (let i = 0; i < 5; i++) tim(3.35 + i * 0.03, 3000 + Math.random() * 2200, 0.03)
+    // Os passos dele: pesados, sem pressa.
+    for (const [q, f] of [[3.8, 1.1], [4.45, 1.2], [5.1, 1.15]] as const) this.passo(q, f)
+  }
+
+  /**
    * A resposta do outro lado da porta: três devagar, três rápidas. Junto
    * com as três curtas que Liam bate, fecha uma frase que ele não sabe ler.
    */
