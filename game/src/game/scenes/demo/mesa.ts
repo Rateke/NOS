@@ -2,6 +2,8 @@ import type { Scene, SceneCtx } from '../types'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
+import { voz } from '../../../engine/voz'
+import { clima } from '../../../engine/clima'
 import { Figura, VISUAL } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { Leitor } from '../../systems/leitor'
@@ -208,6 +210,7 @@ export class MesaScene implements Scene {
     if (Math.random() < dt * (this.panoTirado ? 3 : 6)) this.po.poeira(PANELA.x - 4, PANELA.y - 8, 8, 3, 'rgba(170,166,176,')
 
     this.encarar()
+    this.misturar()
     this.jolt = Math.max(0, this.jolt - dt * 2.6)
     this.clarao = Math.max(0, this.clarao - dt * 2.2)
     this.moverCacos(dt)
@@ -244,6 +247,33 @@ export class MesaScene implements Scene {
 
     if (this.fase === 'preso') this.preso(dt, ctx)
     else if (this.fase === 'fuga') this.fugir(dt, ctx)
+  }
+
+  /**
+   * A música da briga: um contrabaixo que corre, cordas que fecham e o
+   * coração, tudo preso à tensão. Prato no ar é o pico.
+   */
+  private misturar(): void {
+    const f = this.fase
+    const t = this.tensao
+    if (f === 'estouro' || f === 'abertura' || f === 'confronto') {
+      clima.set({ pulso: 0.45, bpm: 96, cordas: 0.35, aperto: 0.4, coracao: 0.3, chuva: 0.35 }, 0.6)
+    } else if (f === 'preso') {
+      if (this.arremesso) clima.set({ pulso: 0.9, bpm: 160, cordas: 0.8, aperto: 1, coracao: 1 }, 0.2)
+      else {
+        clima.set({
+          pulso: 0.4 + t * 0.5, bpm: 92 + t * 56, cordas: 0.3 + t * 0.55, aperto: 0.3 + t * 0.7,
+          coracao: t * 0.8, chuva: 0.3,
+        }, 0.6)
+      }
+    } else if (f === 'gritaria') {
+      clima.set({ pulso: 1, bpm: 150 + this.tGritaria * 4, cordas: 1, aperto: 1, coracao: 1, chuva: 0 }, 0.3)
+    } else if (f === 'fundo') {
+      clima.parar(0.05)
+    } else {
+      // A fuga: só o coração e as cordas baixas.
+      clima.set({ pulso: 0, cordas: 0.2, aperto: 0.6, coracao: 0.7, chuva: 0 }, 1.5)
+    }
   }
 
   /** Todo mundo olha para Liam. É esse o peso da cena. */
@@ -356,6 +386,7 @@ export class MesaScene implements Scene {
     if (this.tensao >= 1) {
       // O pai vira para ele. Começa a gritaria.
       this.fase = 'gritaria'
+      sons.iniciarCacofonia()
       this.tGritaria = 0
       this.idxGrito = 0
       this.gritos = []
@@ -473,11 +504,24 @@ export class MesaScene implements Scene {
       })
       this.jolt = Math.max(this.jolt, 0.5 + k * 0.05)
       audio.heartbeat(0.14 + k * 0.012)
+      // Cada fala sai na voz de quem gritou, do lado da tela onde ela caiu,
+      // por cima das outras — e com o caos por baixo, cada vez maior.
+      const ultimo = this.gritos[this.gritos.length - 1]
+      voz.dizer(g.quem, g.texto, {
+        grito: g.texto === g.texto.toUpperCase() || k > 3,
+        pan: ((ultimo?.x ?? 0.5) - 0.5) * 1.6,
+        volume: 0.9 + k * 0.05,
+      })
+      sons.caos(Math.min(1, 0.4 + k * 0.06))
       this.idxGrito++
     }
     audio.setArgument(Math.min(0.95, 0.4 + this.tGritaria * 0.09), 0.3)
+    sons.cacofonia(this.tGritaria / GRITARIA_FIM)
     if (this.tGritaria >= GRITARIA_FIM) {
-      // Corte seco: preto e silêncio. O fundo do poço.
+      // Corte seco: preto e silêncio. O fundo do poço. Sobra o zumbido.
+      sons.cortarCacofonia(true)
+      voz.calar()
+      clima.parar(0.05)
       this.fase = 'fundo'
       this.tFundo = 0
       audio.setArgument(0, 0.04)
@@ -569,7 +613,11 @@ export class MesaScene implements Scene {
     this.puxao = falas[this.idxPuxao % falas.length] ?? ''
     this.idxPuxao++
     this.puxaoAte = this.t + 3
-    audio.interact()
+    const gritado = this.puxao === this.puxao.toUpperCase()
+    // Cada um chama de onde está: a voz vem do lado dele.
+    const f = quem === 'Adrian' ? this.adrian : quem === 'Lia' ? this.lia : this.evelyn
+    voz.dizer(quem, this.puxao, { grito: gritado, pan: (f.x - this.liam.x) / 140 })
+    if (gritado) sons.caos(0.5)
   }
 
   render(ctx: SceneCtx): void {

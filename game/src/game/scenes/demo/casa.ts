@@ -15,6 +15,7 @@ import { Figura, criarSombraBranca, VISUAL } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
+import { clima } from '../../../engine/clima'
 import { musica } from '../../../engine/musica'
 import { principal } from '../../../engine/principal'
 import {
@@ -115,6 +116,8 @@ export class CasaScene implements Scene {
   private adrianVisivel = 0
   /** Como acabou o susto do caderno: escondido a tempo, ou não. */
   passosResultado: 'escondeu' | 'pego' | null = null
+  /** Quanto Liam andou desde o último passo que soou. */
+  private andado = 0
   private proxPassoSom = 0
   private rasgou = false
   private jolt = 0
@@ -203,6 +206,8 @@ export class CasaScene implements Scene {
     audio.setAmbient(0.36, 3)
     musica.setPad(0.12, 5)
     principal.tocar(0.5)
+    // Chuva na janela a tarde inteira. A casa está calma — por enquanto.
+    clima.set({ chuva: 0.45 }, 3)
     this.camada.mostrar(ctx.state, 'casa')
     // A chave na porta: o corpo de Liam arruma antes de ele pensar.
     this.cutscene = 'chave'
@@ -343,6 +348,12 @@ export class CasaScene implements Scene {
       Math.min(this.atual.limiteDir, this.liam.x + dx * VELOCIDADE * dt),
     )
     const andou = this.liam.x !== antes
+    // Os passos dele no assoalho, leves.
+    this.andado += Math.abs(this.liam.x - antes)
+    if (this.andado >= 15) {
+      this.andado = 0
+      sons.pisada(this.atual.id === 'corredor' && this.depois ? 0.6 : 1)
+    }
     // Anda olhando para onde vai. Contra a parede, para e respira.
     if (dx !== 0) this.liam.olhar = Math.sign(dx)
     else this.liam.olhar *= 0.94
@@ -447,6 +458,8 @@ export class CasaScene implements Scene {
    * esconder. Ninguém avisa isso antes.
    */
   private iniciarPassos(): void {
+    // A calma acaba aqui: o coração e as cordas entram de uma vez.
+    clima.set({ coracao: 0.95, cordas: 0.5, aperto: 0.75, chuva: 0.15 }, 0.4)
     this.cutscene = 'passos'
     this.tCut = 0
     this.passoCut = 0
@@ -474,6 +487,7 @@ export class CasaScene implements Scene {
         this.liam.olhar = -1
         this.dialogue.play(CASA_PASSOS_ESCONDEU, () => {
           this.cutscene = null
+          clima.set({ coracao: 0, cordas: 0, aperto: 0, chuva: 0.45 }, 3)
         })
         return
       }
@@ -529,6 +543,8 @@ export class CasaScene implements Scene {
       if (this.adrianVisivel <= 0) {
         this.adrian.andando = 0
         this.cutscene = null
+        sons.porta()
+        clima.set({ coracao: 0, cordas: 0, aperto: 0, chuva: 0.45 }, 4)
       }
     }
   }
@@ -827,7 +843,7 @@ export class CasaScene implements Scene {
 
     const destino = this.comodos.get(p.para)
     if (!destino) return
-    audio.interact()
+    sons.porta()
     this.atual = destino
     this.visitados.add(destino.id)
     this.liam.x = Math.max(destino.limiteEsq, Math.min(destino.limiteDir, p.entraEm))

@@ -9,6 +9,8 @@ import { PONTOS } from './game/scenes/pontos'
 import { principal } from './engine/principal'
 import { audio, sons } from './engine/audio'
 import { musica } from './engine/musica'
+import { clima } from './engine/clima'
+import { voz } from './engine/voz'
 import { salvo, ORDEM_PONTOS } from './game/systems/salvo'
 import type { Ponto } from './game/systems/salvo'
 import { Pausa, caixaIconePausa, desenharIconePausa, desenharSalvando } from './game/ui/pausa'
@@ -83,6 +85,20 @@ function ctxPara(dona: Scene): SceneCtx {
 let ctx = ctxPara(scene)
 
 /**
+ * Quem entra direto numa cena (`?cena=`) não passa pelo menu, que é onde o
+ * som nasce: o primeiro toque liga o áudio aqui também.
+ */
+function ligarSomNoPrimeiroToque(): void {
+  if (audio.contexto) return
+  audio.init()
+  audio.resume()
+  audio.startAmbient()
+  musica.iniciarPad()
+}
+window.addEventListener('pointerdown', ligarSomNoPrimeiroToque, { once: true })
+window.addEventListener('keydown', ligarSomNoPrimeiroToque, { once: true })
+
+/**
  * Chegar numa cena. Se ela é um ponto de salvamento, o jogo grava antes de
  * ela começar: o salvo guarda o que Liam sabia ao chegar, não o que a cena
  * já mudou.
@@ -90,6 +106,9 @@ let ctx = ctxPara(scene)
 function entrar(next: Scene): void {
   scene = next
   ctx = ctxPara(next)
+  // A música de tensão é de cada cena: a que chega diz o que quer.
+  clima.parar(0.6)
+  voz.calar()
   if (next.ponto) {
     salvo.gravar(next.ponto, state)
     salvoDiscreto = PONTOS[next.ponto].discreto === true
@@ -111,6 +130,8 @@ function voltarAoMenu(): void {
   musica.setPad(0, 0.3)
   audio.silenciar(0.3)
   sons.silenciar(0.3)
+  clima.parar(0.3)
+  voz.calar()
   pending = null
   trocarJa(new TitleScene({ direto: true }), 0.8, 0.6)
 }
@@ -183,6 +204,7 @@ function step(dt: number): void {
       pausa.abrir()
     } else {
       principal.update(dt)
+      clima.update(dt)
       scene.update(dt, ctx)
       // Esc que a cena não usou (para fechar um papel, levantar do piano)
       // abre a pausa.
@@ -224,6 +246,10 @@ if (new URLSearchParams(location.search).has('debug')) {
       salvo,
       pausa,
       audio,
+      sons,
+      musica,
+      voz,
+      clima,
       get scene() {
         return scene
       },

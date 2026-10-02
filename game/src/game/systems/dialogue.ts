@@ -1,5 +1,6 @@
 import type { Line } from '../world/types'
-import { audio } from '../../engine/audio'
+import { audio, sons } from '../../engine/audio'
+import { voz } from '../../engine/voz'
 import { PAL } from '../../engine/constants'
 
 const CHARS_PER_SEC = 42
@@ -97,6 +98,13 @@ export class Dialogue {
     }
     this.current = next
     this.linhaNum++
+    voz.novaLinha()
+    // Todo grito vem com o caos por baixo. Em maiúsculas, inteiro.
+    if (next.grito) {
+      const letras = next.text.replace(/[^A-Za-zÀ-ú]/g, '')
+      const altas = letras.replace(/[^A-ZÀ-Þ]/g, '').length
+      sons.caos(letras.length > 0 && altas / letras.length > 0.6 ? 1 : 0.6)
+    }
     this.revealed = 0
     this.elapsed = 0
     this.paradoDesde = 0
@@ -125,8 +133,17 @@ export class Dialogue {
       const target = Math.min(this.current.text.length, Math.floor(this.elapsed * CHARS_PER_SEC))
       if (target > this.revealed) {
         this.revealed = target
-        this.lastTypeSound += 1
-        if (this.lastTypeSound % 2 === 0) audio.type()
+        // Quem fala tem voz; pensamento e papel lido, só o tique da letra.
+        const quem = this.current.sombra ? 'sombra' : this.current.speaker
+        if (quem && this.current.style !== 'read') {
+          voz.legenda(quem, this.current.text, target, {
+            grito: this.current.grito === true,
+            abafado: this.current.onde !== undefined,
+          })
+        } else {
+          this.lastTypeSound += 1
+          if (this.lastTypeSound % 2 === 0) audio.type()
+        }
       }
       return
     }

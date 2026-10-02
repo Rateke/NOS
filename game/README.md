@@ -37,8 +37,9 @@ inteira no teclado, escondendo o caderno a tempo, entrando na frente do
 prato e parando de arrumar), `test/mouse.mjs` (a mesma só no mouse, sendo
 pego com o caderno e arrumando até o fim), `test/escolha.mjs` (a escolha do
 Tear numa segunda partida, salvando cada uma), `test/salvar.mjs` (salvar,
-continuar, pausar, sair) e `test/playthrough.mjs` (a fatia antiga do
-quarto). `npm run test:all` roda todos.
+continuar, pausar, sair), `test/som.mjs` (vozes audíveis, grito mais
+alto que fala, nada estoura na briga) e `test/playthrough.mjs` (a fatia
+antiga do quarto). `npm run test:all` roda todos.
 
 O teste aponta para `http://localhost:4173` por padrão: rode o `preview` antes,
 ou passe `URL=file:///caminho/para/dist/nos.html`. `OUT=<pasta>` salva capturas
@@ -193,6 +194,39 @@ O fecho começa em **silêncio absoluto**. Só então o tema volta — afinado, 
 jeito que o pai ensinou antes de estragá-lo — enquanto as relíquias que os
 fios seguravam sobem soltas no escuro. As frases ganham a tela uma de cada
 vez, e o título se monta abrindo o espaçamento das letras.
+
+### Som e vozes
+
+**Todo mundo fala.** Ninguém pronuncia as palavras: cada personagem tem uma
+voz sintetizada, que acompanha a legenda letra a letra, como em OMORI e
+Undertale (`src/engine/voz.ts`). As vogais do texto dão a forma da boca, as
+consoantes o ataque, e a frase cai no fim e sobe quando é pergunta. Adrian é
+grave e devagar; Liam, baixo e com fôlego; Evelyn, cansada; a Lia, rápida e
+afiada; a sombra fala com a voz do Liam, uma oitava embaixo e com eco. Quem
+fala de outro cômodo (ou da secretária eletrônica) sai abafado. Pensamento e
+papel lido não têm voz, só o tique da letra.
+
+**Grito vem com caos.** Toda fala gritada dispara, por baixo, uma mistura
+que nunca se repete igual (`sons.caos` em `src/engine/audio.ts`): um baque
+grave, um piano esmagado em notas que brigam, uma serra rasgada, um guincho
+de metal, louça, estática, cordas raspando e o zumbido que fica no ouvido. A
+voz do grito sai mais alta, mais aguda e distorcida.
+
+**A gritaria da cozinha** é uma cacofonia que sobe: serras desafinadas
+subindo juntas, uma multidão sem palavras, cada fala gritada na voz de quem
+gritou e do lado da tela onde ela caiu — até o corte seco, em que sobra só o
+apito no ouvido. Na escolha do Tear, as três vozes gritam por cima umas das
+outras, cada uma do seu lado, com o relógio acelerando.
+
+**Música de tensão** (`src/engine/clima.ts`), dosada por cena: um
+contrabaixo em colcheias que corre conforme a tensão, cordas que vão fechando
+em segunda menor com tremolo, um relógio, o coração, chuva na janela da casa,
+e uma caixinha de música tocando o tema no Dentro. Na casa calma, só chuva,
+os passos de Liam no assoalho (às vezes a tábua range) e as portas; quando
+os passos do pai vêm, o coração e as cordas entram de uma vez.
+
+Um limitador na saída segura tudo: os gritos podem empilhar, a caixa de som
+nunca estoura (`test/som.mjs` mede isso).
 
 Tipografia: **Bodoni Moda** nos títulos (alto contraste, dramática) e
 **Spectral** no texto — serifa desenhada para tela, que dá peso literário ao
@@ -404,6 +438,9 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | Timbre do piano e reverberação | `src/engine/musica.ts` |
 | Vestígios da cozinha | `src/game/content/demoScript.ts` (`MESA_VESTIGIOS`) |
 | **Falas da noite**: a briga, os pratos, a gritaria, a pressão no Tear, a lei do pai, a escolha, as duas conversas com a sombra, os passos | `src/game/content/noite.ts` |
+| **Vozes** (timbre de cada personagem, altura, ritmo) | `src/engine/voz.ts` (`TIMBRES`) |
+| O caos dos gritos, a cacofonia, passos, portas | `src/engine/audio.ts` (`caos`, `iniciarCacofonia`, `pisada`, `porta`) |
+| Música de tensão (pulso, cordas, relógio, caixinha, coração, chuva) | `src/engine/clima.ts`; cada cena dosa no seu `misturar()` |
 | Pratos voando e a gritaria (tempos, alvo, dano) | `src/game/scenes/demo/mesa.ts` (`ARREMESSOS_EM`, `AVISO_PRATO`, `CORRIDA`) |
 | A escolha do Tear (duração, fios queimando) | `src/game/scenes/demo/tear.ts` (`ESCOLHA_DUR`) |
 | **Cômodos da casa, portas e vestígios** | `src/game/world/casa.ts` |
@@ -461,12 +498,16 @@ a janela é fria e **não anima**, porque a manhã lá fora está congelada.
 `?cena=<id>` começa direto numa cena, sem rejogar tudo — útil para conferir um
 trecho durante a produção. Os ids são os pontos de salvamento (`abertura`,
 `prologo`, `casa`, `mesa`, `tear`, `grito`, `depois`, `fim`), mais `hospital`
-(= `abertura`) e `quarto` (a fatia antiga). Entrar assim também grava o jogo. `?segredos=melodia,nome` começa com esses segredos achados (para
+(= `abertura`) e `quarto` (a fatia antiga). Entrar assim também grava o jogo,
+e o primeiro clique ou tecla liga o som (que normalmente nasce no menu).
+`?segredos=melodia,nome` começa com esses segredos achados (para
 conferir o fecho). Nenhum deles tem efeito no jogo normal.
 
 ## Limites conhecidos
 
 - Na fatia antiga só o quarto de Liam existe; a porta leva ao cartão de capítulo.
+- As vozes não dizem as palavras: são sílabas sintetizadas no timbre de
+  cada personagem.
 - A música é toda sintetizada no navegador (piano por harmônicos, drone,
   reverberação gerada); não há áudio gravado.
 - Um lugar de salvo só (sem vários perfis), sem menu de opções, sem suporte a

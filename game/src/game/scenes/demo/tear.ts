@@ -2,6 +2,8 @@ import type { Scene, SceneCtx } from '../types'
 import { Dialogue, FONT_BODY, FONT_FIM, FIO } from '../../systems/dialogue'
 import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
+import { voz } from '../../../engine/voz'
+import { clima } from '../../../engine/clima'
 import { principal } from '../../../engine/principal'
 import {
   TEAR_CHEGADA, ADRIAN_DURANTE, CORPO,
@@ -238,6 +240,7 @@ export class TearScene implements Scene {
     this.ecos = this.ecos.filter((e) => (e.vida -= dt) > 0)
     this.baterCoracao()
     this.animar(dt)
+    this.misturar()
 
     if (this.leitor.aberto) {
       this.leitor.update(dt, ctx.input)
@@ -512,6 +515,56 @@ export class TearScene implements Scene {
   private dizer(texto: string, dur: number): void {
     this.falaAdrian = texto
     this.falaAdrianAte = this.t + dur
+    // Ele fala de trás, à esquerda de Liam.
+    const gritou = texto === texto.toUpperCase()
+    voz.dizer('Adrian', texto, { grito: gritou, pan: -0.45 })
+    if (gritou) sons.caos(0.65)
+  }
+
+  /** A música de tensão acompanha a fase da câmara. */
+  private misturar(): void {
+    const f = this.fase
+    if (this.lembranca) {
+      clima.set({ pulso: 0, cordas: 0.14, aperto: 0.1, coracao: 0, relogio: 0, caixinha: 0 }, 1.2)
+      return
+    }
+    if (f === 'chegada' || f === 'absorvendo') {
+      // Quanto mais o pai aperta, mais a música aperta junto.
+      const p = this.pressao
+      clima.set({
+        cordas: 0.16 + p * 0.5, aperto: p, pulso: p > 0.25 ? 0.25 + p * 0.55 : 0, bpm: 78 + p * 56,
+        coracao: p * 0.7, relogio: 0, caixinha: 0,
+      }, 0.8)
+    } else if (f === 'pico') {
+      clima.set({ cordas: 0.9, aperto: 1, pulso: 0.9, bpm: 150, coracao: 1 }, 1.5)
+    } else if (f === 'dentro') {
+      // Dentro da cabeça: a caixinha de música com o tema. Cada coisa
+      // arrumada aperta um pouco mais as cordas por baixo dela.
+      const m = this.montagem
+      const n = m?.arrumados ?? 0
+      if (m && m.faseAtual !== 'cortes') clima.set({ caixinha: 0, cordas: 0.3, aperto: 0.55, coracao: 0.35, pulso: 0 }, 1.2)
+      else clima.set({ caixinha: 0.55, cordas: 0.08 + n * 0.04, aperto: n * 0.08, pulso: 0, coracao: 0 }, 1)
+    } else if (f === 'lei') {
+      // Ele fala baixo. Só as cordas graves e um relógio.
+      clima.set({ cordas: 0.22, aperto: 0.15, pulso: 0, coracao: 0, caixinha: 0, relogio: 0.55, ritmoRelogio: 1 }, 2)
+    } else if (f === 'escolha') {
+      const c = Math.min(1, this.escolhaT / ESCOLHA_DUR)
+      clima.set({
+        cordas: 0.5 + c * 0.5, aperto: 0.4 + c * 0.6, pulso: 0.4 + c * 0.6, bpm: 100 + c * 72,
+        coracao: 0.4 + c * 0.6, relogio: 0.8 + c * 0.5, ritmoRelogio: 0.55 - c * 0.42, caixinha: 0,
+      }, 0.3)
+    } else if (f === 'fogo') {
+      clima.set({ cordas: 0.35, aperto: 0.9, pulso: 0, coracao: 0.5, relogio: 0 }, 0.4)
+    } else if (f === 'dentro2') {
+      clima.set({ caixinha: 0.42, cordas: 0.22, aperto: 0.35, pulso: 0, coracao: 0, relogio: 0 }, 2)
+    } else if (f === 'volta') {
+      clima.set({ caixinha: 0, cordas: 0.55, aperto: 0.8, coracao: 0.6, pulso: 0.35, bpm: 96 }, 1.5)
+    } else if (f === 'grito') {
+      clima.set({ caixinha: 0, cordas: 0.7, aperto: 1, coracao: 0.9, pulso: 0.6, bpm: 140, relogio: 0 }, 1)
+    } else {
+      // A onda e o preto: corte seco.
+      clima.parar(0.05)
+    }
   }
 
   private pico(dt: number, ctx: SceneCtx): void {
@@ -552,6 +605,7 @@ export class TearScene implements Scene {
     this.travada = !memoria.viuEscolha
     sons.iniciarFogo()
     sons.fogo(0.06, 1)
+    sons.iniciarCacofonia()
   }
 
   /** Arco 6: treze segundos, três vozes, duas setas. */
@@ -560,6 +614,7 @@ export class TearScene implements Scene {
     const calor = Math.min(1, this.escolhaT / ESCOLHA_DUR)
     this.intensidade = 0.3 + calor * 0.45
     sons.fogo(0.06 + calor * 0.22, 0.3)
+    sons.cacofonia(calor * 0.5)
     audio.setArgument(0.2 + calor * 0.5, 0.3)
 
     // As vozes por cima umas das outras, cada vez mais rápido.
@@ -572,7 +627,11 @@ export class TearScene implements Scene {
           texto: g.texto, x: pos.x + (Math.random() - 0.5) * 0.08, y: pos.y + (Math.random() - 0.5) * 0.1,
           vida: 1.9, total: 1.9, escala: 0.9 + this.idxGritoEscolha * 0.04, cor, quem: g.quem,
         })
-        if (g.texto === g.texto.toUpperCase()) this.jolt = Math.max(this.jolt, 0.7)
+        const gritou = g.texto === g.texto.toUpperCase()
+        if (gritou) this.jolt = Math.max(this.jolt, 0.7)
+        // As três vozes por cima umas das outras, cada uma do seu lado.
+        voz.dizer(g.quem, g.texto, { grito: gritou || calor > 0.6, pan: (pos.x - 0.5) * 1.6 })
+        if (gritou) sons.caos(0.45 + calor * 0.4)
       }
       this.idxGritoEscolha++
       this.proxGritoEscolha = this.escolhaT + Math.max(0.55, 1.05 - this.idxGritoEscolha * 0.05)
@@ -621,6 +680,8 @@ export class TearScene implements Scene {
     this.depoisFalado = false
     this.ecos = []
     memoria.marcarEscolha()
+    sons.cortarCacofonia(true)
+    voz.calar()
     this.jogo?.aprender('escolha')
     this.jogo?.aprender(`escolha-${r}`)
     this.queimando = r === 'mae' ? ['lia'] : r === 'lia' ? ['mae'] : ['mae', 'lia']
