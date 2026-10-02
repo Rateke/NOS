@@ -37,7 +37,8 @@ inteira no teclado, escondendo o caderno a tempo, entrando na frente do
 prato e parando de arrumar), `test/mouse.mjs` (a mesma só no mouse, sendo
 pego com o caderno e arrumando até o fim), `test/escolha.mjs` (a escolha do
 Tear numa segunda partida, salvando cada uma), `test/salvar.mjs` (salvar,
-continuar, pausar, sair), `test/som.mjs` (vozes audíveis, grito mais
+continuar, pausar, sair), `test/celular.mjs` (em pé e deitado, só no
+toque), `test/som.mjs` (vozes audíveis, grito mais
 alto que fala, nada estoura na briga) e `test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
@@ -120,6 +121,15 @@ os três caminhos são testados de ponta a ponta.
 | Escolher quem salvar, no Tear | clicar na metade dela | ← ou → | tocar na metade dela |
 | Pausar | ícone no canto de cima | Esc ou P | ícone no canto de cima |
 | Abrir o caderno | ícone no canto de baixo | C ou Tab | ícone no canto de baixo |
+
+**No celular:** o jogo é deitado. Em pé, ele para e pede para virar o
+aparelho, e continua de onde parou. Deitado, o cenário preenche a altura da
+tela. Qualquer toque passa a fala; arrastar o dedo na metade esquerda anda.
+O primeiro toque liga o som — o navegador do celular só deixa o áudio tocar
+se ele for ligado dentro de um toque — e, no Android, pede a tela inteira e
+trava deitado. No iPhone o som toca mesmo com a chave de silencioso ligada
+(Safari 16.4 em diante). Com o piano na tela, a caixa de fala sobe para não
+cobrir as teclas. `test/celular.mjs` joga isso tudo só no dedo.
 
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.

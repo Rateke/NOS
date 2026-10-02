@@ -18,6 +18,14 @@ export class Audio {
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
     if (!Ctor) return
     this.ctx = new Ctor()
+    // iPhone: sem isto, a chave de silencioso cala o jogo inteiro (o áudio
+    // de página conta como "som de ambiente"). Safari 16.4 em diante.
+    try {
+      const sessao = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+      if (sessao) sessao.type = 'playback'
+    } catch {
+      // Navegador sem audioSession: segue como sempre.
+    }
     this.master = this.ctx.createGain()
     this.master.gain.value = 0.5
     // Um limitador antes da caixa de som: os gritos podem empilhar à

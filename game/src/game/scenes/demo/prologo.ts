@@ -277,7 +277,7 @@ export class PrologoScene implements Scene {
       else if (this.fase === 'toca') {
         this.piano.drawDica(
           ctx.display,
-          `repita  ·  ${this.passo}/${this.fraseAtual.length}  ·  clique ou A S D F G H J K`,
+          `repita  ·  ${this.passo}/${this.fraseAtual.length}  ·  ${ctx.input.touchMode ? 'toque nas teclas' : 'clique ou A S D F G H J K'}`,
         )
       } else if (this.fase === 'livre') this.piano.drawDica(ctx.display, PROLOGO_LIVRE)
     }

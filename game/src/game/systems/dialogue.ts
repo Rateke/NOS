@@ -1,6 +1,7 @@
 import type { Line } from '../world/types'
 import { audio, sons } from '../../engine/audio'
 import { voz } from '../../engine/voz'
+import { pianoNaTela } from '../ui/telaPiano'
 import { PAL } from '../../engine/constants'
 
 const CHARS_PER_SEC = 42
@@ -174,7 +175,9 @@ export class Dialogue {
 
     const nameH = line.speaker ? fontSize * 1.5 : 0
     const boxH = nameH + wrapped.length * lineH + pad * 1.4
-    const boxY = cssH - boxH - pad
+    // Celular deitado com o piano na tela: a caixa vai para o alto, senão
+    // cobre as teclas.
+    const boxY = cssH < 540 && pianoNaTela() ? pad : cssH - boxH - pad
 
     ctx.save()
     ctx.fillStyle = sombra ? 'rgba(10,10,14,0.9)' : 'rgba(4,6,11,0.88)'

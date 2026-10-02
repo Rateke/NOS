@@ -969,7 +969,7 @@ export class CasaScene implements Scene {
     const { cssW, cssH } = ctx.display
     if (this.tocando) {
       this.piano.draw(ctx.display, {})
-      this.piano.drawDica(ctx.display, 'toque o que quiser  ·  A S D F G H J K  ·  E ou Esc levanta')
+      this.piano.drawDica(ctx.display, ctx.input.touchMode ? 'toque o que quiser  ·  toque fora das teclas para levantar' : 'toque o que quiser  ·  A S D F G H J K  ·  E ou Esc levanta')
     } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa) {
       this.drawInterface(ctx, cam)
       if (!this.dialogue.active && !this.saindo) this.caderno.draw(c, cssW, cssH, ctx.state.novidade)

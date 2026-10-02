@@ -10,6 +10,7 @@ import { principal } from './engine/principal'
 import { audio, sons } from './engine/audio'
 import { musica } from './engine/musica'
 import { clima } from './engine/clima'
+import { FONT_BODY } from './game/systems/dialogue'
 import { voz } from './engine/voz'
 import { salvo, ORDEM_PONTOS } from './game/systems/salvo'
 import type { Ponto } from './game/systems/salvo'
@@ -85,18 +86,87 @@ function ctxPara(dona: Scene): SceneCtx {
 let ctx = ctxPara(scene)
 
 /**
- * Quem entra direto numa cena (`?cena=`) não passa pelo menu, que é onde o
- * som nasce: o primeiro toque liga o áudio aqui também.
+ * O som no celular. O navegador do celular (o do iPhone principalmente) só
+ * deixa o áudio tocar se ele for ligado dentro do próprio toque — no fim do
+ * toque, não no começo e nem um quadro depois. Então todo toque, clique e
+ * tecla passa por aqui: cria o som se ele ainda não existe (é o caso de quem
+ * entra direto numa cena com `?cena=`) e acorda o som se o aparelho o
+ * suspendeu (uma ligação, o app em segundo plano). A pausa suspende de
+ * propósito: com ela aberta, ele fica quieto.
  */
-function ligarSomNoPrimeiroToque(): void {
-  if (audio.contexto) return
-  audio.init()
-  audio.resume()
-  audio.startAmbient()
-  musica.iniciarPad()
+function destravarSom(): void {
+  if (!audio.contexto) {
+    audio.init()
+    audio.startAmbient()
+    musica.iniciarPad()
+  }
+  const c = audio.contexto
+  if (c && c.state !== 'running' && !pausa.aberta) void c.resume()
+  telaCheiaNoCelular()
 }
-window.addEventListener('pointerdown', ligarSomNoPrimeiroToque, { once: true })
-window.addEventListener('keydown', ligarSomNoPrimeiroToque, { once: true })
+for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) {
+  window.addEventListener(ev, destravarSom, { capture: true })
+}
+
+/**
+ * No celular, o primeiro toque pede a tela inteira e trava o aparelho
+ * deitado (no Android; o iPhone não deixa página nenhuma fazer isso, e lá
+ * vale o aviso de virar o celular). Se o navegador recusar, segue normal.
+ */
+let pediuTelaCheia = false
+function telaCheiaNoCelular(): void {
+  if (pediuTelaCheia || !input.touchMode) return
+  pediuTelaCheia = true
+  const el = document.documentElement
+  if (!el.requestFullscreen || document.fullscreenElement) return
+  el.requestFullscreen({ navigationUI: 'hide' })
+    .then(() => {
+      const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }
+      return o.lock?.('landscape')
+    })
+    .catch(() => {
+      // Dentro de um iframe, ou o navegador não quis: tudo bem.
+    })
+}
+
+/** Celular em pé: o jogo é deitado. Para tudo e pede para virar. */
+function celularEmPe(): boolean {
+  const toque = input.touchMode || navigator.maxTouchPoints > 0
+  return toque && display.cssH > display.cssW && display.cssW < 600
+}
+
+let tempoGire = 0
+function desenharGire(c: CanvasRenderingContext2D, w: number, h: number, dt: number): void {
+  tempoGire += dt
+  c.save()
+  c.fillStyle = '#000'
+  c.fillRect(0, 0, w, h)
+  // Um celular de contorno que deita e levanta, devagar.
+  const ciclo = (tempoGire % 3) / 3
+  const ang = ciclo < 0.35 ? 0 : ciclo < 0.6 ? ((ciclo - 0.35) / 0.25) * (Math.PI / 2) : Math.PI / 2
+  const s = Math.min(w, h) * 0.12
+  c.translate(w / 2, h * 0.42)
+  c.rotate(-ang)
+  c.strokeStyle = 'rgba(230,226,216,0.8)'
+  c.lineWidth = 2
+  c.beginPath()
+  c.roundRect(-s * 0.5, -s * 0.9, s, s * 1.8, s * 0.14)
+  c.stroke()
+  c.beginPath()
+  c.arc(0, s * 0.72, s * 0.06, 0, Math.PI * 2)
+  c.stroke()
+  c.restore()
+  c.save()
+  c.fillStyle = 'rgba(230,226,216,0.86)'
+  c.textAlign = 'center'
+  const fs = Math.max(16, Math.min(w / 18, 24))
+  c.font = `${fs}px ${FONT_BODY}`
+  c.fillText('Vire o celular de lado.', w / 2, h * 0.62)
+  c.fillStyle = 'rgba(230,226,216,0.45)'
+  c.font = `italic ${fs * 0.78}px ${FONT_BODY}`
+  c.fillText('O jogo continua de onde parou.', w / 2, h * 0.62 + fs * 1.6)
+  c.restore()
+}
 
 /**
  * Chegar numa cena. Se ela é um ponto de salvamento, o jogo grava antes de
@@ -163,6 +233,13 @@ let mexeuHa = Infinity
 entrar(scene)
 
 function step(dt: number): void {
+  if (celularEmPe()) {
+    input.consumeTap()
+    input.consumeConfirm()
+    desenharGire(display.ctx, display.cssW, display.cssH, dt)
+    input.endFrame()
+    return
+  }
   if (fade !== fadeTarget) {
     const dir = Math.sign(fadeTarget - fade)
     fade = Math.max(0, Math.min(1, fade + dir * fadeRate * dt))

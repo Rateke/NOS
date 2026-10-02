@@ -153,9 +153,12 @@ export class Display {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     // Escala inteira sempre que couber; abaixo disso, aceita fracionária para
-    // não deixar tarja enorme em janelas pequenas.
+    // não deixar tarja enorme em janelas pequenas. Em tela de celular
+    // (deitado, a altura fica perto de 400px) a inteira seria 1x e o cenário
+    // ocuparia menos da metade da tela: lá ele preenche a altura inteira.
     const raw = Math.min(this.cssW / WORLD_W, this.cssH / WORLD_H)
-    this.scale = raw >= 1 ? Math.floor(raw) : raw
+    const celular = Math.min(this.cssW, this.cssH) < 540
+    this.scale = raw >= 1 && !celular ? Math.floor(raw) : raw
     this.offsetX = Math.floor((this.cssW - WORLD_W * this.scale) / 2)
     this.offsetY = Math.floor((this.cssH - WORLD_H * this.scale) / 2)
   }

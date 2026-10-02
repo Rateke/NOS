@@ -1,4 +1,5 @@
 import type { Input } from '../../engine/input'
+import { telaPiano } from '../ui/telaPiano'
 import type { Display } from '../../engine/display'
 import { ESCALA, NOMES_NOTA, musica } from '../../engine/musica'
 import { PAL } from '../../engine/constants'
@@ -74,6 +75,7 @@ export class Piano {
   }
 
   draw(display: Display, opcoes: OpcoesPiano = {}): void {
+    telaPiano.ultimo = performance.now()
     const c = display.ctx
     const { cssW, cssH } = display
     const fantasma = opcoes.fantasma ?? false

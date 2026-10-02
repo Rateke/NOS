@@ -112,14 +112,14 @@ export class Input {
       this.touchMode = true
       this.anyQueued = true
       for (const t of Array.from(e.changedTouches)) {
-        if (t.clientX < window.innerWidth / 2) {
-          if (this.stickId === null) {
-            this.stickId = t.identifier
-            this.stick = { ox: t.clientX, oy: t.clientY, x: t.clientX, y: t.clientY }
-          }
-        } else {
-          this.confirmQueued = true
+        // Metade esquerda também vira o direcional, se o dedo arrastar.
+        if (t.clientX < window.innerWidth / 2 && this.stickId === null) {
+          this.stickId = t.identifier
+          this.stick = { ox: t.clientX, oy: t.clientY, x: t.clientX, y: t.clientY }
         }
+        // Qualquer toque confirma, como o clique do mouse: quem joga no
+        // celular toca em qualquer lugar para passar a fala.
+        this.confirmQueued = true
         this.pointer = { x: t.clientX, y: t.clientY }
         this.tapQueued = { x: t.clientX, y: t.clientY }
         this.pointerDown = true
