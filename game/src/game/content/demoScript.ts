@@ -13,22 +13,22 @@ import { DOC_BILHETE_CATARINA } from './documentos'
 
 export const PROLOGO_ABERTURA: Line[] = [
   { text: 'A sala é o único lugar quente da casa. Principalmente quando ele está de bom humor.' },
-  { speaker: 'Adrian', text: 'Senta aqui. Não, mais perto. Assim.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Pega o violino. Fica aí, do lado do piano. Assim.', style: 'speech' },
   { speaker: 'Adrian', text: 'Meu avô tocava isso pra minha mãe dormir. Ninguém nunca me ensinou direito — eu aprendi escutando atrás da porta.', style: 'speech' },
-  { speaker: 'Adrian', text: 'Então escuta primeiro. Depois você faz.', style: 'speech' },
+  { speaker: 'Adrian', text: 'Eu toco no piano. Você responde no violino. Escuta primeiro. Depois você faz.', style: 'speech' },
 ]
 
 /** Uma linha por frase do tema, dita antes de Adrian tocá-la. */
 export const PROLOGO_FRASES: Line[][] = [
-  [{ speaker: 'Adrian', text: 'Essa é a primeira parte. Ela sobe e para, como quem vai perguntar alguma coisa.', style: 'speech' }],
-  [{ speaker: 'Adrian', text: 'Agora ela cresce. Presta atenção no fim: ela não fecha.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Essa é a primeira parte. Ela pula lá pra cima e suspira, como quem vai perguntar alguma coisa e desiste.', style: 'speech' }],
+  [{ speaker: 'Adrian', text: 'Agora ela cresce até o alto. Presta atenção no fim: ela desce torta e não fecha.', style: 'speech' }],
   [{ speaker: 'Adrian', text: 'E essa desce tudo, até onde começou. É aqui que ela descansa.', style: 'speech' }],
 ]
 
 export const PROLOGO_ACERTOU_FRASE: Line[][] = [
   [
     { speaker: 'Adrian', text: 'Isso. Sem pressa.', style: 'speech' },
-    { text: 'A mão dele no meu ombro. Leve.' },
+    { text: 'O piano dele embaixo do meu violino. Juntos, a sala inteira treme.' },
   ],
   [
     { speaker: 'Adrian', text: 'Você pega rápido. Mais rápido que eu, na sua idade.', style: 'speech' },
@@ -36,10 +36,46 @@ export const PROLOGO_ACERTOU_FRASE: Line[][] = [
   [{ speaker: 'Adrian', text: 'Inteira. Na primeira noite.', style: 'speech' }],
 ]
 
+/** A bronca da primeira vez: ele não grita. Bate no piano e fala baixo. */
 export const PROLOGO_ERRO: Line[][] = [
-  [{ speaker: 'Adrian', text: 'Calma. De novo, do começo.', style: 'speech' }],
-  [{ speaker: 'Adrian', text: 'Quase. Escuta mais uma vez.', style: 'speech' }],
-  [{ text: 'Ele não levanta a voz. Nunca levanta aqui.' }],
+  [
+    { speaker: 'Adrian', text: 'Não. Para.', style: 'speech' },
+    { speaker: 'Adrian', text: 'Você não tá escutando. Do começo.', style: 'speech' },
+  ],
+  [
+    { speaker: 'Adrian', text: 'Liam. Olha pra mim.', style: 'speech' },
+    { speaker: 'Adrian', text: 'Eu toco, você escuta, depois você toca. Não é difícil.', style: 'speech' },
+  ],
+  [
+    { speaker: 'Adrian', text: 'De novo.', style: 'speech' },
+    { text: 'A voz dele não sobe. Ainda. A mão dele fica parada em cima das teclas, esperando.' },
+  ],
+]
+
+/**
+ * Depois de zerar, a bronca vira grito — e ele sabe que você já esteve
+ * aqui. Liam precisa segurar a respiração no lugar enquanto o arco treme.
+ */
+export const PROLOGO_GRITO: Line[][] = [
+  [
+    { speaker: 'Adrian', text: 'ERROU?! DE NOVO?!', style: 'speech', grito: true },
+    { speaker: 'Adrian', text: 'Agora vê se não erra. Você já passou por aqui. Já sabe como as coisas funcionam.', style: 'speech' },
+  ],
+  [
+    { speaker: 'Adrian', text: 'DE NOVO, LIAM?!', style: 'speech', grito: true },
+    { speaker: 'Adrian', text: 'Respira e toca. Do jeito que eu ensinei.', style: 'speech' },
+  ],
+]
+
+/** O arco treme na corda enquanto ele tenta respirar. */
+export const PROLOGO_RESPIRA: Line[] = [
+  { text: 'O arco treme em cima da corda. Se eu tirar, ele percebe.' },
+]
+export const PROLOGO_RESPIROU: Line[] = [
+  { text: 'O arco para de tremer. Quase.' },
+]
+export const PROLOGO_NAO_RESPIROU: Line[] = [
+  { text: 'O arco não para. Ele ouve. Ele sempre ouve.' },
 ]
 
 /** O elogio e a função instalada na mesma frase. */
@@ -50,7 +86,7 @@ export const PROLOGO_ACERTO: Line[] = [
   { speaker: 'Adrian', text: 'Por isso eu conto com você.', style: 'speech' },
 ]
 
-export const PROLOGO_LIVRE = 'toque à vontade'
+export const PROLOGO_LIVRE = 'toque à vontade no violino'
 
 export const PROLOGO_FECHO: Line[] = [
   { text: 'Eu gostava quando ele falava assim.' },

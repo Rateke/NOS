@@ -240,7 +240,8 @@ export class Dialogue {
     const boxH = nameH + wrapped.length * lineH + pad * 1.4
     // Celular deitado com o piano na tela: a caixa vai para o alto, senão
     // cobre as teclas.
-    const boxY = cssH < 540 && pianoNaTela() ? pad : cssH - boxH - pad
+    // Com o piano ou o violino na tela, a fala sobe: as notas ficam à vista.
+    const boxY = pianoNaTela() ? pad : cssH - boxH - pad
 
     ctx.save()
     ctx.fillStyle = sombra ? 'rgba(10,10,14,0.9)' : 'rgba(4,6,11,0.88)'

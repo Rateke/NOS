@@ -18,6 +18,9 @@ export interface OpcoesPiano {
   travado?: boolean
 }
 
+/** O que soa e o que aparece na tela: o teclado do pai ou o violino do Liam. */
+export type Instrumento = 'piano' | 'violino'
+
 /**
  * O piano.
  *
@@ -31,6 +34,10 @@ export class Piano {
   /** Brilho de cada tecla recém-tocada, 0 a 1. */
   private brilho = new Array(8).fill(0)
   private ultima = -1
+  /** No prólogo o Liam toca violino: a mesma entrada, outro instrumento. */
+  instrumento: Instrumento = 'piano'
+  /** 0..1: o arco tremendo na corda (o nervoso). */
+  tremor = 0
 
   update(dt: number): void {
     for (let i = 0; i < this.brilho.length; i++) {
@@ -43,6 +50,8 @@ export class Piano {
     const f = ESCALA[i]
     if (f === undefined) return
     musica.nota(f, forca)
+    // A oitava de baixo, junto: o piano dele é pesado.
+    musica.nota(f / 2, forca * 0.38)
     this.brilho[i] = 1
     this.ultima = i
   }
@@ -68,7 +77,13 @@ export class Piano {
 
     const f = ESCALA[i]
     if (f === undefined) return null
-    musica.nota(f, 1)
+    if (this.instrumento === 'violino') {
+      // O violino, uma oitava acima do piano: arco atacado, curto e cheio.
+      musica.arco('violino', f * 2, 1.25, 1.5 - this.tremor * 0.4, 'piano', 0.05)
+    } else {
+      musica.nota(f, 1)
+      musica.nota(f / 2, 0.38)
+    }
     this.brilho[i] = 1
     this.ultima = i
     return i
@@ -79,6 +94,10 @@ export class Piano {
     const c = display.ctx
     const { cssW, cssH } = display
     const fantasma = opcoes.fantasma ?? false
+    if (this.instrumento === 'violino') {
+      this.desenharBraco(c, cssW, cssH, opcoes)
+      return
+    }
 
     const larg = Math.min(cssW * 0.62, 620)
     const lt = larg / 8
@@ -132,6 +151,86 @@ export class Piano {
       c.fillStyle = fantasma ? 'rgba(200,190,220,0.3)' : 'rgba(40,30,28,0.38)'
       c.font = `${Math.round(lt * 0.23)}px ${FONT_BODY}`
       c.fillText(NOMES_NOTA[i] ?? '', x + lt / 2 - 1, y0 + alt - lt * 0.18)
+    }
+    c.restore()
+  }
+
+  /**
+   * O braço do violino, deitado na tela: ébano escuro, as quatro cordas, e
+   * oito lugares para o dedo — o mesmo A S D F G H J K do piano.
+   */
+  private desenharBraco(c: CanvasRenderingContext2D, cssW: number, cssH: number, opcoes: OpcoesPiano): void {
+    const larg = Math.min(cssW * 0.6, 600)
+    const lt = larg / 8
+    const alt = Math.min(lt * 0.9, cssH * 0.075)
+    const x0 = (cssW - larg) / 2
+    const y0 = cssH - alt - Math.max(34, cssH * 0.09)
+    const treme = this.tremor > 0 ? (Math.random() - 0.5) * this.tremor * 3 : 0
+    c.save()
+    c.translate(0, treme)
+    this.caixas = []
+    // A voluta à esquerda e o corpo à direita, só a borda.
+    c.fillStyle = 'rgba(86,44,22,0.95)'
+    c.beginPath()
+    c.ellipse(x0 + larg + 18, y0 + alt / 2, 22, alt * 0.9, 0, Math.PI / 2, -Math.PI / 2, true)
+    c.fill()
+    c.fillStyle = 'rgba(40,20,12,0.95)'
+    c.beginPath()
+    c.arc(x0 - 18, y0 + alt / 2, alt * 0.42, 0, Math.PI * 2)
+    c.fill()
+    c.strokeStyle = 'rgba(150,96,52,0.8)'
+    c.lineWidth = 2
+    c.beginPath()
+    c.arc(x0 - 18, y0 + alt / 2, alt * 0.22, 0, Math.PI * 1.6)
+    c.stroke()
+    // O espelho de ébano.
+    const g = c.createLinearGradient(0, y0, 0, y0 + alt)
+    g.addColorStop(0, '#1c1612')
+    g.addColorStop(0.5, '#0e0b09')
+    g.addColorStop(1, '#1c1612')
+    c.fillStyle = g
+    c.fillRect(x0 - 4, y0, larg + 8, alt)
+    c.fillStyle = 'rgba(200,160,110,0.18)'
+    c.fillRect(x0 - 4, y0, larg + 8, 1)
+    // As quatro cordas.
+    for (let k = 0; k < 4; k++) {
+      const yc = y0 + alt * (0.2 + k * 0.2)
+      c.fillStyle = k < 2 ? 'rgba(226,218,200,0.75)' : 'rgba(200,170,120,0.75)'
+      c.fillRect(x0 - 10, yc, larg + 40, k < 2 ? 1 : 2)
+    }
+    for (let i = 0; i < 8; i++) {
+      const x = x0 + i * lt
+      this.caixas.push({ x, y: y0 - alt * 0.3, w: lt - 2, h: alt * 1.6 })
+      const b = this.brilho[i] ?? 0
+      const cx = x + lt / 2
+      const cy = y0 + alt / 2
+      const r = Math.min(lt, alt) * 0.26
+      // O lugar do dedo: um ponto de madrepérola que acende quando soa.
+      if (b > 0) {
+        const halo = c.createRadialGradient(cx, cy, 0, cx, cy, r * 3)
+        halo.addColorStop(0, `rgba(255,214,150,${b * 0.55})`)
+        halo.addColorStop(1, 'rgba(255,214,150,0)')
+        c.fillStyle = halo
+        c.fillRect(cx - r * 3, cy - r * 3, r * 6, r * 6)
+      }
+      c.fillStyle = b > 0 ? `rgba(255,236,200,${0.6 + b * 0.4})` : 'rgba(222,214,198,0.55)'
+      c.beginPath()
+      c.arc(cx, cy, r * (1 + b * 0.25), 0, Math.PI * 2)
+      c.fill()
+      if (opcoes.destaque === i) {
+        c.strokeStyle = `rgba(217,178,95,${0.55 + Math.sin(performance.now() / 180) * 0.35})`
+        c.lineWidth = 2
+        c.beginPath()
+        c.arc(cx, cy, r * 1.9, 0, Math.PI * 2)
+        c.stroke()
+      }
+      c.textAlign = 'center'
+      c.fillStyle = 'rgba(232,224,210,0.62)'
+      c.font = `${Math.round(Math.min(lt * 0.26, 20))}px ${FONT_BODY}`
+      c.fillText(LETRAS[i] ?? '', cx, y0 - alt * 0.18)
+      c.fillStyle = 'rgba(232,224,210,0.4)'
+      c.font = `${Math.round(Math.min(lt * 0.2, 15))}px ${FONT_BODY}`
+      c.fillText(NOMES_NOTA[i] ?? '', cx, y0 + alt + alt * 0.42)
     }
     c.restore()
   }

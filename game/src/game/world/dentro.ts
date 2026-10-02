@@ -156,7 +156,7 @@ export class Montagem {
     // Uma nota do tema a cada corte, limpa — aqui dentro ele ainda é afinado.
     const graus = TEMA.flat()
     const f = ESCALA[graus[i % graus.length] ?? 0]
-    if (f) musica.nota(f / 2, 0.55, 4)
+    if (f) musica.nota(f, 0.55, 4)
     const falas = [...(i === 0 ? this.antesDoPrimeiro : []), ...(DENTRO_RECORTES[i] ?? [])]
     // Quem entrou na frente do prato na cozinha ouve isso no recorte da mãe.
     if (i === 3 && this.estado?.sabe.has('prato-na-frente')) falas.push(DENTRO_PRATOS_NA_FRENTE)

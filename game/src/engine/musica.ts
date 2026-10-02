@@ -12,19 +12,24 @@
  */
 
 /** Ré menor natural, de D4 a D5. As oito teclas do piano da cena. */
-export const ESCALA = [293.66, 329.63, 349.23, 392.0, 440.0, 466.16, 523.25, 587.33]
-export const NOMES_NOTA = ['ré', 'mi', 'fá', 'sol', 'lá', 'sí♭', 'dó', 'ré']
+/**
+ * Ré menor harmônico, uma oitava abaixo do dó central: o dó sustenido puxa
+ * para casa e o si bemol pesa em cima do lá. O violino toca uma oitava
+ * acima disto; o piano do pai, aqui e embaixo.
+ */
+export const ESCALA = [146.83, 164.81, 174.61, 196.0, 220.0, 233.08, 277.18, 293.66]
+export const NOMES_NOTA = ['ré', 'mi', 'fá', 'sol', 'lá', 'si♭', 'dó♯', 'ré']
 
 /**
  * O tema, em graus da escala acima.
- * 1: enunciado — sobe e hesita.
- * 2: extensão — vai mais alto e não resolve.
- * 3: queda — desce inteira, até o começo.
+ * 1: a pergunta — salta uma quinta, sobe meio tom e suspira de volta.
+ * 2: cresce até a oitava e desce torto pelo dó sustenido, sem fechar.
+ * 3: a queda — desce inteira, com uma volta no meio, até onde começou.
  */
 export const TEMA: readonly (readonly number[])[] = [
-  [0, 2, 4, 3],
-  [0, 2, 4, 6, 5],
-  [0, 2, 4, 3, 2, 1, 0],
+  [0, 4, 5, 4],
+  [0, 4, 7, 6, 5],
+  [7, 5, 4, 2, 3, 1, 0],
 ]
 
 export class Musica {
@@ -221,13 +226,20 @@ export class Musica {
    * corpo do instrumento em três ressonâncias, o chiado da crina por cima e
    * um vibrato que só entra depois do ataque, como num arco de verdade.
    */
-  arco(tipo: 'violoncelo' | 'violino', freq: number, duracao = 4, forca = 0.5, bus: 'piano' | 'fundo' = 'fundo'): void {
+  /**
+   * `ataque` curto é arco atacado de verdade (alguém tocando agora); o
+   * padrão, lento, é a corda que entra por baixo da música.
+   */
+  arco(
+    tipo: 'violoncelo' | 'violino', freq: number, duracao = 4, forca = 0.5,
+    bus: 'piano' | 'fundo' = 'fundo', ataqueDado?: number,
+  ): void {
     const ctx = this.ctx
     if (!ctx || !this.saida || !this.envioReverb) return
     const destino = bus === 'fundo' && this.fundo ? this.fundo : null
     const f = freq * Math.pow(2, this.desafinado / 12)
     const t = ctx.currentTime
-    const ataque = tipo === 'violoncelo' ? 0.45 : 0.35
+    const ataque = ataqueDado ?? (tipo === 'violoncelo' ? 0.45 : 0.35)
     const pico = (tipo === 'violoncelo' ? 0.075 : 0.05) * forca
     const env = ctx.createGain()
     env.gain.setValueAtTime(0, t)
@@ -375,6 +387,7 @@ const N = {
   G1: 49.0, A1: 55.0, Bb1: 58.27, D2: 73.42, F2: 87.31, G2: 98.0, A2: 110.0, Bb2: 116.54,
   C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.0, A3: 220.0, Bb3: 233.08,
   C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0,
+  Cs3: 138.59, Cs4: 277.18, Cs5: 554.37, D5: 587.33,
 } as const
 
 export interface Evento {
@@ -410,9 +423,9 @@ export const TEMA_PRINCIPAL: Evento[] = (() => {
   const BAR = 7.2
   const acordes: { baixo: number; dentro: number[]; cordas: number[] }[] = [
     { baixo: N.D2, dentro: [N.F3, N.A3], cordas: [N.D3, N.F3, N.A3] },
-    { baixo: N.Bb1, dentro: [N.D3, N.A3], cordas: [N.Bb2, N.D3, N.A3] },
-    { baixo: N.G1, dentro: [N.Bb2, N.D3], cordas: [N.G2, N.Bb2, N.D3] },
-    { baixo: N.A1, dentro: [N.D3, N.E3], cordas: [N.A2, N.D3, N.E3] },
+    { baixo: N.A1, dentro: [N.Cs3, N.E3], cordas: [N.A2, N.Cs3, N.E3] },
+    { baixo: N.Bb1, dentro: [N.D3, N.F3], cordas: [N.Bb2, N.D3, N.F3] },
+    { baixo: N.A1, dentro: [N.E3, N.G3], cordas: [N.A2, N.E3, N.G3] },
   ]
   acordes.forEach((a, i) => {
     const t0 = i * BAR
@@ -426,21 +439,21 @@ export const TEMA_PRINCIPAL: Evento[] = (() => {
   })
   // O violoncelo (o pai) segura o baixo de cada acorde, baixinho; o
   // violino (a Lia) aparece em notas longas por cima, quase sem ser ouvido.
-  const raizes = [N.D2, N.Bb2, N.G2, N.A2]
+  const raizes = [N.D2, N.A2, N.Bb2, N.A2]
   raizes.forEach((f, i) => ev.push({ t: i * BAR + 0.3, freq: f, forca: 0.42, dur: BAR - 0.2, arco: 'violoncelo' }))
   const violino: [number, number, number][] = [
-    [BAR * 0 + 3.2, 440, 3.6],
-    [BAR * 1 + 4.0, 466.16, 2.8],
-    [BAR * 1 + 6.6, 440, 2.4],
-    [BAR * 3 + 2.0, 587.33, 4.8],
+    [BAR * 0 + 3.2, N.A4, 3.6],
+    [BAR * 1 + 4.0, N.Cs5, 2.8],
+    [BAR * 2 + 3.0, N.D5, 3.2],
+    [BAR * 3 + 2.0, N.Cs5, 4.8],
   ]
   for (const [t, freq, dur] of violino) ev.push({ t, freq, forca: 0.32, dur, arco: 'violino' })
-  // O tema do Adrian, uma oitava abaixo, espalhado pelos quatro compassos.
+  // O tema do Adrian, no grave, espalhado pelos quatro compassos.
   const melodia: [number, number][] = [
-    [2.6, N.D3], [3.7, N.F3], [4.8, N.A3], [6.2, N.G3],
-    [BAR + 2.6, N.D3], [BAR + 3.6, N.F3], [BAR + 4.6, N.A3], [BAR + 5.6, N.C4], [BAR + 6.6, N.Bb3],
-    [BAR * 2 + 2.6, N.A3], [BAR * 2 + 3.8, N.G3], [BAR * 2 + 5.0, N.F3],
-    [BAR * 3 + 2.6, N.E3], [BAR * 3 + 4.4, N.D3],
+    [2.6, N.D3], [3.7, N.A3], [4.8, N.Bb3], [6.2, N.A3],
+    [BAR + 2.6, N.D3], [BAR + 3.6, N.A3], [BAR + 4.6, N.D4], [BAR + 5.6, N.Cs4], [BAR + 6.6, N.Bb3],
+    [BAR * 2 + 2.2, N.D4], [BAR * 2 + 3.2, N.Bb3], [BAR * 2 + 4.2, N.A3], [BAR * 2 + 5.6, N.F3],
+    [BAR * 3 + 2.0, N.G3], [BAR * 3 + 3.4, N.E3], [BAR * 3 + 4.8, N.D3],
   ]
   for (const [t, freq] of melodia) ev.push({ t, freq, forca: 0.36, dur: 4.6 })
   // Na versão completa a melodia ganha a oitava de cima, bem baixinho.

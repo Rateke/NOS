@@ -17,7 +17,7 @@ const URL = process.env.URL ?? 'http://localhost:4173/'
 if (OUT) mkdirSync(OUT, { recursive: true })
 
 /** O tema, em graus da escala. Tem de bater com engine/musica.ts. */
-const TEMA = [[0, 2, 4, 3], [0, 2, 4, 6, 5], [0, 2, 4, 3, 2, 1, 0]]
+const TEMA = [[0, 4, 5, 4], [0, 4, 7, 6, 5], [7, 5, 4, 2, 3, 1, 0]]
 const TECLAS = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK']
 
 const falhas = []
@@ -207,7 +207,8 @@ esperar('a parede esquerda da sala segura Liam', (await estado()).x >= 20, true)
 // O piano da sala continua tocável. O tema ao contrário é um segredo.
 await andarAte(156); await page.keyboard.press('KeyE'); await page.waitForTimeout(300); await limpar()
 esperar('Liam senta ao piano da sala', await page.evaluate(() => window.__nos.scene.sentadoAoPiano), true)
-await tecla(['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyD', 'KeyA'])
+// O tema ao contrário: a última frase, de baixo para cima.
+await tecla([...TEMA[2]].reverse().map((g) => TECLAS[g]))
 await page.waitForTimeout(400)
 await limpar()
 esperar('o tema subindo é um segredo', (await segredos()).includes('melodia'), true)

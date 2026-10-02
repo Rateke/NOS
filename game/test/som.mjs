@@ -39,8 +39,14 @@ const n = await page.evaluate(async () => {
   const ctx = j.audio.contexto
   const an = ctx.createAnalyser()
   an.fftSize = 2048
+  // O equilíbrio (voz, piano, grito) se mede na mistura; o pico, no que
+  // chega na caixa de som, depois dos graves, do limitador e da saturação.
   j.audio.saida.connect(an)
+  const saida = ctx.createAnalyser()
+  saida.fftSize = 2048
+  j.audio.final.connect(saida)
   const buf = new Float32Array(an.fftSize)
+  const buf2 = new Float32Array(saida.fftSize)
   const medir = async (fn, ms) => {
     fn()
     let soma = 0
@@ -49,11 +55,10 @@ const n = await page.evaluate(async () => {
     const fim = performance.now() + ms
     while (performance.now() < fim) {
       an.getFloatTimeDomainData(buf)
+      saida.getFloatTimeDomainData(buf2)
       let s = 0
-      for (const v of buf) {
-        s += v * v
-        pico = Math.max(pico, Math.abs(v))
-      }
+      for (const v of buf) s += v * v
+      for (const v of buf2) pico = Math.max(pico, Math.abs(v))
       const rms = Math.sqrt(s / buf.length)
       if (rms > 0.0005) {
         soma += rms

@@ -9,6 +9,7 @@ export class Audio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private limitador: DynamicsCompressorNode | null = null
+  private saturacao: WaveShaperNode | null = null
   private ambientGain: GainNode | null = null
   private started = false
 
@@ -27,16 +28,39 @@ export class Audio {
       // Navegador sem audioSession: segue como sempre.
     }
     this.master = this.ctx.createGain()
-    this.master.gain.value = 0.5
+    this.master.gain.value = 0.85
+    // Os graves pesam: o piano do pai, o violoncelo, os baques, as portas.
+    const graves = this.ctx.createBiquadFilter()
+    graves.type = 'lowshelf'
+    graves.frequency.value = 120
+    graves.gain.value = 5
+    const sub = this.ctx.createBiquadFilter()
+    sub.type = 'peaking'
+    sub.frequency.value = 58
+    sub.Q.value = 1
+    sub.gain.value = 4
     // Um limitador antes da caixa de som: os gritos podem empilhar à
     // vontade, a saída nunca estoura.
     this.limitador = this.ctx.createDynamicsCompressor()
-    this.limitador.threshold.value = -4
+    this.limitador.threshold.value = -3
     this.limitador.knee.value = 2
     this.limitador.ratio.value = 20
     this.limitador.attack.value = 0.001
     this.limitador.release.value = 0.12
-    this.master.connect(this.limitador).connect(this.ctx.destination)
+    // E uma saturação suave no fim: encorpa o que é baixo e arredonda o que
+    // passou do limitador. Nada sai acima de 0,94.
+    this.saturacao = this.ctx.createWaveShaper()
+    const n = 2048
+    const curva = new Float32Array(n)
+    const k = Math.tanh(1.3)
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * 2 - 1
+      curva[i] = (0.94 * Math.tanh(1.3 * x)) / k
+    }
+    this.saturacao.curve = curva
+    // Sem sobreamostragem: o filtro dela ressoa e passaria um pouco do teto.
+    this.saturacao.oversample = 'none'
+    this.master.connect(graves).connect(sub).connect(this.limitador).connect(this.saturacao).connect(this.ctx.destination)
     musica.conectar(this.ctx, this.master)
   }
 
@@ -55,7 +79,7 @@ export class Audio {
 
   /** O que chega na caixa de som, depois do limitador (para medir). */
   get final(): AudioNode | null {
-    return this.limitador
+    return this.saturacao
   }
 
   startAmbient(): void {

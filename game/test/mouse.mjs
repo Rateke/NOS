@@ -18,7 +18,7 @@ const URL = process.env.URL ?? 'http://localhost:4173/'
 if (OUT) mkdirSync(OUT, { recursive: true })
 
 /** O tema, em graus da escala. Tem de bater com engine/musica.ts. */
-const TEMA = [[0, 2, 4, 3], [0, 2, 4, 6, 5], [0, 2, 4, 3, 2, 1, 0]]
+const TEMA = [[0, 4, 5, 4], [0, 4, 7, 6, 5], [7, 5, 4, 2, 3, 1, 0]]
 const TECLAS = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK']
 
 const falhas = []
@@ -192,7 +192,7 @@ const achou = (n) => async () => ((await estado()).achados ?? 0) >= n
 const sentado = () => page.evaluate(() => !!window.__nos?.scene?.sentadoAoPiano)
 esperar('clicar no piano senta Liam no banco', await irEUsar(156, sentado), true)
 await page.waitForTimeout(500)
-for (const i of [0, 1, 2, 3, 4, 2, 0]) {
+for (const i of [...TEMA[2]].reverse()) {
   const r = (await caixas())[i]
   if (r) await page.mouse.click(r.x + r.w / 2, r.y + r.h / 2)
   await page.waitForTimeout(280)

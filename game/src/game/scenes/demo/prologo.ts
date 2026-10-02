@@ -2,14 +2,16 @@ import type { Scene, SceneCtx } from '../types'
 import { Dialogue } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
 import { audio } from '../../../engine/audio'
-import { musica, TEMA } from '../../../engine/musica'
+import { musica, TEMA, ESCALA } from '../../../engine/musica'
 import { Figura, VISUAL } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
-import { drawSalaFundo, drawSalaFrente, drawLuzSala, LUZ_PIANO, BANCO_Y, PIANO } from '../../world/sala'
+import { drawSalaFundo, drawSalaFrente, drawLuzSala, LUZ_PIANO, BANCO_Y, PIANO, PASSO_Y } from '../../world/sala'
 import {
   PROLOGO_ABERTURA, PROLOGO_FRASES, PROLOGO_ACERTOU_FRASE, PROLOGO_ERRO,
   PROLOGO_ACERTO, PROLOGO_LIVRE, PROLOGO_FECHO, PROLOGO_SUBINDO,
+  PROLOGO_GRITO, PROLOGO_RESPIRA, PROLOGO_RESPIROU, PROLOGO_NAO_RESPIROU,
 } from '../../content/demoScript'
+import { Respiracao } from '../../ui/respiracao'
 import { CasaScene } from './casa'
 import { Etiquetas } from '../../ui/etiqueta'
 import { Camada } from '../../ui/camada'
@@ -19,12 +21,24 @@ import { DE_NOVO_PROLOGO, DE_NOVO_ACERTOU } from '../../content/deNovo'
 type Fase = 'entrada' | 'escuta' | 'toca' | 'livre' | 'fecho' | 'saida'
 
 /**
+ * O piano do pai por baixo do violino do filho: um acorde por frase, uma
+ * nota dele a cada nota certa do Liam. Ré menor, lá maior, si bemol.
+ */
+const ACOMPANHA: number[][] = [
+  [73.42, 110.0, 146.83, 174.61],
+  [55.0, 82.41, 110.0, 138.59],
+  [58.27, 87.31, 116.54, 146.83],
+]
+
+/**
  * A Música.
  *
  * Único momento quente da obra, e o único em que o jogador aprende algo de
- * verdade: três frases que crescem, tocadas de ouvido num piano real. O que
- * ele aprende aqui não é enfeite — é a interface que vai reaparecer lá
- * embaixo, fazendo outra coisa.
+ * verdade: três frases que crescem, de ouvido. O pai toca no piano; Liam
+ * responde no violino, em pé do lado dele — e quando acerta, os dois tocam
+ * juntos. Quando erra, o pai bate no piano. Depois de zerar o jogo, ele
+ * grita, e Liam tem de respirar com o arco tremendo na corda. O tema que
+ * ele aprende aqui é o que vai abrir os fios lá embaixo.
  */
 export class PrologoScene implements Scene {
   readonly id = 'demo-prologo'
@@ -49,20 +63,29 @@ export class PrologoScene implements Scene {
   /** As últimas notas do momento livre, para reconhecer o tema ao contrário. */
   private ultimas: number[] = []
   private ouviuSubindo = false
+  /** Já zerou: o erro vira grito, e o grito pede respiração. */
+  private deNovo = false
+  private gritos = 0
+  /** Liam respirando com o arco na corda (exposto para os testes). */
+  respiracao = new Respiracao()
+  /** O arco: onde está na corda (-1..1) e para onde vai. */
+  private arcada = 0
+  private arcoDir = 1
+  /** O piano batido no erro: a tela treme junto. */
+  private tranco = 0
 
-  // Os dois no banco do piano, de costas para a câmera. É uma cena de nuca e
-  // de mãos: o rosto só aparece quando alguém se vira para o outro.
+  // O pai no banco do piano, de costas para a câmera; Liam em pé do lado,
+  // de perfil, com o violino no ombro.
   private adrian = new Figura({
     ...VISUAL.adrian,
-    x: PIANO.cx - 11, y: BANCO_Y, altura: 40, barba: true, gola: '#d4ccc0',
+    x: PIANO.cx - 4, y: BANCO_Y, altura: 40, barba: true, gola: '#d4ccc0',
     cor: { roupa: '#2b2129', cabelo: '#171017', pele: '#6a4f48', sombra: 'rgba(0,0,0,0)' },
     pose: 'sentado',
   })
   private liam = new Figura({
     ...VISUAL.liam,
-    x: PIANO.cx + 15, y: BANCO_Y, altura: 31,
-    cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0)' },
-    pose: 'sentado',
+    x: PIANO.x1 + 12, y: PASSO_Y, altura: 31,
+    cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.4)' },
   })
   private po = new Particulas()
   private dedilhado = 0
@@ -77,6 +100,8 @@ export class PrologoScene implements Scene {
   }
 
   enter(ctx: SceneCtx): void {
+    this.deNovo = memoria.terminou
+    this.piano.instrumento = 'violino'
     this.camada.mostrar(ctx.state, 'lembranca', 7)
     audio.setAmbient(0.16, 2)
     musica.desafinado = 0
@@ -108,6 +133,12 @@ export class PrologoScene implements Scene {
     this.piano.update(dt)
     this.animar(dt)
     this.dialogue.update(dt)
+    this.tranco = Math.max(0, this.tranco - dt * 2.5)
+    this.piano.tremor = Math.max(this.respiracao.ativa ? 0.8 : 0, this.piano.tremor - dt * 0.4)
+    if (this.respiracao.ativa) {
+      this.respiracao.update(dt, ctx.input)
+      return
+    }
 
     if (this.dialogue.active) {
       if (ctx.input.consumeConfirm()) this.dialogue.confirm()
@@ -140,20 +171,73 @@ export class PrologoScene implements Scene {
     const tocada = this.piano.ler(ctx.input, ctx.display)
     if (tocada === null) return
     this.dedilhado = 1
+    this.puxarArco()
 
     if (this.fraseAtual[this.passo] === tocada) {
+      // Ele toca junto: uma nota do acorde da frase, embaixo do violino.
+      const acorde = ACOMPANHA[this.frase] ?? []
+      const f = acorde[this.passo % acorde.length]
+      if (f) musica.nota(f, this.passo === 0 ? 0.55 : 0.34, 3.2)
+      if (this.passo === 0 && acorde[0]) musica.nota(acorde[0] / 2, 0.4, 4)
       this.passo++
-      if (this.passo >= this.fraseAtual.length) this.acertou()
+      if (this.passo >= this.fraseAtual.length) {
+        // A frase inteira: o acorde todo, os dois juntos.
+        for (const n of ACOMPANHA[0] ?? []) musica.nota(n, 0.42, 4.5)
+        this.acertou()
+      }
       return
     }
 
-    // Errou: volta ao começo da frase e Adrian reensina, sem levantar a voz.
-    const fala = PROLOGO_ERRO[Math.min(this.erros, PROLOGO_ERRO.length - 1)]
     this.erros++
     this.passo = 0
-    audio.refuse()
+    if (this.deNovo) {
+      this.gritar()
+      return
+    }
+    // A bronca: ele bate no piano, vira para o filho e fala baixo.
+    this.baterNoPiano(0.8)
+    const fala = PROLOGO_ERRO[Math.min(this.erros - 1, PROLOGO_ERRO.length - 1)]
     if (fala) this.dialogue.play(fala, () => this.repetir())
     else this.repetir()
+  }
+
+  /** As duas mãos dele no grave do piano, de uma vez. */
+  private baterNoPiano(forca: number): void {
+    for (const f of [36.71, 38.89, 73.42, 77.78, 110.0]) musica.nota(f, forca, 2.6)
+    audio.refuse()
+    audio.heartbeat(0.2 + forca * 0.1)
+    this.tranco = forca
+    this.liam.tremor = 1.2 * forca
+  }
+
+  /**
+   * Depois de zerar: o grito. Liam fica com o arco parado na corda, o arco
+   * tremendo, e tem de respirar no ritmo antes de tentar de novo.
+   */
+  private gritar(): void {
+    this.baterNoPiano(1)
+    const fala = PROLOGO_GRITO[Math.min(this.gritos, PROLOGO_GRITO.length - 1)] ?? []
+    this.gritos++
+    this.dialogue.play([...fala, ...PROLOGO_RESPIRA], () => {
+      const grau = this.fraseAtual[0] ?? 0
+      const f = ESCALA[grau]
+      // O arco fica na corda: uma nota longa, fraca, que treme.
+      if (f) musica.arco('violino', f * 2, 8.6, 0.55, 'piano', 0.3)
+      this.piano.tremor = 1
+      this.respiracao.comecar({
+        ciclos: 2, periodo: 4.2, tolerancia: 0.24,
+        onFim: (ok) => {
+          this.piano.tremor = ok ? 0.15 : 0.6
+          this.liam.tremor = ok ? 0 : 0.8
+          this.dialogue.play(ok ? PROLOGO_RESPIROU : PROLOGO_NAO_RESPIROU, () => this.repetir())
+        },
+      })
+    })
+  }
+
+  /** Cada nota é uma arcada: o arco vai para um lado, a próxima volta. */
+  private puxarArco(): void {
+    this.arcoDir = -this.arcoDir
   }
 
   private repetir(): void {
@@ -181,10 +265,11 @@ export class PrologoScene implements Scene {
     const nota = this.piano.ler(ctx.input, ctx.display)
     if (nota !== null) {
       this.dedilhado = 1
+      this.puxarArco()
       this.livreAte = Math.max(this.livreAte, this.t + 5)
       this.ultimas = [...this.ultimas, nota].slice(-7)
       // Quem já sabe tocar a frase subindo — não aprendeu com ele.
-      const subindo = [0, 1, 2, 3, 4, 2, 0]
+      const subindo = [...(TEMA[2] ?? [])].reverse()
       if (!this.ouviuSubindo && subindo.every((n, i) => this.ultimas[i] === n)) {
         this.ouviuSubindo = true
         this.livreAte = this.t + 8
@@ -220,25 +305,62 @@ export class PrologoScene implements Scene {
     }
     this.dedilhado = Math.max(0, this.dedilhado - dt * 3)
 
-    // Quem fala vira o rosto para o outro. O resto do tempo, os dois olham
-    // para o teclado — de costas para quem joga.
+    // O pai de costas, no piano; vira para o filho quando fala ou bate.
     const falando = this.dialogue.active ? this.dialogue.falante : null
     const dele = this.fase === 'escuta'
     const vezDoFilho = this.fase === 'toca' || this.fase === 'livre'
+    this.adrian.costas = falando !== 'Adrian' && this.tranco < 0.3
+    this.adrian.olhar = 1
+    this.adrian.braco = dele ? 0.62 + this.dedilhado * 0.3 : this.tranco > 0.3 ? 0.9 : 0.3
 
-    this.adrian.costas = falando !== 'Adrian'
-    this.adrian.olhar = falando === 'Adrian' ? 1 : 0
-    this.adrian.braco = dele ? 0.62 + this.dedilhado * 0.3 : 0.3
-
-    this.liam.costas = falando !== 'Adrian'
-    this.liam.olhar = falando === 'Adrian' ? -1 : 0
-    this.liam.braco = vezDoFilho ? 0.6 + this.dedilhado * 0.3 : 0.14
+    // Liam em pé, de perfil para o piano, com o violino no ombro. O arco
+    // corre de um lado para o outro a cada nota.
+    this.liam.costas = false
+    this.liam.olhar = -1
+    this.liam.braco = vezDoFilho || this.respiracao.ativa ? 0.6 : 0.35
+    const alvo = this.dedilhado > 0.05 ? this.arcoDir : this.arcada * 0.98
+    this.arcada += (alvo - this.arcada) * Math.min(1, dt * 7)
+    this.liam.tremor = Math.max(this.respiracao.ativa ? 0.6 : 0, this.liam.tremor - dt * 0.8)
 
     if (this.fase === 'saida') {
       this.adrian.costas = true
-      this.liam.costas = true
       this.liam.curvatura = Math.min(0.5, this.saida * 0.14)
     }
+  }
+
+  /**
+   * O violino no ombro esquerdo dele, apontando para o piano, e o arco na
+   * mão direita, cruzando as cordas perto do cavalete.
+   */
+  private desenharViolino(w: CanvasRenderingContext2D): void {
+    const f = this.liam
+    const lado = f.olhar >= 0 ? 1 : -1
+    const x = Math.round(f.x)
+    const q = Math.round(f.y - f.altura * 0.7)
+    const treme = this.piano.tremor > 0.05 ? Math.round((Math.random() - 0.5) * this.piano.tremor * 2) : 0
+    // Corpo do violino: madeira com o brilho do verniz.
+    w.fillStyle = '#5a2a12'
+    w.fillRect(x + lado * 1 - (lado > 0 ? 0 : 7), q + 1, 7, 4)
+    w.fillRect(x + lado * 2 - (lado > 0 ? 0 : 5), q, 5, 6)
+    w.fillStyle = '#9a5a26'
+    w.fillRect(x + lado * 2 - (lado > 0 ? 0 : 3), q + 1, 3, 1)
+    // O braço e a voluta, para a frente.
+    w.fillStyle = '#1a120e'
+    w.fillRect(lado > 0 ? x + 7 : x - 13, q + 1, 6, 1)
+    w.fillRect(lado > 0 ? x + 13 : x - 14, q, 2, 2)
+    // O arco: a vara escura e a crina clara, atravessando as cordas.
+    const bx = x + lado * 3 + Math.round(this.arcada * 4) + treme
+    w.strokeStyle = 'rgba(40,26,18,0.95)'
+    w.lineWidth = 1
+    w.beginPath()
+    w.moveTo(bx - lado * 6, q - 6)
+    w.lineTo(bx + lado * 3, q + 9)
+    w.stroke()
+    w.strokeStyle = 'rgba(232,222,200,0.75)'
+    w.beginPath()
+    w.moveTo(bx - lado * 5, q - 6)
+    w.lineTo(bx + lado * 4, q + 9)
+    w.stroke()
   }
 
   render(ctx: SceneCtx): void {
@@ -252,6 +374,7 @@ export class PrologoScene implements Scene {
     drawSalaFundo(w, estado)
     this.adrian.draw(w, LUZ_PIANO.x, 'rgba(255,206,146,0.4)')
     this.liam.draw(w, LUZ_PIANO.x, 'rgba(255,206,146,0.4)')
+    this.desenharViolino(w)
     drawSalaFrente(w, estado)
     this.po.draw(w, true)
     drawLuzSala(w, estado, 'piano')
@@ -262,10 +385,10 @@ export class PrologoScene implements Scene {
     const entrada = Math.min(1, this.t / 26)
     const recuo = this.fase === 'saida' ? Math.min(1, this.saida / 4) : 0
     ctx.display.present({
-      rgbSplit: 0, wave: 0, shake: 0,
-      zoom: 1.62 + entrada * 0.16 - recuo * 0.6,
-      alvoX: PIANO.cx + 2 + recuo * 40,
-      alvoY: 104 - recuo * 4,
+      rgbSplit: this.tranco * 1.2, wave: 0, shake: this.tranco * 2.2,
+      zoom: 1.4 + entrada * 0.12 - recuo * 0.45,
+      alvoX: PIANO.cx + 26 + recuo * 30,
+      alvoY: 124 - recuo * 14,
       time: this.t,
     })
     ctx.display.vignette(0.62 + (1 - this.calor) * 0.26)
@@ -277,11 +400,12 @@ export class PrologoScene implements Scene {
         travado: this.fase !== 'toca' && this.fase !== 'livre',
         ...(destaque !== undefined && destaque >= 0 ? { destaque } : {}),
       })
-      if (this.fase === 'escuta') this.piano.drawDica(ctx.display, 'escute')
+      if (this.respiracao.ativa) { /* a respiração tem a sua própria legenda */ }
+      else if (this.fase === 'escuta') this.piano.drawDica(ctx.display, 'escute o piano')
       else if (this.fase === 'toca') {
         this.piano.drawDica(
           ctx.display,
-          `repita  ·  ${this.passo}/${this.fraseAtual.length}  ·  ${ctx.input.touchMode ? 'toque nas teclas' : 'clique ou A S D F G H J K'}`,
+          `responda no violino  ·  ${this.passo}/${this.fraseAtual.length}  ·  ${ctx.input.touchMode ? 'toque nas notas' : 'clique ou A S D F G H J K'}`,
         )
       } else if (this.fase === 'livre') this.piano.drawDica(ctx.display, PROLOGO_LIVRE)
     }
@@ -293,6 +417,7 @@ export class PrologoScene implements Scene {
       return { x: ctx.display.toScreenX(f.x), y: ctx.display.toScreenY(f.y - f.altura * 0.62) }
     })
     this.camada.draw(c, ctx.display.cssW, ctx.display.cssH)
+    this.respiracao.draw(c, ctx.display.cssW, ctx.display.cssH, ctx.input.touchMode)
     this.dialogue.render(c, ctx.display.cssW, ctx.display.cssH)
   }
 }

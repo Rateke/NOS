@@ -126,8 +126,8 @@ export class FimScene implements Scene {
     let quando = 1.6
     const esquerda: [number, number[]][][] = [
       [[F.D2, [F.D3, F.F3, F.A3]]],
-      [[F.Bb2, [F.D3, F.F3, F.Bb3]], [F.F2, [F.C3, F.F3, F.A3]]],
-      [[F.G2, [F.D3, F.G3, F.Bb3]], [F.A2, [F.Cs3, F.E3, F.G3]]],
+      [[F.D2, [F.D3, F.F3, F.A3]], [F.A2, [F.Cs3, F.E3, F.A3]]],
+      [[F.Bb2, [F.D3, F.F3, F.Bb3]], [F.A2, [F.Cs3, F.E3, F.G3]]],
     ]
     let tchan = 20
     TEMA.forEach((frase, i) => {
@@ -136,7 +136,7 @@ export class FimScene implements Scene {
       frase.forEach((grau, k) => {
         const f = ESCALA[grau]
         const ultima = i === TEMA.length - 1 && k === frase.length - 1
-        if (f !== undefined && !ultima) this.notas.push({ t: quando, freq: f / 2, forca: 0.44, dur: 5.5 })
+        if (f !== undefined && !ultima) this.notas.push({ t: quando, freq: f, forca: 0.44, dur: 5.5 })
         if (ultima) tchan = quando
         else if (k % metade === 0) {
           const acorde = acordes[Math.floor(k / metade)]

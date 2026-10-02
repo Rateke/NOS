@@ -930,6 +930,19 @@ export function comodoQuarto(depois = false): Comodo {
         documentoDeNovo: DOC_DIARIO_CONTRACAPA,
       },
       {
+        id: 'violoncelo', x: 246, rotulo: 'Olhar', naParede: true,
+        linhas: [
+          { text: 'O violoncelo do meu bisavô, pendurado em cima da cama. O pai disse que é aí que ele fica.' },
+          { text: 'Eu toco os três. O piano, porque ele ensinou. O violino, porque ele quis.' },
+          { text: 'O violoncelo, porque ninguém pediu. Esse eu toco quando a casa está vazia.' },
+          { text: 'É o único que ninguém corrige.' },
+        ],
+        deNovo: [
+          { text: 'A corda lá está frouxa.' },
+          { text: 'Eu não afino. Se afinar, alguém vai querer ouvir.' },
+        ],
+      },
+      {
         id: 'armario', x: 392, rotulo: 'Abrir',
         linhas: [
           { text: 'Eu caibo aqui dentro, se dobrar os joelhos.' },
@@ -958,6 +971,7 @@ export function comodoQuarto(depois = false): Comodo {
       if (depois) cabanaCaida(c)
       else cabana(c, t)
       paredeDePlantas(c, 100, 26, e.vistos.has('plantas+'))
+      violoncelo(c, 246, 24, depois)
       luarNoChao(c, 330, CHAO + 1, 56)
       sombraDeContato(c, 194, CHAO, 84)
       sombraDeContato(c, 324, CHAO, 54)
@@ -995,6 +1009,70 @@ export function comodoQuarto(depois = false): Comodo {
       }
     },
   }
+}
+
+/**
+ * O violoncelo na parede, num gancho, com o arco pendurado do lado. Depois
+ * do grito ele ficou torto no gancho, e ninguém endireitou.
+ */
+function violoncelo(c: CanvasRenderingContext2D, cx: number, topo: number, torto: boolean): void {
+  c.save()
+  if (torto) {
+    c.translate(cx, topo)
+    c.rotate(0.12)
+    c.translate(-cx, -topo)
+  }
+  const madeira = '#6a3416'
+  const clara = '#9a5a26'
+  const escura = '#3a1a0a'
+  // O gancho na parede.
+  ret(c, cx - 2, topo - 2, 4, 2, '#8a8478')
+  // Voluta e cravelhas.
+  ret(c, cx - 2, topo, 4, 4, escura)
+  ret(c, cx - 1, topo + 1, 2, 2, madeira)
+  ret(c, cx - 4, topo + 4, 2, 1, escura)
+  ret(c, cx + 2, topo + 5, 2, 1, escura)
+  // O braço, de ébano, até o corpo.
+  ret(c, cx - 1, topo + 4, 3, 22, '#141010')
+  // O corpo: a parte de cima, a cintura, a parte de baixo.
+  c.fillStyle = madeira
+  c.beginPath()
+  c.ellipse(cx, topo + 32, 9, 7, 0, 0, Math.PI * 2)
+  c.ellipse(cx, topo + 50, 12, 10, 0, 0, Math.PI * 2)
+  c.fill()
+  ret(c, cx - 7, topo + 36, 14, 8, madeira)
+  ret(c, cx - 8, topo + 39, 2, 3, escura)
+  ret(c, cx + 6, topo + 39, 2, 3, escura)
+  // O brilho do verniz e a borda.
+  c.fillStyle = clara
+  c.beginPath()
+  c.ellipse(cx - 4, topo + 47, 4, 6, 0.2, 0, Math.PI * 2)
+  c.fill()
+  // O espelho continua sobre o corpo; os efes; o cavalete; o estandarte.
+  ret(c, cx - 1, topo + 26, 3, 14, '#141010')
+  ret(c, cx - 5, topo + 42, 1, 6, escura)
+  ret(c, cx + 5, topo + 42, 1, 6, escura)
+  ret(c, cx - 3, topo + 46, 7, 1, '#d8c8a0')
+  ret(c, cx - 1, topo + 50, 3, 7, '#141010')
+  // As quatro cordas, finas, do cavalete até a voluta.
+  c.fillStyle = 'rgba(226,218,200,0.6)'
+  for (const dx of [-1, 0, 1, 2]) c.fillRect(cx + dx - 0.5, topo + 5, 0.5, 42)
+  // O espigão embaixo.
+  ret(c, cx, topo + 60, 1, 4, '#8a8478')
+  c.restore()
+  // O arco, pendurado num prego do lado, na diagonal.
+  c.strokeStyle = 'rgba(40,26,18,0.95)'
+  c.lineWidth = 1
+  c.beginPath()
+  c.moveTo(cx + 16, topo + 6)
+  c.lineTo(cx + 24, topo + 58)
+  c.stroke()
+  c.strokeStyle = 'rgba(230,220,196,0.55)'
+  c.beginPath()
+  c.moveTo(cx + 17, topo + 7)
+  c.lineTo(cx + 25, topo + 57)
+  c.stroke()
+  ret(c, cx + 15, topo + 4, 2, 2, '#8a8478')
 }
 
 const ESTRELAS: [number, number][] = [

@@ -114,7 +114,7 @@ os três caminhos são testados de ponta a ponta.
 | Avançar uma fala | clicar | espaço, E ou Enter | tocar |
 | Andar pelo quarto | clicar no chão | setas ou WASD | arrastar à esquerda |
 | Examinar | clicar no objeto | E perto dele | tocar |
-| Tocar o piano | clicar na tecla | A S D F G H J K | tocar na tecla |
+| Tocar o piano ou o violino | clicar na tecla ou na nota | A S D F G H J K | tocar na tecla ou na nota |
 | Abrir um fio no Tear | tocar a melodia | tocar a melodia | tocar a melodia |
 | Examinar um vestígio | clicar nele | E perto dele | tocar nele |
 | Esconder o caderno da Lia (os passos) | clicar | espaço ou E | tocar |
@@ -259,8 +259,12 @@ e o zumbido). Na casa calma, só chuva,
 os passos de Liam no assoalho (às vezes a tábua range) e as portas; quando
 os passos do pai vêm, o coração e as cordas entram de uma vez.
 
-Um limitador na saída segura tudo: os gritos podem empilhar, a caixa de som
-nunca estoura (`test/som.mjs` mede isso).
+**Volume e graves.** A mistura sai forte: ganho geral alto, os graves
+reforçados (+5 dB abaixo de ~120 Hz e um empurrão no sub, em ~58 Hz — o
+piano do pai, o violoncelo, os baques, as portas, os passos), um limitador
+e, no fim, uma saturação suave que encorpa o que é baixo e arredonda o que
+passou. Os gritos podem empilhar à vontade: nada sai acima de 0,94 na caixa
+de som (`test/som.mjs` mede isso).
 
 Tipografia: **Bodoni Moda** nos títulos (alto contraste, dramática) e
 **Spectral** no texto — serifa desenhada para tela, que dá peso literário ao
@@ -287,12 +291,25 @@ mesma interface.
    camada do mundo aparece — lembrança, a casa, o Dentro, lá fora — ganha uma
    anotação a lápis no canto.
 
-1. **A Música.** Sala de estar, o único ambiente quente da obra. Adrian ensina
-   um tema em ré menor, em três frases que crescem (4, 5 e 7 notas), num piano
-   de verdade — sintetizado por harmônicos, com reverberação longa. Você escuta
-   e repete de ouvido. Errar não é punido: ele reensina, sem levantar a voz.
-   No fim, toque à vontade. E aí vem o elogio, com a função dentro dele:
-   `Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`
+1. **A Música.** Sala de estar, o único ambiente quente da obra. Adrian
+   sentado ao piano; Liam em pé do lado, com o violino no ombro. O tema é em
+   ré menor harmônico, grave, em três frases que crescem (4, 5 e 7 notas):
+   a pergunta (salta uma quinta, sobe meio tom e suspira), a que cresce até a
+   oitava e desce torta pelo dó sustenido sem fechar, e a queda, que desce
+   inteira até onde começou. O pai toca cada frase no piano; você responde
+   no violino, de ouvido (o mesmo A S D F G H J K, agora num braço de
+   violino na tela, com o arco correndo a cada nota). Quando você acerta, o
+   piano dele entra embaixo e os dois tocam juntos. **Quando erra, bronca:**
+   ele bate as duas mãos no grave do piano, vira para você e fala baixo
+   (*"Não. Para. Você não tá escutando. Do começo."*). **Depois de zerar a
+   demo, o erro vira grito** (*"ERROU?! DE NOVO?! Agora vê se não erra. Você
+   já passou por aqui. Já sabe como as coisas funcionam."*), e Liam tem de
+   respirar no ritmo com o arco tremendo em cima da corda antes de tentar de
+   novo. No fim, toque à vontade. E aí vem o elogio, com a função dentro
+   dele: `Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`
+   Liam toca os três: o piano (que o pai ensinou), o violino (que o pai quis)
+   e o violoncelo do bisavô, pendurado na parede do quarto dele — *"é o único
+   que ninguém corrige"*.
 
 2. **A Casa Grande Demais.** Sala, corredor e quarto ligados por portas —
    e a cozinha, que encerra a exploração. Câmera que acompanha, **paredes de
@@ -566,7 +583,10 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | Paleta e resolução interna | `src/engine/constants.ts` |
 | Caixa de diálogo | `src/game/systems/dialogue.ts` |
 | Ordem das cenas | `src/game/scenes/` |
-| **O tema musical** | `src/engine/musica.ts` (`TEMA`, em graus da escala) |
+| **O tema musical** | `src/engine/musica.ts` (`TEMA`, em graus da `ESCALA` de ré menor harmônico) |
+| O violino do Liam (som e braço na tela) | `src/game/systems/piano.ts` (`instrumento: 'violino'`), `src/engine/musica.ts` (`arco`) |
+| O prólogo: acompanhamento do pai, bronca, grito e respiração | `src/game/scenes/demo/prologo.ts` (`ACOMPANHA`, `baterNoPiano`, `gritar`); falas em `content/demoScript.ts` (`PROLOGO_*`) |
+| Volume geral, graves, limitador | `src/engine/audio.ts` (`init`) |
 | Timbre do piano e reverberação | `src/engine/musica.ts` |
 | Vestígios da cozinha | `src/game/content/demoScript.ts` (`MESA_VESTIGIOS`) |
 | **Falas da noite**: a briga, os pratos, a gritaria, a pressão no Tear, a lei do pai, a escolha, as duas conversas com a sombra, os passos | `src/game/content/noite.ts` |

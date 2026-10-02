@@ -14,7 +14,7 @@ import { mkdirSync } from 'fs'
 const URL = process.env.URL ?? 'http://localhost:4173/'
 const OUT = process.env.OUT ?? null
 if (OUT) mkdirSync(OUT, { recursive: true })
-const TEMA = [[0, 2, 4, 3], [0, 2, 4, 6, 5], [0, 2, 4, 3, 2, 1, 0]]
+const TEMA = [[0, 4, 5, 4], [0, 4, 7, 6, 5], [7, 5, 4, 2, 3, 1, 0]]
 const falhas = []
 function esperar(rotulo, real, esperado) {
   const ok = JSON.stringify(real) === JSON.stringify(esperado)

@@ -17,7 +17,7 @@ import { Particulas } from '../../world/particulas'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
 import { clima } from '../../../engine/clima'
-import { musica } from '../../../engine/musica'
+import { musica, TEMA } from '../../../engine/musica'
 import { principal } from '../../../engine/principal'
 import {
   CASA_ABERTURA, CASA_CORREDOR, CASA_ANTES_DA_COZINHA, CASA_PRONTO,
@@ -124,9 +124,9 @@ const ZOOM = 1.24
 const VISIVEL = WORLD_W / ZOOM
 
 /** O tema, de trás para a frente: a frase que desce, subindo. */
-const MELODIA_SUBINDO = [0, 1, 2, 3, 4, 2, 0]
+const MELODIA_SUBINDO = [...(TEMA[2] ?? [])].reverse()
 /** A terceira frase como Adrian ensinou. */
-const MELODIA_DESCENDO = [0, 2, 4, 3, 2, 1, 0]
+const MELODIA_DESCENDO = [...(TEMA[2] ?? [])]
 
 /**
  * A Casa Grande Demais.

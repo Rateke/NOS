@@ -194,7 +194,7 @@ class Clima {
       this.proxCaixinha = 0.82
       const grau = NOTAS_CAIXINHA[this.idxCaixinha % NOTAS_CAIXINHA.length] ?? 0
       const f = ESCALA[grau]
-      if (f) musica.nota(f * 2, 0.22 + m.caixinha * 0.3, 2.6)
+      if (f) musica.nota(f * 4, 0.22 + m.caixinha * 0.3, 2.6)
       this.idxCaixinha++
       // Respira entre as frases do tema.
       if ([4, 9].includes(this.idxCaixinha % NOTAS_CAIXINHA.length)) this.proxCaixinha += 1.2
