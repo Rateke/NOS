@@ -303,6 +303,8 @@ await page.waitForTimeout(300)
 esperar('o clique do lado da Lia não vai', [(await tear()).fase, (await tear()).resultado], ['escolha', null])
 for (let i = 0; i < 100; i++) {
   if ((await tear()).fase === 'fogo') break
+  // Só o grito passa sozinho: as falas do pai esperam o clique.
+  await page.mouse.click(640, 120)
   await page.waitForTimeout(250)
 }
 esperar('ninguém foi escolhido: as duas queimam', [(await tear()).fase, (await tear()).resultado], ['fogo', 'nenhuma'])

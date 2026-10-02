@@ -131,6 +131,12 @@ trava deitado. No iPhone o som toca mesmo com a chave de silencioso ligada
 (Safari 16.4 em diante). Com o piano na tela, a caixa de fala sobe para não
 cobrir as teclas. `test/celular.mjs` joga isso tudo só no dedo.
 
+**Cada um lê no seu tempo.** Toda fala espera o toque para passar — o
+boletim do rádio também. A única exceção são os gritos curtos (até 64
+letras, que se leem num relance): esses passam sozinhos e não dá para
+pular. É o único momento em que o jogo tira o controle de quem joga. Grito
+comprido espera o toque como o resto.
+
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
 

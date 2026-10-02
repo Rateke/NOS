@@ -5,6 +5,12 @@ import { pianoNaTela } from '../ui/telaPiano'
 import { PAL } from '../../engine/constants'
 
 const CHARS_PER_SEC = 42
+/**
+ * Até quantas letras um grito se lê num relance. Grito curto corre sozinho
+ * e não dá para pular: é o único momento em que o jogo tira o controle de
+ * quem joga. Todo o resto espera o toque — cada um lê no seu tempo.
+ */
+const GRITO_CURTO = 64
 
 /**
  * A cor do fio de cada pessoa. É a cor do nome dela na legenda — o jogador
@@ -78,8 +84,8 @@ export class Dialogue {
   linhaNum = 0
 
   /**
-   * `auto` faz as falas correrem sozinhas, sem toque. Usado nos clímaxes:
-   * tirar o controle da mão do jogador é parte da direção.
+   * `auto` é o respiro mínimo depois de um grito curto, antes de ele passar
+   * sozinho. Fala que não é grito curto ignora o `auto` e espera o toque.
    */
   play(lines: Line[], onDone?: () => void, auto = 0): void {
     this.queue = [...lines]
@@ -117,9 +123,15 @@ export class Dialogue {
     }
   }
 
+  /** Um grito curto na tela: passa sozinho, e o toque não faz nada. */
+  get semControle(): boolean {
+    const l = this.current
+    return l !== null && l.grito === true && l.text.length <= GRITO_CURTO
+  }
+
   /** Um toque completa a linha; o toque seguinte passa para a próxima. */
   confirm(): void {
-    if (!this.current) return
+    if (!this.current || this.semControle) return
     if (this.revealed < this.current.text.length) {
       this.revealed = this.current.text.length
     } else {
@@ -148,9 +160,10 @@ export class Dialogue {
       }
       return
     }
-    if (this.auto > 0) {
+    if (this.semControle) {
+      // O tempo de ler o grito inteiro, e ele some.
       this.paradoDesde += dt
-      if (this.paradoDesde >= this.auto) this.advance()
+      if (this.paradoDesde >= Math.max(this.auto, 0.6 + this.current.text.length / 40)) this.advance()
     }
   }
 

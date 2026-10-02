@@ -282,7 +282,7 @@ export class TearScene implements Scene {
 
     if (this.dialogue.active) {
       const cinematico = this.fase === 'pico' || this.fase === 'escolha'
-      if (!cinematico && ctx.input.consumeConfirm()) this.dialogue.confirm()
+      if (ctx.input.consumeConfirm()) this.dialogue.confirm()
       // Nos clímaxes a fala corre sozinha, e a cena continua por baixo.
       if (!cinematico && this.fase !== 'absorvendo') return
     }
@@ -514,7 +514,8 @@ export class TearScene implements Scene {
 
   private dizer(texto: string, dur: number): void {
     this.falaAdrian = texto
-    this.falaAdrianAte = this.t + dur
+    // Fica o bastante para ler, mesmo a fala comprida.
+    this.falaAdrianAte = this.t + Math.max(dur, 1.4 + texto.length / 13)
     // Ele fala de trás, à esquerda de Liam.
     const gritou = texto === texto.toUpperCase()
     voz.dizer('Adrian', texto, { grito: gritou, pan: -0.45 })

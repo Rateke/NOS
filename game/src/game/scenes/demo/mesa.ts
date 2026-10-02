@@ -239,9 +239,11 @@ export class MesaScene implements Scene {
       return
     }
 
+    // Nas partes assistidas a cena segue por baixo da fala; nas outras, a
+    // fala segura tudo. O toque passa a fala sempre (grito curto ignora).
     const cinematico = this.fase === 'estouro' || this.fase === 'confronto' || this.fase === 'fuga'
     if (this.dialogue.active) {
-      if (!cinematico && ctx.input.consumeConfirm()) this.dialogue.confirm()
+      if (ctx.input.consumeConfirm()) this.dialogue.confirm()
       if (!cinematico) return
     }
 

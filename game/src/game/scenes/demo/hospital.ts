@@ -140,10 +140,10 @@ export class HospitalScene implements Scene {
       this.desdeFrase = 0
       return
     }
-    // Cada frase fica um instante na tela; o jogador pode apressar.
+    // Cada frase fica na tela até o jogador tocar: lê no tempo dele.
     sons.radio(0.1, 0.006, 0.3)
     this.desdeFrase += dt
-    if (confirmou || this.desdeFrase > 1.4 + frase.length / 90) {
+    if (confirmou) {
       this.linha++
       this.revelado = 0
       this.desdeFrase = 0
@@ -269,6 +269,14 @@ export class HospitalScene implements Scene {
       c.fillStyle = i === RADIO_DESTAQUE ? '#f2ead8' : PAL.ink
       c.fillText(texto, cssW / 2, y)
       y += s * 2
+    }
+    // A frase terminou: o quadradinho pisca até o jogador tocar.
+    const atual = RADIO_BOLETIM[this.linha]
+    if (this.fase === 'radio' && atual !== undefined && this.revelado >= atual.length && Math.floor(this.t * 2) % 2 === 0) {
+      c.globalAlpha = 0.6
+      c.fillStyle = PAL.inkDim
+      const q = Math.max(6, s * 0.36)
+      c.fillRect(Math.round(cssW / 2 - q / 2), Math.round(y - s * 1.1), q, q)
     }
     c.restore()
   }

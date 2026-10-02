@@ -420,6 +420,8 @@ if (OUT) await page.screenshot({ path: `${OUT}/g3-escolha.png` })
 esperar('a mão não vai até a mãe', [(await tear()).fase, (await tear()).resultado], ['escolha', null])
 for (let i = 0; i < 100; i++) {
   if ((await tear()).fase === 'fogo') break
+  // Só o grito passa sozinho: as falas do pai esperam o toque.
+  await page.keyboard.press('Space')
   await page.waitForTimeout(250)
 }
 esperar('o tempo acaba e o fogo sobe', (await tear()).fase, 'fogo')
