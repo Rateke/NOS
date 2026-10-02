@@ -337,7 +337,8 @@ mesma interface.
    **O quarto da Lia**, no corredor, com a porta cheia de adesivos. Ela
    está arrumando a mala e xinga ele por entrar sem bater. Manda ele passar
    as coisas — a foto da família (*"Essa não. Ele tá nela."*), o fone, o
-   desenho que ele fez com sete anos —, divide o fone e por um minuto a casa
+   desenho que ele fez com sete anos —, senta na beirada da cama, manda ele
+   sentar do lado, divide o fone (o fio liga as duas orelhas) e por um minuto a casa
    não existe (a música dela toca, abafada, num lado só), até o pai gritar da
    cozinha. Então ela chama ele para ir junto, hoje, para a tia Catarina. A
    resposta dele, **na primeira vez, sai com a voz do pai** (*"Não posso
@@ -444,10 +445,16 @@ mesma interface.
    enquanto Liam se agarra às notas para não ouvir. Cada nota certa passa a
    lançadeira e bate o pente, e a tapeçaria da família cresce de baixo para cima — uma casa, cinco
    figuras de mãos dadas. Cada fio completo prende mais um fio no peito de
-   Liam e abre uma **lembrança que não é dele**, indo de geração em geração:
-   o pai e o prato quebrado, Lia gritando para uma porta, Evelyn na primeira
-   fuga com uma menina pela mão, a avó endireitando o retrato, Amélia
-   tecendo à luz de vela (*"Toda paz que lhes dei acordou dentro de mim"*) e,
+   Liam e abre uma **lembrança que não é dele**, indo de geração em geração,
+   como filme velho (moldura de cantos redondos, grão, luz vazando num canto,
+   a cor de quem lembra) e com a câmera chegando perto da ação: o pai
+   levantando o prato e estilhaçando no chão, a mãe se encolhendo e o Liam
+   pequeno se escondendo no batente; Lia batendo numa porta que treme até a
+   luz lá dentro apagar e ela escorregar para o chão; Evelyn na primeira
+   fuga, andando na chuva com uma menina pela mão e a mala, um farol
+   varrendo as duas; a avó endireitando o retrato enquanto o menino baixa a
+   cabeça; Amélia tecendo à luz de vela, o pano subindo e a lançadeira indo
+   e voltando (*"Toda paz que lhes dei acordou dentro de mim"*) e,
    por último, **a figura preta**: alguém na porta do quarto, contra a luz,
    cortando o próprio fio para que nada chegasse nele. Quando o tecido fica
    pronto, o desenho mostra o que faltava — um buraco do tamanho de uma

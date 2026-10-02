@@ -44,6 +44,23 @@ const VOO_PRATO = 0.5
 /** Com o prato no ar, o corpo corre sozinho, mais rápido. */
 const CORRIDA = 84
 
+/**
+ * Quem leva um prato: vira o rosto, põe a mão na cara, e — se for uma delas
+ * — cai. Sangra. Depois de um tempo, levanta. Liam não cai: olha a mão, vê
+ * o sangue e fica onde está.
+ */
+interface Ferida {
+  f: Figura
+  t: number
+  cai: boolean
+  /** Para que lado o corpo vai (contrário de onde veio o prato). */
+  lado: number
+}
+/** Quanto tempo ela fica no chão antes de conseguir levantar. */
+const NO_CHAO = 3.4
+const SANGUE = '#8a1016'
+const SANGUE_VIVO = '#b8141c'
+
 interface Arremesso {
   fase: 'aviso' | 'voo'
   t: number
@@ -125,6 +142,11 @@ export class MesaScene implements Scene {
   private respirou = false
   /** 0..1: o ar que faltou. Fecha a tela e não volta inteiro. */
   private sufoco = 0
+  private feridas: Ferida[] = []
+  /** Quem já sangrou: a marca fica no rosto até o fim da cena. */
+  private sujos = new Set<Figura>()
+  private gotas: { x: number; y: number; vy: number }[] = []
+  private manchas: { x: number; y: number; r: number }[] = []
 
   private liam = new Figura({
     ...VISUAL.liam,
@@ -235,6 +257,7 @@ export class MesaScene implements Scene {
     }
 
     this.sufoco = Math.max(this.respirou ? 0.35 : 0, this.sufoco - dt * 0.08)
+    this.sangrar(dt)
     if (this.respiracao.ativa) {
       // Tudo continua em volta. Ele só consegue pensar no ar.
       this.liam.ofego = 3.2
@@ -449,6 +472,112 @@ export class MesaScene implements Scene {
     })
   }
 
+  private ferir(f: Figura, cai: boolean): void {
+    this.feridas = this.feridas.filter((k) => k.f !== f)
+    // O prato vem do pai (à direita): o corpo vai para a esquerda.
+    this.feridas.push({ f, t: 0, cai, lado: f.x < this.adrian.x ? -1 : 1 })
+    this.sujos.add(f)
+    audio.heartbeat(0.3)
+  }
+
+  /** O ângulo do corpo de quem caiu (0 em pé). */
+  private tombo(f: Figura): number {
+    const k = this.feridas.find((x) => x.f === f)
+    if (!k || !k.cai) return 0
+    const t = k.t
+    if (t < 1.1) return 0
+    if (t < 1.5) return k.lado * 1.4 * Math.pow((t - 1.1) / 0.4, 2)
+    if (t < 1.5 + NO_CHAO) return k.lado * 1.4
+    const sobe = Math.min(1, (t - 1.5 - NO_CHAO) / 1.1)
+    return k.lado * 1.4 * (1 - sobe * sobe * (3 - 2 * sobe))
+  }
+
+  /** Onde fica o rosto agora, contando o tombo. */
+  private rostoDe(f: Figura): { x: number; y: number } {
+    const a = this.tombo(f)
+    const d = f.altura * 0.8
+    return { x: f.x + Math.sin(a) * d, y: f.y - Math.cos(a) * d }
+  }
+
+  private sangrar(dt: number): void {
+    for (const k of this.feridas) {
+      k.t += dt
+      const f = k.f
+      const t = k.t
+      if (t < 0.3) {
+        // O tranco: o rosto vira para o lado contrário.
+        f.tremor = 2
+        f.olhar = k.lado
+        f.braco = 0
+      } else if (k.cai ? t < 1.5 + NO_CHAO + 1.1 : t < 1.1) {
+        // A mão no rosto.
+        f.braco = 0.9
+        f.curvatura = 0.45
+        f.olhar = k.lado
+        f.tremor = Math.max(0.4, f.tremor)
+      } else if (!k.cai && t < 2.4) {
+        // Ele abaixa a mão e olha para ela. Tem sangue.
+        f.braco = 0.45
+        f.curvatura = 0.35
+        f.tremor = 0.5
+      } else {
+        f.braco = k.cai ? 0.6 : 0
+        f.curvatura = k.cai ? 0.35 : 0.2
+      }
+      // O baque no chão.
+      if (k.cai && t - dt < 1.5 && t >= 1.5) {
+        sons.passo(0, 1.5)
+        this.jolt = Math.max(this.jolt, 0.5)
+      }
+      // Pinga do rosto enquanto a mão está lá; no chão, a poça cresce.
+      const r = this.rostoDe(f)
+      if (t > 0.25 && t < 3 && Math.random() < dt * 7) this.gotas.push({ x: r.x + (Math.random() - 0.5) * 3, y: r.y + 2, vy: 10 })
+      if (k.cai && t > 1.5 && t < 1.5 + NO_CHAO) {
+        const poca = this.manchas.find((m) => Math.abs(m.x - r.x) < 3 && m.r > 2)
+        if (poca) poca.r = Math.min(9, poca.r + dt * 2.2)
+        else this.manchas.push({ x: Math.round(r.x), y: CHAO + 1, r: 2.5 })
+      }
+    }
+    this.feridas = this.feridas.filter((k) => k.t < (k.cai ? 1.5 + NO_CHAO + 1.6 : 2.6))
+    for (const g of this.gotas) {
+      g.vy += 300 * dt
+      g.y += g.vy * dt
+    }
+    for (const g of this.gotas.filter((x) => x.y >= CHAO + 1)) {
+      this.manchas.push({ x: Math.round(g.x), y: CHAO + 1 + Math.floor(Math.random() * 4), r: Math.random() < 0.3 ? 1.5 : 0.8 })
+    }
+    this.gotas = this.gotas.filter((x) => x.y < CHAO + 1)
+    if (this.manchas.length > 160) this.manchas.splice(0, this.manchas.length - 160)
+  }
+
+  /** Uma pessoa da cozinha, caída ou de pé, com o sangue que tiver. */
+  private desenharPessoa(w: CanvasRenderingContext2D, f: Figura, luz: string): void {
+    const a = this.tombo(f)
+    w.save()
+    if (a !== 0) {
+      w.translate(f.x, f.y)
+      w.rotate(a)
+      w.translate(-f.x, -f.y)
+    }
+    f.draw(w, LAMPADA.x, luz)
+    if (this.sujos.has(f)) {
+      // O corte na testa, e o sangue escorrendo pelo rosto até o queixo.
+      const x = Math.round(f.x) + (f.olhar >= 0 ? 1 : -2)
+      const y = Math.round(f.y - f.altura * 0.84)
+      w.fillStyle = SANGUE_VIVO
+      w.fillRect(x, y, 2, 1)
+      w.fillStyle = SANGUE
+      w.fillRect(x + 1, y + 1, 1, 4)
+      w.fillRect(x, y + 3, 1, 2)
+      // Na mão, quando ela está no rosto ou na frente dos olhos.
+      if (f.braco > 0.3) {
+        w.fillStyle = SANGUE_VIVO
+        w.fillRect(Math.round(f.x) + (f.olhar >= 0 ? 3 : -4), Math.round(f.y - f.altura * (f.braco > 0.7 ? 0.8 : 0.55)), 2, 2)
+      }
+    }
+    w.restore()
+  }
+
   /** O braço sobe com o prato. Ele mira na mãe ou na Lia. */
   private armar(): void {
     const idx = this.proxArremesso
@@ -499,6 +628,7 @@ export class MesaScene implements Scene {
         this.jogo?.aprender('prato-na-frente')
         this.liam.tremor = 2
         this.quebrar(this.liam.x, CHAO - 22, true)
+        this.ferir(this.liam, false)
         const r = PRATO_NO_LIAM[a.idx % PRATO_NO_LIAM.length]
         if (r) this.chamar(r.quem, [r.texto])
         this.tensao = Math.min(0.97, this.tensao + 0.02)
@@ -508,7 +638,8 @@ export class MesaScene implements Scene {
         this.jogo?.aprender('prato-nelas')
         const f = a.alvo === 'Lia' ? this.lia : this.evelyn
         f.tremor = 1.6
-        this.quebrar(a.alvoX, CHAO - 4, false)
+        this.quebrar(a.alvoX - 8, CHAO - 26, false)
+        this.ferir(f, true)
         const r = PRATO_NELAS[a.idx % PRATO_NELAS.length]
         if (r) this.chamar(r.quem, [r.texto])
         this.tensao = Math.min(0.97, this.tensao + 0.08)
@@ -679,15 +810,26 @@ export class MesaScene implements Scene {
     const w = ctx.display.beginWorld()
     const e = this.estadoCozinha
     drawCozinhaFundo(w, e)
-    this.lia.draw(w, LAMPADA.x, 'rgba(220,190,160,0.3)')
-    this.evelyn.draw(w, LAMPADA.x, 'rgba(220,190,160,0.3)')
+    // O sangue no chão, por baixo de todo mundo.
+    for (const m of this.manchas) {
+      w.fillStyle = m.r > 2 ? SANGUE : 'rgba(138,16,22,0.9)'
+      w.beginPath()
+      w.ellipse(m.x, m.y, m.r, Math.max(0.6, m.r * 0.35), 0, 0, Math.PI * 2)
+      w.fill()
+    }
+    this.desenharPessoa(w, this.lia, 'rgba(220,190,160,0.3)')
+    this.desenharPessoa(w, this.evelyn, 'rgba(220,190,160,0.3)')
     this.adrian.draw(w, LAMPADA.x, 'rgba(220,190,160,0.3)')
     // A chave da porta no bolso dele. Brilha de vez em quando.
     if (Math.sin(this.t * 1.7) > 0.93) {
       w.fillStyle = 'rgba(236,200,120,0.9)'
       w.fillRect(Math.round(this.adrian.x) + 3, COZ_CHAO - 15, 1, 1)
     }
-    this.liam.draw(w, LAMPADA.x, 'rgba(220,200,180,0.3)')
+    this.desenharPessoa(w, this.liam, 'rgba(220,200,180,0.3)')
+    for (const g of this.gotas) {
+      w.fillStyle = SANGUE_VIVO
+      w.fillRect(Math.round(g.x), Math.round(g.y), 1, 2)
+    }
     this.desenharPrato(w)
     this.desenharCacos(w)
     this.po.draw(w, false)

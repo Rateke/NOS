@@ -50,6 +50,12 @@ export interface OpcoesFigura {
    * franja cheia — o jeito de OMORI. Só o Liam usa.
    */
   fofo?: boolean
+  /**
+   * O rosto do Liam na proporção normal: olhos de dois pixels de altura,
+   * sobrancelhas que mexem, um tufo no cabelo. Mais vivo que os outros,
+   * sem virar boneco.
+   */
+  vivo?: boolean
 }
 
 export type TipoCabelo = 'curto' | 'longo' | 'rabo'
@@ -59,7 +65,7 @@ export type TipoCabelo = 'curto' | 'longo' | 'rabo'
  * opções: assim Liam é o mesmo menino na sala, na cozinha e no porão.
  */
 export const VISUAL = {
-  liam: { estilo: 'moletom', calca: '#262a34', sapato: '#17191f', solado: '#b8b4ac', fofo: true },
+  liam: { estilo: 'moletom', calca: '#262a34', sapato: '#17191f', solado: '#b8b4ac', vivo: true },
   adrian: { estilo: 'camisa', calca: '#211e24', sapato: '#120c0a' },
   evelyn: { estilo: 'uniforme', calca: '#2b3640', sapato: '#2a2224', olheiras: true },
   lia: { estilo: 'moletom', calca: '#33425c', sapato: '#d4d0c6', solado: '#f0ece2', cordao: '#e4d8c8' },
@@ -97,6 +103,7 @@ export class Figura {
   olheiras: boolean
   cordao: string | null
   fofo: boolean
+  vivo: boolean
   /** Desenha só a silhueta, em preto. */
   silhueta = false
   /** Cor da silhueta, quando não é preta: a sombra branca de Liam. */
@@ -147,6 +154,7 @@ export class Figura {
     this.olheiras = o.olheiras ?? false
     this.cordao = o.cordao ?? null
     this.fofo = o.fofo ?? false
+    this.vivo = o.vivo ?? false
   }
 
   update(dt: number): void {
@@ -386,8 +394,17 @@ export class Figura {
       if (!sil && !this.costas) this.rostoFofo(c, cx0, largCabeca, altCabeca, olhoY, perfil, lado, pele)
       this.cabeloFofo(c, cor, cx0, topoCabeca, largCabeca, altCabeca, perfil, lado)
     } else {
-      if (!sil && !this.costas) this.rosto(c, cx0, topoCabeca, largCabeca, altCabeca, olhoY, perfil, lado, pele, peleSom)
+      if (!sil && !this.costas) {
+        if (this.vivo && altCabeca >= 7) this.rostoVivo(c, cx0, largCabeca, altCabeca, olhoY, perfil, lado, pele, peleSom)
+        else this.rosto(c, cx0, topoCabeca, largCabeca, altCabeca, olhoY, perfil, lado, pele, peleSom)
+      }
       this.desenharCabelo(c, cor, cx0, topoCabeca, largCabeca, altCabeca, perfil, lado, yT)
+      if (this.vivo && !sil && !this.costas) {
+        // Um tufo rebelde no alto, que balança com a respiração.
+        const tufo = Math.round(Math.sin(this.fase * 0.7) * 0.6)
+        c.fillStyle = cor.cabelo
+        c.fillRect(cx0 + Math.round(largCabeca * 0.58) + tufo, topoCabeca - 2, 1, 1)
+      }
     }
 
     // Contraluz do lado da fonte: tronco, braço e rosto
@@ -504,6 +521,82 @@ export class Figura {
         }
       }
     }
+  }
+
+  /**
+   * O rosto do Liam: a mesma cabeça dos outros, mas olhos de dois pixels de
+   * altura (dá para ver para onde ele olha, e quando arregala), sobrancelha
+   * que sobe no susto e desce no aperto, e a boca um tracinho. No pânico,
+   * o branco do olho aparece e a boca abre.
+   */
+  private rostoVivo(
+    c: CanvasRenderingContext2D, cx0: number, lc: number, _alt: number,
+    olhoY: number, perfil: boolean, lado: number, pele: string, peleSom: string,
+  ): void {
+    const olho = 'rgba(10,12,18,0.97)'
+    const sobr = tom(this.cor.cabelo, 12)
+    const fechado = (this.piscando > 0 && !this.panico) || this.dormindo
+    const boca = tom(pele, -26)
+    // Sobrancelha: sobe com o pânico ou o tremor, desce com a curvatura.
+    const sobe = this.panico || this.tremor > 0.8 ? 1 : 0
+    const desce = !sobe && this.curvatura > 0.4 ? 1 : 0
+    if (perfil) {
+      const ox = lado > 0 ? cx0 + lc - 3 : cx0 + 2
+      c.fillStyle = pele
+      c.fillRect(lado > 0 ? cx0 + lc : cx0 - 1, olhoY + 1, 1, 2)
+      c.fillStyle = peleSom
+      c.fillRect(lado > 0 ? cx0 + lc : cx0 - 1, olhoY + 2, 1, 1)
+      c.fillStyle = olho
+      if (fechado) c.fillRect(ox - (lado > 0 ? 1 : 0), olhoY + 1, 2, 1)
+      else c.fillRect(ox, olhoY, 1, 2)
+      c.fillStyle = sobr
+      c.fillRect(ox - (lado > 0 ? 1 : 0), olhoY - 2 - sobe + desce, 2, 1)
+      c.fillStyle = boca
+      c.fillRect(lado > 0 ? cx0 + lc - 2 : cx0 + 1, olhoY + 3, 1, this.panico ? 2 : 1)
+      c.fillStyle = peleSom
+      c.fillRect(cx0 + Math.floor(lc / 2) - (lado > 0 ? 1 : 0), olhoY, 1, 2)
+      return
+    }
+    const ex = Math.max(1, Math.round(lc * 0.24))
+    const oE = cx0 + ex
+    const oD = cx0 + lc - 1 - ex
+    const meio = cx0 + Math.floor(lc / 2)
+    // Orelhas
+    c.fillStyle = peleSom
+    c.fillRect(cx0 - 1, olhoY, 1, 2)
+    c.fillRect(cx0 + lc, olhoY, 1, 2)
+    if (this.panico) {
+      // Arregalado: o branco aparece em volta da pupila, a boca abre.
+      c.fillStyle = '#efece6'
+      c.fillRect(oE - 1, olhoY - 1, 2, 3)
+      c.fillRect(oD, olhoY - 1, 2, 3)
+      c.fillStyle = olho
+      c.fillRect(oE - 1, olhoY + 1, 1, 1)
+      c.fillRect(oD + 1, olhoY + 1, 1, 1)
+      c.fillStyle = sobr
+      c.fillRect(oE - 1, olhoY - 3, 2, 1)
+      c.fillRect(oD, olhoY - 3, 2, 1)
+      c.fillStyle = '#2a1214'
+      c.fillRect(meio - 1, olhoY + 3, 2, 2)
+      return
+    }
+    c.fillStyle = olho
+    if (fechado) {
+      c.fillRect(oE, olhoY + 1, 1, 1)
+      c.fillRect(oD, olhoY + 1, 1, 1)
+    } else {
+      c.fillRect(oE, olhoY - 1, 1, 2)
+      c.fillRect(oD, olhoY - 1, 1, 2)
+    }
+    c.fillStyle = sobr
+    c.fillRect(oE - 1, olhoY - 3 - sobe + desce, 2, 1)
+    c.fillRect(oD, olhoY - 3 - sobe + desce, 2, 1)
+    // Nariz: um ponto de sombra.
+    c.fillStyle = tom(pele, -12)
+    c.fillRect(meio - (lc % 2 === 0 ? 1 : 0), olhoY + 1, 1, 1)
+    // Boca: um tracinho, um pixel abaixo do nariz.
+    c.fillStyle = boca
+    c.fillRect(meio - 1, olhoY + 3, 2, 1)
   }
 
   /** Olhos, sobrancelhas, nariz, boca e orelhas. Um pixel para cada coisa. */

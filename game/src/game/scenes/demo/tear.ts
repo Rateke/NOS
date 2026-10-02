@@ -1063,11 +1063,34 @@ export class TearScene implements Scene {
     mem.desenhar(c, l.t)
     tingir(c, mem.tom, l.t)
     mem.sobre?.(c, l.t)
+    // A câmera vai chegando na ação enquanto a lembrança passa.
+    const p = Math.min(1, l.t / mem.dur)
+    const suave = p * p * (3 - 2 * p)
+    const z = 1 + ((mem.zoom ?? 1.15) - 1) * suave
+    const f = mem.foco?.(l.t) ?? { x: WORLD_W / 2, y: WORLD_H / 2 }
+    const sw = WORLD_W / z
+    const sh = WORLD_H / z
+    const sx = Math.max(0, Math.min(WORLD_W - sw, f.x - sw / 2))
+    const sy = Math.max(0, Math.min(WORLD_H - sh, f.y - sh / 2))
     // Leve deriva da imagem, como projeção
-    const dx = Math.round(Math.sin(l.t * 0.8) * 1)
+    const dx = Math.sin(l.t * 0.8) * 1
     w.save()
     w.globalAlpha = alfa
-    w.drawImage(this.memoria, dx, 0)
+    w.imageSmoothingEnabled = true
+    w.drawImage(this.memoria, sx, sy, sw, sh, dx, 0, WORLD_W, WORLD_H)
+    // A borda do quadro de filme, com os cantos arredondados.
+    w.fillStyle = '#040405'
+    w.beginPath()
+    w.rect(0, 0, WORLD_W, WORLD_H)
+    // (À mão em vez de roundRect: o Safari antigo não tem.)
+    const [bx, by, bw, bh, br] = [7, 6, WORLD_W - 14, WORLD_H - 12, 10]
+    w.moveTo(bx + br, by)
+    w.arcTo(bx + bw, by, bx + bw, by + bh, br)
+    w.arcTo(bx + bw, by + bh, bx, by + bh, br)
+    w.arcTo(bx, by + bh, bx, by, br)
+    w.arcTo(bx, by, bx + bw, by, br)
+    w.closePath()
+    w.fill('evenodd')
     w.restore()
   }
 

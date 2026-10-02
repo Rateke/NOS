@@ -64,11 +64,11 @@ export const ARREMESSO_ADRIAN: string[] = [
   'QUEM PAGOU ESSA M**** TODA FUI EU!',
 ]
 
-/** O prato quebra perto delas. */
+/** O prato acerta uma delas. Quem grita é a outra. */
 export const PRATO_NELAS: { quem: 'Evelyn' | 'Lia'; texto: string }[] = [
-  { quem: 'Evelyn', texto: 'Para! Para, pelo amor de Deus!' },
+  { quem: 'Lia', texto: 'MÃE! MÃE, OLHA PRA MIM!' },
+  { quem: 'Evelyn', texto: 'LIA! Ai, meu Deus, Lia, deixa eu ver!' },
   { quem: 'Lia', texto: 'Você é louco! Você é LOUCO!' },
-  { quem: 'Evelyn', texto: 'Adrian, as crianças!' },
 ]
 
 /** O prato quebra em Liam, que entrou na frente. */
@@ -78,7 +78,6 @@ export const PRATO_NO_LIAM: { quem: 'Adrian' | 'Evelyn' | 'Lia'; texto: string }
   { quem: 'Adrian', texto: 'Olha o que você me fez fazer.' },
 ]
 
-/** O primeiro prato que ele leva. Pensamento, rápido. */
 /** Entre um prato e outro, o ar para de entrar. */
 export const MESA_FALTA_AR: Line[] = [
   { text: 'O ar não entra direito.' },
@@ -98,7 +97,10 @@ export const MESA_SEM_AR: Line[] = [
   { text: 'A cozinha fica pequena. A luz fica longe.' },
 ]
 
+/** O primeiro prato que ele leva: a mão no rosto, o sangue, e ele fica. */
 export const PRATO_PENSAMENTO: Line[] = [
+  { text: 'Tá quente na minha mão. É sangue.' },
+  { text: 'Não dói. Agora não pode doer.' },
   { text: 'Fico no meio. Aí eles param.' },
 ]
 

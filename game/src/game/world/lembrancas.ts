@@ -33,6 +33,12 @@ export interface Lembranca {
   desenhar(c: CanvasRenderingContext2D, t: number): void
   /** Por cima do tom: mantém a cor original. */
   sobre?(c: CanvasRenderingContext2D, t: number): void
+  /**
+   * Para onde a câmera vai chegando enquanto a lembrança passa (em pixels do
+   * mundo), e quanto ela aproxima no fim. A ação fica grande na tela.
+   */
+  foco?(t: number): { x: number; y: number }
+  zoom?: number
 }
 
 const PELE = '#7a5a4e'
@@ -49,6 +55,10 @@ export function criarLembrancas(): Lembranca[] {
   return [pratoQuebrado(), portaDoQuarto(), primeiraFuga(), avo(), amelia(), figuraPreta()]
 }
 
+/** Quando o prato sai da mão dele, e quando estoura no chão. */
+const PRATO_CAI = 0.7
+const PRATO_ESTOURA = 1.0
+
 /** 1. Adrian. O prato no chão, e a frase que sempre vem depois. */
 function pratoQuebrado(): Lembranca {
   const adrian = new Figura({ ...VISUAL.adrian, x: 222, y: 170, altura: 44, barba: true, gola: '#ddd', cor: cor('#2e2430', '#16100f') })
@@ -59,13 +69,25 @@ function pratoQuebrado(): Lembranca {
   evelyn.curvatura = 0.5
   liam.olhar = -1
   return {
-    falas: [{ texto: 'Olha o que você me fez fazer.', de: 0.5 }],
+    falas: [{ texto: 'Olha o que você me fez fazer.', de: 1.4 }],
     dono: 'Adrian',
     tom: '#b0503c',
-    dur: 5,
-    atualizar(dt) {
+    dur: 5.4,
+    zoom: 1.32,
+    foco: (t) => ({ x: 236 + Math.min(1, t / 4) * 30, y: 134 }),
+    atualizar(dt, t) {
       for (const f of [adrian, evelyn, liam]) f.update(dt)
       adrian.ofego = 2.4
+      // O braço sobe com o prato, e desce de uma vez.
+      adrian.braco = t < PRATO_CAI ? 1 : Math.max(0, 1 - (t - PRATO_CAI) * 3)
+      // Ela se encolhe e cobre o rosto quando estoura.
+      const depois = t - PRATO_ESTOURA
+      evelyn.tremor = depois > 0 && depois < 0.6 ? 1.4 : 0.2
+      evelyn.braco = depois > 0 ? 0.9 : 0.3
+      evelyn.curvatura = depois > 0 ? 0.75 : 0.5
+      // O menino na porta: se esconde atrás do batente, e volta a espiar.
+      liam.x = depois > 0 && depois < 1.6 ? 344 : 336
+      liam.tremor = depois > 0 && depois < 2 ? 0.8 : 0
     },
     desenhar(c, t) {
       comodo(c, [52, 48, 44], 170)
@@ -99,10 +121,26 @@ function pratoQuebrado(): Lembranca {
       ret(c, 240, 164, 18, 3, '#3a2a22')
       ret(c, 254, 152, 3, 14, '#3a2a22')
       ret(c, 236, 160, 3, 8, '#3a2a22')
-      // Cacos de prato espalhados
-      const r = sorteio(3)
-      for (let i = 0; i < 16; i++) {
-        ret(c, 150 + Math.floor(r() * 60), 172 + Math.floor(r() * 10), 2 + Math.floor(r() * 3), 1, '#e8e4dc')
+      // O prato: na mão dele, voando, e os cacos.
+      if (t < PRATO_CAI) {
+        ret(c, 214, 116 - Math.round(Math.sin(t * 8) * 1), 10, 3, '#ece8e0')
+        ret(c, 216, 115, 6, 1, '#ffffff')
+      } else if (t < PRATO_ESTOURA) {
+        const p = (t - PRATO_CAI) / (PRATO_ESTOURA - PRATO_CAI)
+        const px = 216 + (182 - 216) * p
+        const py = 116 + (170 - 116) * p * p
+        ret(c, Math.round(px), Math.round(py), 8, 3, '#ece8e0')
+      } else {
+        const q = t - PRATO_ESTOURA
+        const r = sorteio(3)
+        for (let i = 0; i < 22; i++) {
+          const vx = (r() - 0.5) * 140
+          const vy = -(30 + r() * 70)
+          const voo = Math.min(q, 0.55)
+          const x = 182 + vx * voo
+          const y = Math.min(172 + r() * 8, 168 + vy * voo + 260 * voo * voo)
+          ret(c, Math.round(x), Math.round(y), 1 + Math.floor(r() * 3), 1, '#ece8e0')
+        }
       }
       // Batente da porta, com Liam pequeno olhando de lá
       ret(c, 318, 90, 6, 80, '#2a2220')
@@ -110,6 +148,14 @@ function pratoQuebrado(): Lembranca {
       adrian.draw(c, 200)
       liam.draw(c, 200)
       ret(c, 344, 90, 40, 80, '#1a1614')
+    },
+    sobre(c, t) {
+      // O estouro: um clarão curto, branco.
+      const q = t - PRATO_ESTOURA
+      if (q > 0 && q < 0.14) {
+        c.fillStyle = `rgba(255,250,240,${(0.55 * (1 - q / 0.14)).toFixed(2)})`
+        c.fillRect(0, 0, WORLD_W, WORLD_H)
+      }
     },
   }
 }
@@ -124,20 +170,29 @@ function portaDoQuarto(): Lembranca {
     falas: [{ texto: 'Ninguém nessa casa fala a verdade!', de: 0.4 }],
     dono: 'Lia',
     tom: '#a04a6a',
-    dur: 5,
+    dur: 5.4,
+    zoom: 1.3,
+    foco: () => ({ x: 214, y: 136 }),
     atualizar(dt, t) {
       lia.update(dt)
       liam.update(dt)
-      lia.braco = 0.5 + Math.max(0, Math.sin(t * 6)) * 0.4
-      lia.tremor = 0.6
+      // Ela bate na porta até cansar, e escorrega até o chão.
+      const cansou = t > 3.4
+      lia.braco = cansou ? 0.1 : 0.5 + Math.max(0, Math.sin(t * 6)) * 0.4
+      lia.tremor = cansou ? 0.3 : 0.6
+      lia.pose = t > 4 ? 'sentado' : 'de-pe'
+      lia.curvatura = cansou ? Math.min(0.8, (t - 3.4) * 0.8) : 0
       liam.braco = 0.9
       liam.curvatura = 0.6
     },
-    desenhar(c) {
+    desenhar(c, t) {
       comodo(c, [44, 44, 54], 170)
       ret(c, 0, 166, WORLD_W, 4, '#34343e')
       ret(c, 0, 166, WORLD_W, 1, '#4a4a56')
-      porta(c, 262, 170, { luz: true, cor: [70, 60, 60], alt: 70 })
+      // A porta treme a cada batida. Lá dentro, a luz apaga.
+      const bate = t < 3.4 && Math.sin(t * 6) > 0.85 ? 1 : 0
+      porta(c, 262 + bate, 170, { luz: t < 2.4, cor: [70, 60, 60], alt: 70 })
+      if (t < 2.4) ret(c, 250, 169, 26, 1, 'rgba(255,230,170,0.7)')
       quadro(c, 140, 50, 26, 20, { figuras: 4 })
       quadro(c, 176, 58, 16, 14, { figuras: 2 })
       quadro(c, 86, 62, 14, 18, { figuras: 1 })
@@ -171,8 +226,16 @@ function primeiraFuga(): Lembranca {
     falas: [{ texto: 'Da outra vez eu também saí à noite.', de: 0.5 }],
     dono: 'Evelyn',
     tom: '#4a6ab0',
-    dur: 5.4,
-    atualizar(dt) {
+    dur: 5.6,
+    zoom: 1.28,
+    foco: (t) => ({ x: 186 - t * 10, y: 140 }),
+    atualizar(dt, t) {
+      // As duas andando na chuva, sem olhar para trás. Ela olha uma vez.
+      evelyn.x = 186 - t * 10
+      menina.x = evelyn.x - 16
+      evelyn.andando = 0.7
+      menina.andando = 0.9
+      evelyn.olhar = t > 2.6 && t < 3.6 ? 1 : -0.5
       evelyn.update(dt)
       menina.update(dt)
       evelyn.braco = 0.2
@@ -235,13 +298,25 @@ function primeiraFuga(): Lembranca {
       // Placa de ponto de ônibus
       ret(c, 132, 110, 2, 66, '#3a3e4a')
       ret(c, 126, 104, 14, 8, '#4a5a7a')
-      // A mala
-      ret(c, 186, 160, 12, 16, '#3a2e2a')
-      ret(c, 190, 157, 4, 3, '#5a4a44')
+      // A mala, puxada pela outra mão
+      const mx = Math.round(evelyn.x + 9)
+      ret(c, mx, 162, 12, 14, '#3a2e2a')
+      ret(c, mx + 4, 159, 4, 3, '#5a4a44')
+      ret(c, mx + 2, 176, 2, 1, '#05060a')
+      ret(c, mx + 8, 176, 2, 1, '#05060a')
       evelyn.draw(c, 93)
       menina.draw(c, 93)
       // Mãos dadas
-      ret(c, 163, 160, 9, 1, PELE)
+      ret(c, Math.round(menina.x + 3), 160, Math.round(evelyn.x - menina.x - 7), 1, PELE)
+      // Um carro passa: o farol varre a rua e as duas por um instante.
+      if (t > 3 && t < 4.6) {
+        const fx = WORLD_W + 40 - (t - 3) * 300
+        const g = c.createRadialGradient(fx, 168, 2, fx, 168, 70)
+        g.addColorStop(0, 'rgba(255,245,220,0.45)')
+        g.addColorStop(1, 'rgba(255,245,220,0)')
+        c.fillStyle = g
+        c.fillRect(fx - 70, 98, 140, 118)
+      }
       // Chuva
       const r = sorteio(8)
       for (let i = 0; i < 70; i++) {
@@ -277,12 +352,20 @@ function avo(): Lembranca {
     ],
     dono: 'Helena, avó',
     tom: '#a88a50',
-    dur: 5.4,
+    dur: 5.6,
+    zoom: 1.34,
+    foco: () => ({ x: 200, y: 104 }),
     atualizar(dt, t) {
       helena.update(dt)
       menino.update(dt)
-      helena.braco = Math.min(0.9, t * 0.6)
+      helena.braco = t < 3 ? Math.min(0.9, t * 0.6) : Math.max(0, 0.9 - (t - 3) * 1.5)
       helena.curvatura = 0.15
+      // O menino olha para ela; no "Aguenta.", baixa a cabeça.
+      menino.curvatura = t > 2.6 ? Math.min(0.5, (t - 2.6) * 0.6) : 0
+      menino.olhar = -1
+      // Ela se vira para ele depois de endireitar.
+      helena.costas = t < 3.2
+      helena.olhar = 1
     },
     desenhar(c, t) {
       comodo(c, [58, 50, 44], 172)
@@ -345,6 +428,8 @@ function amelia(): Lembranca {
     dono: 'caderno de Amélia',
     tom: '#8a7048',
     dur: 6,
+    zoom: 1.3,
+    foco: () => ({ x: 236, y: 112 }),
     atualizar(dt, t) {
       ela.update(dt)
       ela.braco = 0.55 + Math.max(0, Math.sin(t * 3)) * 0.25
@@ -406,7 +491,15 @@ function amelia(): Lembranca {
       ret(c, 210, 60, 112, 6, '#6a4a34')
       ret(c, 214, 140, 102, 6, '#6a4a34')
       for (let x = 222; x < 312; x += 3) ret(c, x, 66, 1, 74, 'rgba(220,200,170,0.4)')
-      for (let y = 116; y < 140; y += 2) ret(c, 222, y, 90, 2, (y / 2) % 2 ? '#5a3a44' : '#4a3a5a')
+      // O tecido sobe enquanto ela tece; a lançadeira vai e volta.
+      const topoPano = Math.round(116 - Math.min(22, t * 4))
+      for (let y = topoPano; y < 140; y += 2) ret(c, 222, y, 90, 2, (y / 2) % 2 ? '#5a3a44' : '#4a3a5a')
+      const vai = (t * 0.9) % 2
+      const lx = 222 + Math.round((vai < 1 ? vai : 2 - vai) * 80)
+      ret(c, lx, topoPano - 3, 10, 3, '#8a6a44')
+      ret(c, lx + 2, topoPano - 3, 6, 1, '#b8945a')
+      // O fio correndo da lançadeira até a borda do pano.
+      ret(c, Math.min(lx, 222), topoPano - 2, Math.abs(lx - 222), 1, 'rgba(200,160,170,0.6)')
       // Mesa, vela e o caderno aberto
       ret(c, 80, 140, 60, 4, '#4a3426')
       ret(c, 86, 144, 3, 28, '#3a2a1e')
@@ -447,6 +540,8 @@ function figuraPreta(): Lembranca {
     dono: '',
     tom: '#303848',
     dur: 7,
+    zoom: 1.22,
+    foco: (t) => ({ x: t < 3.1 ? 220 : 204, y: 132 }),
     atualizar(dt, t) {
       ela.update(dt)
       ela.braco = t > 1.8 ? Math.min(0.9, (t - 1.8) * 1.2) : 0
@@ -562,35 +657,55 @@ function figuraPreta(): Lembranca {
 }
 
 /**
- * Tinge o quadrinho de uma cor só, escurece as bordas e põe grão. É o que
- * separa lembrança de presente sem precisar escrever "flashback".
+ * Tinge o quadrinho com a cor de quem lembra, sem lavar: um resto da cor de
+ * verdade fica, o contraste sobe, as bordas afundam no preto e uma luz vaza
+ * num canto, como filme velho. É o que separa lembrança de presente sem
+ * precisar escrever "flashback".
  */
 export function tingir(c: CanvasRenderingContext2D, tom: string, t: number): void {
   c.save()
   c.globalCompositeOperation = 'saturation'
+  c.globalAlpha = 0.82
   c.fillStyle = '#808080'
   c.fillRect(0, 0, WORLD_W, WORLD_H)
   c.globalCompositeOperation = 'color'
+  c.globalAlpha = 0.78
   c.fillStyle = tom
   c.fillRect(0, 0, WORLD_W, WORLD_H)
+  // Contraste: a imagem sobre ela mesma.
+  c.globalCompositeOperation = 'overlay'
+  c.globalAlpha = 0.5
+  c.drawImage(c.canvas, 0, 0)
+  c.globalAlpha = 1
   c.globalCompositeOperation = 'multiply'
-  const v = c.createRadialGradient(WORLD_W / 2, WORLD_H / 2, 50, WORLD_W / 2, WORLD_H / 2, 230)
+  const v = c.createRadialGradient(WORLD_W / 2, WORLD_H * 0.55, 40, WORLD_W / 2, WORLD_H * 0.55, 225)
   v.addColorStop(0, '#ffffff')
-  v.addColorStop(1, '#101010')
+  v.addColorStop(0.7, '#9a9a9a')
+  v.addColorStop(1, '#060606')
   c.fillStyle = v
   c.fillRect(0, 0, WORLD_W, WORLD_H)
+  // A luz vazando num canto.
+  c.globalCompositeOperation = 'screen'
+  const lx = WORLD_W * 0.86 + Math.sin(t * 0.5) * 18
+  const vaza = c.createRadialGradient(lx, 10, 0, lx, 10, 150)
+  vaza.addColorStop(0, 'rgba(255,190,120,0.2)')
+  vaza.addColorStop(1, 'rgba(255,190,120,0)')
+  c.fillStyle = vaza
+  c.fillRect(0, 0, WORLD_W, WORLD_H)
   c.restore()
-  // Grão e riscos de filme velho
+  // Grão, riscos e a luz do projetor tremendo.
   const r = sorteio(Math.floor(t * 24))
-  for (let i = 0; i < 90; i++) {
-    const a = r() * 0.12
+  for (let i = 0; i < 110; i++) {
+    const a = r() * 0.14
     c.fillStyle = r() > 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a * 2})`
     c.fillRect(Math.floor(r() * WORLD_W), Math.floor(r() * WORLD_H), 1, 1)
   }
   if (r() > 0.6) {
-    c.fillStyle = 'rgba(255,255,255,0.06)'
+    c.fillStyle = 'rgba(255,255,255,0.07)'
     c.fillRect(Math.floor(r() * WORLD_W), 0, 1, WORLD_H)
   }
+  c.fillStyle = `rgba(0,0,0,${(r() * 0.06).toFixed(3)})`
+  c.fillRect(0, 0, WORLD_W, WORLD_H)
 }
 
 // --- Pequenos móveis das lembranças --------------------------------------

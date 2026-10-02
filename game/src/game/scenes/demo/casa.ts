@@ -100,6 +100,11 @@ const RETRATO_TORTO = 0.2
 /** Onde ficam os pés de Liam em pé no assento do sofá. */
 const ASSENTO_SOFA = 134
 
+/** Onde os dois sentam na cama da Lia para dividir o fone, e a altura do colchão. */
+const CAMA_LIA_X = 113
+const CAMA_LIAM_X = 128
+const SENTADO_NA_CAMA = 139
+
 /** Quantas coisas lidas até o peito fechar. */
 const LIMITE_CRISE = 7
 /** Segundos parado até ele sentar no chão. */
@@ -190,6 +195,8 @@ export class CasaScene implements Scene {
   /** Já conversou com ela (para os testes, e para não repetir). */
   conversouLia = false
   private liaSentada = false
+  /** Indo sentar na cama para dividir o fone: ela primeiro, depois ele. */
+  private sentarFase: 'lia' | 'fala' | 'liam' | 'fone' | null = null
   private liaAlvoX: number | null = null
   /** Contagem até o pai gritar, com o fone tocando. */
   private esperaFone = 0
@@ -1223,13 +1230,42 @@ export class CasaScene implements Scene {
 
   private liaItem(i: number): void {
     this.dialogue.play(LIA_ITEM_RESPOSTA[i] ?? [], () => {
-      // O fone: um lado para cada um, sentados na cama.
+      // O fone: ela vai até a cama e senta; manda ele sentar do lado.
+      this.liaAlvoX = CAMA_LIA_X
+      this.sentarFase = 'lia'
+    })
+  }
+
+  /** Ela senta, chama, ele senta do lado, e o fone vai para o ouvido dele. */
+  private sentarNaCama(dt: number): void {
+    const f = this.sentarFase
+    if (f === 'lia' && Math.abs(this.liaQuarto.x - CAMA_LIA_X) <= 1) {
+      this.liaAlvoX = null
+      this.liaQuarto.andando = 0
       this.liaSentada = true
-      this.liaQuarto.x = LIA_MALA_X - 30
-      this.liam.x = LIA_MALA_X - 8
-      this.liam.olhar = -1
       this.liaQuarto.olhar = 1
-      this.dialogue.play(LIA_FONE, () => {
+      sons.pisada(0.4)
+      this.sentarFase = 'fala'
+      this.dialogue.play(LIA_FONE.slice(0, 1), () => {
+        this.sentarFase = 'liam'
+      })
+      return
+    }
+    if (f === 'liam') {
+      const d = CAMA_LIAM_X - this.liam.x
+      if (Math.abs(d) > 1) {
+        this.liam.x += Math.sign(d) * Math.min(Math.abs(d), 40 * dt)
+        this.liam.olhar = Math.sign(d)
+        this.liam.andando = 1
+        return
+      }
+      this.liam.andando = 0
+      this.liam.pose = 'sentado'
+      this.liam.y = SENTADO_NA_CAMA
+      this.liam.olhar = -1
+      sons.pisada(0.4)
+      this.sentarFase = 'fone'
+      this.dialogue.play(LIA_FONE.slice(1), () => {
         principal.volume(0, 1.4)
         audio.setAmbient(0, 1.4)
         musica.setPad(0, 1.4)
@@ -1238,10 +1274,11 @@ export class CasaScene implements Scene {
         this.esperaFone = 8.5
         this.dialogue.play(LIA_FONE_PAZ)
       })
-    })
+    }
   }
 
   private cutConversaLia(dt: number): void {
+    if (this.sentarFase) this.sentarNaCama(dt)
     if (this.esperaFone > 0) {
       this.esperaFone -= dt
       if (this.esperaFone <= 0) {
@@ -1271,6 +1308,11 @@ export class CasaScene implements Scene {
 
   private liaConvite(): void {
     this.liaSentada = false
+    this.sentarFase = null
+    // Ela arranca o fone e levanta; ele levanta junto.
+    this.liam.pose = 'de-pe'
+    this.liam.y = this.atual.passoY
+    this.liam.x = CAMA_LIAM_X + 12
     this.liaQuarto.x = LIA_MALA_X
     this.liaQuarto.olhar = -1
     this.liam.olhar = 1
@@ -1475,10 +1517,21 @@ export class CasaScene implements Scene {
       const l = this.liaQuarto
       l.y = this.atual.passoY
       l.pose = this.liaSentada ? 'sentado' : 'de-pe'
-      if (this.liaSentada) l.y = this.atual.passoY - 10
+      if (this.liaSentada) l.y = SENTADO_NA_CAMA
       l.braco = this.cutscene === 'conversaLia' || this.liaSentada ? 0 : 0.45 + 0.45 * Math.sin(this.t * 2.6)
       if (!this.cutscene && this.liaAlvoX === null) l.olhar = -1
       l.draw(w, this.atual.luzX, 'rgba(255,200,180,0.25)')
+      // O fio do fone, da orelha dela até a dele.
+      if (this.sentarFase === 'fone' && this.liam.pose === 'sentado') {
+        const ya = Math.round(l.y - l.altura * 0.62)
+        const yb = Math.round(this.liam.y - this.liam.altura * 0.62)
+        w.strokeStyle = 'rgba(236,232,224,0.85)'
+        w.lineWidth = 1
+        w.beginPath()
+        w.moveTo(l.x + 3, ya)
+        w.quadraticCurveTo((l.x + this.liam.x) / 2, Math.max(ya, yb) + 12, this.liam.x - 3, yb)
+        w.stroke()
+      }
     }
     const p = this.travesseiro
     if (p) {
