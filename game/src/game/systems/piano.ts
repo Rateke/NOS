@@ -50,8 +50,8 @@ export class Piano {
     const f = ESCALA[i]
     if (f === undefined) return
     musica.nota(f, forca)
-    // A oitava de baixo, junto: o piano dele é pesado.
-    musica.nota(f / 2, forca * 0.38)
+    // A oitava de baixo, junto e mais fraca: o piano dele é pesado.
+    musica.nota(f / 2, forca * 0.2)
     this.brilho[i] = 1
     this.ultima = i
   }
@@ -79,10 +79,10 @@ export class Piano {
     if (f === undefined) return null
     if (this.instrumento === 'violino') {
       // O violino, uma oitava acima do piano: arco atacado, curto e cheio.
-      musica.arco('violino', f * 2, 1.25, 1.5 - this.tremor * 0.4, 'piano', 0.05)
+      musica.arco('violino', f * 2, 1.25, 2.7 - this.tremor * 0.6, 'piano', 0.05)
     } else {
       musica.nota(f, 1)
-      musica.nota(f / 2, 0.38)
+      musica.nota(f / 2, 0.2)
     }
     this.brilho[i] = 1
     this.ultima = i

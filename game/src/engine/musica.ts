@@ -244,15 +244,40 @@ export class Musica {
     const env = ctx.createGain()
     env.gain.setValueAtTime(0, t)
     env.gain.linearRampToValueAtTime(pico, t + Math.min(ataque, duracao * 0.4))
-    env.gain.setValueAtTime(pico, t + Math.max(ataque, duracao - 0.9))
-    env.gain.linearRampToValueAtTime(0, t + duracao)
+    if (ataque < 0.15) {
+      // Arco atacado: morde, cede um pouco, e a nota cresce de novo.
+      env.gain.linearRampToValueAtTime(pico * 0.78, t + ataque + 0.18)
+      env.gain.linearRampToValueAtTime(pico * 0.95, t + Math.max(ataque + 0.3, duracao - 0.3))
+      env.gain.linearRampToValueAtTime(0, t + duracao)
+    } else {
+      env.gain.setValueAtTime(pico, t + Math.max(ataque, duracao - 0.9))
+      env.gain.linearRampToValueAtTime(0, t + duracao)
+    }
     const voz = criarArco(ctx, tipo, f, env, t, duracao, this.abafado)
     if (destino) env.connect(destino)
     else {
       env.connect(this.saida)
       env.connect(this.envioReverb)
     }
-    void voz
+    if (ataqueDado !== undefined && ataqueDado < 0.15) {
+      // Nota atacada: entra um tico abaixo e sobe, e o arco morde a corda.
+      voz(f * 0.985, t, 0.001)
+      voz(f, t + 0.012, 0.035)
+      const len = Math.floor(ctx.sampleRate * 0.12)
+      const nb = ctx.createBuffer(1, len, ctx.sampleRate)
+      const d = nb.getChannelData(0)
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2)
+      const mordida = ctx.createBufferSource()
+      mordida.buffer = nb
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = tipo === 'violino' ? 2600 : 1400
+      bp.Q.value = 0.9
+      const mg = ctx.createGain()
+      mg.gain.value = pico * 2.2
+      mordida.connect(bp).connect(mg).connect(destino ?? this.saida)
+      mordida.start(t)
+    }
   }
 
   /** Um colchão grave por baixo de tudo. Não é melodia: é a casa respirando. */
@@ -298,8 +323,17 @@ export class Musica {
 }
 
 /**
- * A voz de um instrumento de arco, ligada em `saida` e parando em `fim`.
- * Devolve quem muda a altura da nota (para quem segura a nota e desliza).
+ * Uma corda friccionada. O som de órgão vem de onda parada atravessando
+ * filtros fixos; corda de verdade é outra coisa:
+ *
+ * - a onda é dente de serra (é assim que a crina arrasta a corda), mas a
+ *   afinação nunca fica parada: oscila um pouco o tempo todo e ganha
+ *   vibrato de verdade depois do ataque;
+ * - o corpo é uma cadeia de ressonâncias: o ar da caixa embaixo, a madeira,
+ *   um buraco na faixa nasal e o "brilho do cavalete" lá em cima;
+ * - o arco chia, e a força dele varia — o volume respira junto.
+ *
+ * Devolve a função que muda a altura (o arco deslizando até a nota nova).
  */
 export function criarArco(
   ctx: AudioContext, tipo: 'violoncelo' | 'violino', freq: number, saida: AudioNode,
@@ -307,71 +341,108 @@ export function criarArco(
 ): (f: number, quando: number, suave?: number) => void {
   const violino = tipo === 'violino'
   const fim = inicio + duracao + 0.05
-  const corpo = ctx.createGain()
-  corpo.gain.value = 1
+  const P = violino
+    ? { hp: 190, picos: [[290, 2, 6], [470, 2.5, 4], [1250, 1.3, -5], [2900, 1.3, 8], [4600, 2, 3]], lp: 7800, vib: 5.9, prof: 0.011, ruido: 0.045 }
+    : { hp: 55, picos: [[210, 2, 6], [520, 2.2, 3], [1300, 1.2, -4], [2300, 1.4, 4]], lp: 4200, vib: 5.2, prof: 0.0075, ruido: 0.03 }
+
+  // A cadeia do corpo, em série.
+  const entrada = ctx.createGain()
+  let elo: AudioNode = entrada
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = P.hp
+  hp.Q.value = 0.7
+  elo.connect(hp)
+  elo = hp
+  for (const [fr, q, g] of P.picos) {
+    const pk = ctx.createBiquadFilter()
+    pk.type = 'peaking'
+    pk.frequency.value = fr ?? 500
+    pk.Q.value = q ?? 2
+    pk.gain.value = g ?? 0
+    elo.connect(pk)
+    elo = pk
+  }
   const lp = ctx.createBiquadFilter()
   lp.type = 'lowpass'
-  lp.frequency.value = (violino ? 5200 : 2300) * (1 - abafado * 0.5)
-  lp.Q.value = 0.5
-  corpo.connect(lp).connect(saida)
-  // As ressonâncias da caixa do instrumento.
-  const formantes = violino ? [[520, 2.4, 0.9], [1150, 2.8, 0.8], [2900, 3.2, 0.5]] : [[210, 2.6, 1], [520, 2.4, 0.8], [1050, 3, 0.45]]
-  const entrada = ctx.createGain()
-  for (const [fr, q, g] of formantes) {
-    const bp = ctx.createBiquadFilter()
-    bp.type = 'bandpass'
-    bp.frequency.value = fr ?? 500
-    bp.Q.value = q ?? 2
-    const gg = ctx.createGain()
-    gg.gain.value = (g ?? 1) * 1.6
-    entrada.connect(bp).connect(gg).connect(corpo)
-  }
-  const direto = ctx.createGain()
-  direto.gain.value = 0.35
-  entrada.connect(direto).connect(corpo)
-  // Duas serras quase juntas: o arco nunca é um oscilador limpo.
-  const osc = ctx.createOscillator()
-  osc.type = 'sawtooth'
-  osc.frequency.value = freq
-  const osc2 = ctx.createOscillator()
-  osc2.type = 'sawtooth'
-  osc2.frequency.value = freq
-  osc2.detune.value = violino ? 7 : 5
-  const g2 = ctx.createGain()
-  g2.gain.value = 0.45
-  osc.connect(entrada)
-  osc2.connect(g2).connect(entrada)
-  // Vibrato que entra depois do ataque.
-  const vib = ctx.createOscillator()
-  vib.frequency.value = violino ? 6.1 : 5.3
-  const vg = ctx.createGain()
-  const prof = freq * (violino ? 0.0045 : 0.0028)
-  vg.gain.setValueAtTime(0, inicio)
-  vg.gain.linearRampToValueAtTime(0, inicio + 0.35)
-  vg.gain.linearRampToValueAtTime(prof, inicio + 0.9)
-  vib.connect(vg)
-  vg.connect(osc.frequency)
-  vg.connect(osc2.frequency)
-  // O chiado da crina.
-  const len = Math.floor(ctx.sampleRate * 0.5)
+  lp.frequency.value = P.lp * (1 - abafado * 0.5)
+  lp.Q.value = 0.4
+  elo.connect(lp)
+  // A força do arco: o volume treme de leve, sem padrão.
+  const arcoG = ctx.createGain()
+  arcoG.gain.value = 0.55
+  lp.connect(arcoG).connect(saida)
+
+  // Ruído compartilhado: o chiado da crina e as pequenas instabilidades.
+  const len = Math.floor(ctx.sampleRate * 1.5)
   const nb = ctx.createBuffer(1, len, ctx.sampleRate)
   const nd = nb.getChannelData(0)
   for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1
-  const crina = ctx.createBufferSource()
-  crina.buffer = nb
-  crina.loop = true
+  const ruido = (): AudioBufferSourceNode => {
+    const r = ctx.createBufferSource()
+    r.buffer = nb
+    r.loop = true
+    r.loopStart = Math.random()
+    return r
+  }
+
+  const osc = ctx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.value = freq
+  // Uma segunda serra quase junta, bem baixa: o corpo nunca soa uma corda só.
+  const osc2 = ctx.createOscillator()
+  osc2.type = 'sawtooth'
+  osc2.frequency.value = freq
+  osc2.detune.value = violino ? 3 : 2
+  const g2 = ctx.createGain()
+  g2.gain.value = 0.22
+  osc.connect(entrada)
+  osc2.connect(g2).connect(entrada)
+
+  // Vibrato: entra depois do ataque e cresce.
+  const vib = ctx.createOscillator()
+  vib.frequency.value = P.vib
+  const vg = ctx.createGain()
+  const prof = freq * P.prof
+  vg.gain.setValueAtTime(0, inicio)
+  vg.gain.linearRampToValueAtTime(0, inicio + 0.18)
+  vg.gain.linearRampToValueAtTime(prof, inicio + 0.6)
+  vib.connect(vg)
+  vg.connect(osc.frequency)
+  vg.connect(osc2.frequency)
+  // A afinação viva: ruído bem lento mexendo a altura um fio.
+  const deriva = ruido()
+  const dlp = ctx.createBiquadFilter()
+  dlp.type = 'lowpass'
+  dlp.frequency.value = 6
+  const dg = ctx.createGain()
+  dg.gain.value = freq * 0.25
+  deriva.connect(dlp).connect(dg)
+  dg.connect(osc.frequency)
+  dg.connect(osc2.frequency)
+  // O volume respirando com a força do arco.
+  const forca = ruido()
+  const flp = ctx.createBiquadFilter()
+  flp.type = 'lowpass'
+  flp.frequency.value = 5
+  const fg = ctx.createGain()
+  fg.gain.value = 4
+  forca.connect(flp).connect(fg).connect(arcoG.gain)
+
+  // O chiado da crina, que segue a força do arco.
+  const crina = ruido()
   const cbp = ctx.createBiquadFilter()
   cbp.type = 'bandpass'
-  cbp.frequency.value = violino ? 4200 : 2400
-  cbp.Q.value = 1.2
+  cbp.frequency.value = violino ? 3600 : 2000
+  cbp.Q.value = 0.7
   const cg = ctx.createGain()
-  cg.gain.value = violino ? 0.05 : 0.035
-  crina.connect(cbp).connect(cg).connect(corpo)
-  for (const n of [osc, osc2, vib, crina]) {
+  cg.gain.value = P.ruido
+  crina.connect(cbp).connect(cg).connect(arcoG)
+
+  for (const n of [osc, osc2, vib, deriva, forca, crina]) {
     n.start(inicio)
     n.stop(fim)
   }
-  // Muda a altura das duas serras juntas (o arco desliza até a nota nova).
   return (f: number, quando: number, suave = 0.15) => {
     osc.frequency.setTargetAtTime(f, quando, suave)
     osc2.frequency.setTargetAtTime(f, quando, suave)

@@ -33,12 +33,12 @@ export class Audio {
     const graves = this.ctx.createBiquadFilter()
     graves.type = 'lowshelf'
     graves.frequency.value = 120
-    graves.gain.value = 5
+    graves.gain.value = 2.5
     const sub = this.ctx.createBiquadFilter()
     sub.type = 'peaking'
     sub.frequency.value = 58
     sub.Q.value = 1
-    sub.gain.value = 4
+    sub.gain.value = 2
     // Um limitador antes da caixa de som: os gritos podem empilhar à
     // vontade, a saída nunca estoura.
     this.limitador = this.ctx.createDynamicsCompressor()
@@ -1343,65 +1343,98 @@ export class SonsNos {
    */
   susto(): void {
     const ctx = this.ctx
-    const bus = this.barramentoCaos()
+    const out = this.out
     const b = this.buf()
-    if (!ctx || !bus || !b) return
+    if (!ctx || !out || !b) return
     const t = ctx.currentTime + 0.003
-    // Baque.
+    // Direto na saída, sem o compressor do caos: é o som mais alto do jogo.
+    // O limitador e a saturação do fim seguram o teto.
+    const hit = ctx.createGain()
+    hit.gain.value = 1
+    hit.connect(out)
+
+    // O chão some: um grave que despenca.
     const sub = ctx.createOscillator()
     sub.type = 'sine'
-    sub.frequency.setValueAtTime(90, t)
-    sub.frequency.exponentialRampToValueAtTime(24, t + 0.7)
+    sub.frequency.setValueAtTime(130, t)
+    sub.frequency.exponentialRampToValueAtTime(26, t + 1.1)
     const sg = ctx.createGain()
-    sg.gain.setValueAtTime(0.9, t)
-    sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
-    sub.connect(sg).connect(bus)
+    sg.gain.setValueAtTime(1.6, t)
+    sg.gain.exponentialRampToValueAtTime(0.0001, t + 1.3)
+    sub.connect(sg).connect(hit)
     sub.start(t)
-    sub.stop(t + 0.95)
+    sub.stop(t + 1.35)
+
+    // A pancada de cordas: um acorde de segundas menores, rasgado.
+    const stab = this.rasgo(ctx)
+    const slp = ctx.createBiquadFilter()
+    slp.type = 'lowpass'
+    slp.frequency.setValueAtTime(6000, t)
+    slp.frequency.exponentialRampToValueAtTime(1400, t + 1.2)
+    const stg = ctx.createGain()
+    stg.gain.setValueAtTime(0.0001, t)
+    stg.gain.linearRampToValueAtTime(0.75, t + 0.006)
+    stg.gain.linearRampToValueAtTime(0.38, t + 0.3)
+    stg.gain.exponentialRampToValueAtTime(0.0001, t + 1.5)
+    stab.connect(slp).connect(stg).connect(hit)
+    for (const f of [110, 116.5, 233.1, 246.9, 349.2, 370, 493.9, 523.3, 740, 784]) {
+      const o = ctx.createOscillator()
+      o.type = 'sawtooth'
+      o.frequency.setValueAtTime(f, t)
+      o.frequency.linearRampToValueAtTime(f * 0.97, t + 1.4)
+      const g = ctx.createGain()
+      g.gain.value = 0.09
+      o.connect(g).connect(stab)
+      o.start(t)
+      o.stop(t + 1.55)
+    }
+
     // Metal: parciais que não combinam, morrendo rápido.
-    for (const [f, v] of [[523, 0.3], [1187, 0.22], [1873, 0.18], [2711, 0.14], [3917, 0.1]] as const) {
+    for (const [f, v] of [[523, 0.45], [1187, 0.34], [1873, 0.28], [2711, 0.22], [3917, 0.16]] as const) {
       const o = ctx.createOscillator()
       o.type = 'sine'
       o.frequency.value = f
       const g = ctx.createGain()
       g.gain.setValueAtTime(v, t)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7)
-      o.connect(g).connect(bus)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8)
+      o.connect(g).connect(hit)
       o.start(t)
-      o.stop(t + 0.75)
+      o.stop(t + 0.85)
     }
-    // Guincho descendo, rasgado.
+
+    // O guincho: desce rasgado, longo.
     const w = this.rasgo(ctx)
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
-    bp.frequency.value = 1800
-    bp.Q.value = 2
+    bp.frequency.value = 2000
+    bp.Q.value = 1.4
     const gg = ctx.createGain()
-    gg.gain.setValueAtTime(0.32, t)
-    gg.gain.exponentialRampToValueAtTime(0.0001, t + 0.6)
-    w.connect(bp).connect(gg).connect(bus)
-    for (const det of [0, 37]) {
+    gg.gain.setValueAtTime(0.6, t)
+    gg.gain.exponentialRampToValueAtTime(0.0001, t + 1.1)
+    w.connect(bp).connect(gg).connect(hit)
+    for (const det of [0, 37, -51]) {
       const o = ctx.createOscillator()
       o.type = 'sawtooth'
-      o.frequency.setValueAtTime(3400, t)
-      o.frequency.exponentialRampToValueAtTime(700, t + 0.55)
+      o.frequency.setValueAtTime(3800, t)
+      o.frequency.exponentialRampToValueAtTime(480, t + 1.0)
       o.detune.value = det
       o.connect(w)
       o.start(t)
-      o.stop(t + 0.6)
+      o.stop(t + 1.1)
     }
-    // Sopro de ruído.
+
+    // O estouro de ar, alto e curto.
     const src = ctx.createBufferSource()
     src.buffer = b
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
-    hp.frequency.value = 700
+    hp.frequency.value = 400
     const ng = ctx.createGain()
-    ng.gain.setValueAtTime(0.55, t)
-    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.35)
-    src.connect(hp).connect(ng).connect(bus)
-    src.start(t, Math.random(), 0.4)
-    this.zumbido(0.7, 2.2)
+    ng.gain.setValueAtTime(1.1, t)
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.5)
+    src.connect(hp).connect(ng).connect(hit)
+    src.start(t, Math.random(), 0.55)
+    this.zumbido(1, 3)
   }
 
   /**

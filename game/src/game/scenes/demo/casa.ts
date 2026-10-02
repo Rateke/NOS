@@ -38,6 +38,7 @@ import { CadernoUI } from '../../ui/cadernoUI'
 import { Escolha } from '../../ui/escolha'
 import { memoria } from '../../systems/memoria'
 import { Respiracao } from '../../ui/respiracao'
+import { desenharSusto, DURACAO_SUSTO } from '../../ui/rostoSusto'
 import { CRISE_ABRE, CRISE_PASSOU, CRISE_NAO_PASSOU } from '../../content/crise'
 import {
   DE_NOVO_CASA, DE_NOVO_JANELA, VULTO_SUMIU, NINGUEM_VEIO, CHEIRO_QUEIMADO,
@@ -47,47 +48,6 @@ import { FimScene } from './fim'
 
 /** Cenas que o jogador assiste: Liam não obedece às setas enquanto duram. */
 type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado' | 'passos' | 'conversaLia' | 'susto'
-
-/**
- * O rosto da sombra, de perto: oval branco, as órbitas fundas e pretas, uma
- * rachada no lugar da boca. Sem nariz, sem nada. É o rosto do Liam sem
- * nada que seja dele.
- */
-function desenharRostoBranco(w: CanvasRenderingContext2D, t: number): void {
-  const cx = WORLD_W / 2
-  const cy = 112
-  w.fillStyle = '#f4f5fa'
-  w.beginPath()
-  w.ellipse(cx, cy, 62, 84, 0, 0, Math.PI * 2)
-  w.fill()
-  // Sombra do lado, para ter volume.
-  w.fillStyle = 'rgba(160,166,190,0.35)'
-  w.beginPath()
-  w.ellipse(cx + 24, cy + 8, 34, 74, 0, -Math.PI / 2, Math.PI / 2)
-  w.fill()
-  // As órbitas: fundas, pretas, um pouco tortas.
-  w.fillStyle = '#050507'
-  w.beginPath()
-  w.ellipse(cx - 24, cy - 12, 13, 19, 0.12, 0, Math.PI * 2)
-  w.ellipse(cx + 24, cy - 10, 12, 20, -0.1, 0, Math.PI * 2)
-  w.fill()
-  // A boca: uma rachadura, não um sorriso.
-  w.strokeStyle = '#141418'
-  w.lineWidth = 2
-  w.beginPath()
-  w.moveTo(cx - 26, cy + 42)
-  w.lineTo(cx - 8, cy + 45)
-  w.lineTo(cx + 2, cy + 41)
-  w.lineTo(cx + 22, cy + 46)
-  w.stroke()
-  // Grão por cima, para não ficar limpo demais.
-  for (let i = 0; i < 260; i++) {
-    const x = cx - 70 + ((i * 53 + Math.floor(t * 90) * 17) % 140)
-    const y = cy - 90 + ((i * 37 + Math.floor(t * 90) * 29) % 180)
-    w.fillStyle = `rgba(0,0,0,${(0.05 + (i % 5) * 0.03).toFixed(2)})`
-    w.fillRect(x, y, 1, 1)
-  }
-}
 
 /** Entre a meia-noite e as cinco da manhã de quem está jogando. */
 function madrugada(): boolean {
@@ -227,7 +187,6 @@ export class CasaScene implements Scene {
   private susto: { tipo: 'espelho' | 'retrato'; t: number; flashou: boolean; onFim: () => void } | null = null
   /** Quantos sustos já aconteceram (para os testes). */
   sustos = 0
-  private rostoSusto = new Figura({ ...VISUAL.liam, x: 0, y: 0, altura: 30, cor: { roupa: '#1a1e2a', cabelo: '#0a0b10', pele: '#c9b4a8', sombra: 'rgba(0,0,0,0)' } })
 
   // --- A chegada do pai ---
   private retratoTorto = RETRATO_TORTO
@@ -1447,7 +1406,7 @@ export class CasaScene implements Scene {
       sons.susto()
       this.jolt = 1
     }
-    if (s.t >= silencio + 1) {
+    if (s.t >= silencio + DURACAO_SUSTO + 0.3) {
       this.susto = null
       this.cutscene = null
       principal.volume(0.5, 1.6)
@@ -1456,25 +1415,6 @@ export class CasaScene implements Scene {
       clima.set({ chuva: 0.45 }, 2)
       s.onFim()
     }
-  }
-
-  /** O rosto que enche a tela no instante do susto. */
-  private desenharRostoSusto(ctx: SceneCtx, tipo: 'espelho' | 'retrato'): void {
-    const w = ctx.display.beginWorld()
-    w.fillStyle = '#000'
-    w.fillRect(0, 0, WORLD_W, 216)
-    w.save()
-    if (tipo === 'retrato') {
-      desenharRostoBranco(w, this.t)
-    } else {
-      this.rostoSusto.panico = true
-      this.rostoSusto.olhar = 0
-      w.translate(WORLD_W / 2, 108 + 10 * 24.5)
-      w.scale(10, 10)
-      this.rostoSusto.draw(w, 0, 'rgba(160,190,255,0.5)')
-    }
-    w.restore()
-    ctx.display.present({ rgbSplit: 3, wave: 1.5, shake: 3, time: this.t })
   }
 
   /** O reflexo no espelho, a Lia arrumando a mala, o travesseiro. */
@@ -1802,9 +1742,6 @@ export class CasaScene implements Scene {
       c0.fillRect(0, 0, ctx.display.cssW, ctx.display.cssH)
       c0.restore()
     }
-    // O instante do susto: o rosto enche a tela.
-    const s = this.susto
-    if (s && s.flashou && s.t < this.silencioDoSusto(s.tipo) + 0.32) this.desenharRostoSusto(ctx, s.tipo)
 
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
@@ -1828,6 +1765,16 @@ export class CasaScene implements Scene {
     this.respiracao.draw(c, cssW, cssH, ctx.input.touchMode)
     this.dialogue.render(c, cssW, cssH)
     this.leitor.render(c, cssW, cssH)
+    // O instante do susto: o rosto passa por cima de tudo, até das margens.
+    const s = this.susto
+    if (s && s.flashou) {
+      const dt = s.t - this.silencioDoSusto(s.tipo)
+      if (dt < DURACAO_SUSTO) desenharSusto(c, cssW, cssH, s.tipo, dt)
+      else {
+        c.fillStyle = '#000'
+        c.fillRect(0, 0, cssW, cssH)
+      }
+    }
   }
 
   /** O aviso dos passos: sem enfeite, só o que fazer e o tempo acabando. */

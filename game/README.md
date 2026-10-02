@@ -254,13 +254,26 @@ corpo de madeira em filtros), como o resto.
 
 **Silêncio antes do susto.** Os dois sustos da demo vêm depois de um
 silêncio de verdade: a música, a chuva e a casa somem de uma vez, e só
-então o estouro (`sons.susto`: um baque grave, metal, um guincho que desce
-e o zumbido). Na casa calma, só chuva,
+então o estouro, o som mais alto do jogo (`sons.susto`, direto na saída:
+um grave que despenca, uma pancada de cordas em segundas menores rasgada,
+metal, um guincho longo e um estouro de ar). O rosto
+(`src/game/ui/rostoSusto.ts`) é desenhado na resolução da tela e por cima
+de tudo, inclusive das margens: um clarão branco, e ele vem para cima de
+quem joga — branco de cera, rachado, órbitas fundas com pupilas mínimas,
+lágrimas pretas, veias, a boca rasgada até perto das orelhas, cheia de
+dentes — tremendo, piscando em negativo, com o vermelho nas bordas. No
+espelho, é o rosto do Liam, com o cabelo dele caindo na cara.
+
+**As cordas** são sintetizadas como corda friccionada, não como órgão:
+dente de serra com a afinação viva e vibrato que entra depois do ataque,
+o corpo do instrumento em ressonâncias em série (o ar da caixa, a
+madeira, o buraco nasal, o brilho do cavalete), o chiado da crina e, na
+nota atacada, o arco mordendo a corda e a nota entrando um tico abaixo. Na casa calma, só chuva,
 os passos de Liam no assoalho (às vezes a tábua range) e as portas; quando
 os passos do pai vêm, o coração e as cordas entram de uma vez.
 
 **Volume e graves.** A mistura sai forte: ganho geral alto, os graves
-reforçados (+5 dB abaixo de ~120 Hz e um empurrão no sub, em ~58 Hz — o
+reforçados na medida (+2,5 dB abaixo de ~120 Hz e +2 dB no sub, em ~58 Hz — o
 piano do pai, o violoncelo, os baques, as portas, os passos), um limitador
 e, no fim, uma saturação suave que encorpa o que é baixo e arredonda o que
 passou. Os gritos podem empilhar à vontade: nada sai acima de 0,94 na caixa
