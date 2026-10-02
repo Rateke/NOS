@@ -354,6 +354,11 @@ for (const alvo of [262, 200, 158, 116]) {
       await page.waitForTimeout(30)
     }
     if (segurando) await page.keyboard.up(segurando)
+    // Com um prato no ar o E não funciona: espera ele estourar antes de apertar.
+    for (let i = 0; i < 40 && ((await mesa()).prato || (await falando())); i++) {
+      await limpar(1)
+      await page.waitForTimeout(100)
+    }
     await page.keyboard.press('KeyE')
     await page.waitForTimeout(320)
     await limpar()

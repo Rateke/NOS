@@ -411,7 +411,7 @@ export class MesaScene implements Scene {
 
     // A tensão sobe sozinha. Ficar parado não é neutro: é mais um jeito de
     // não decidir, e a casa cobra igual.
-    this.tensao = Math.min(1, this.tensao + dt * 0.05)
+    this.tensao = Math.min(1, this.tensao + dt * 0.045)
     audio.setArgument(0.16 + this.tensao * 0.42, 0.6)
 
     // Quem chama é sempre o que está mais longe.
