@@ -44,13 +44,37 @@ const estado = () => page.evaluate(() => {
 // Falando ou lendo: os dois pedem um toque para seguir.
 const falando = () => page.evaluate(() => {
   const s = window.__nos?.scene
-  return !!(s?.dialogue?.active || s?.lendo || s?.ocupado)
+  return !!(s?.dialogue?.active || s?.lendo || s?.ocupado || s?.respiracao?.ativa)
 })
+const respirando = () => page.evaluate(() => !!window.__nos?.scene?.respiracao?.ativa)
+/** Respira com o botão do mouse: segura enquanto o anel cresce, solta enquanto encolhe. */
+async function respirarBem() {
+  await page.mouse.move(640, 120)
+  let segura = false
+  for (let i = 0; i < 600; i++) {
+    const r = await page.evaluate(() => {
+      const x = window.__nos?.scene?.respiracao
+      return x?.ativa ? { puxando: x.puxando } : null
+    })
+    if (!r) break
+    if (r.puxando !== segura) {
+      if (r.puxando) await page.mouse.down()
+      else await page.mouse.up()
+      segura = r.puxando
+    }
+    await page.waitForTimeout(30)
+  }
+  if (segura) await page.mouse.up()
+}
 const caixas = () => page.evaluate(() => window.__nos?.scene?.caixas ?? [])
 
 async function limpar(max = 40) {
   for (let i = 0; i < max; i++) {
     if (!(await falando())) return
+    if (await respirando()) {
+      await respirarBem()
+      continue
+    }
     await page.mouse.click(640, 120)
     await page.waitForTimeout(260)
   }
@@ -275,10 +299,17 @@ const montagem = () => page.evaluate(() => {
   const m = window.__nos?.scene?.montagem
   return m ? { arrumados: m.arrumados, fase: m.faseAtual } : null
 })
-// Quem não para de arrumar arruma tudo, até o último recorte.
-for (let i = 0; i < 600; i++) {
+// Quem não para de arrumar arruma tudo, até o último recorte. O clique
+// passa a fala; arrumar é clicar em cima da coisa torta.
+for (let i = 0; i < 800; i++) {
   if ((await montagem())?.fase !== 'cortes') break
-  await page.mouse.click(640, 300)
+  const alvo = await page.evaluate(() => {
+    const m = window.__nos.scene.montagem
+    if (!m?.esperandoArrumar || !m.alvo) return null
+    return window.__nos.paraTela(m.alvo.x, m.alvo.y)
+  })
+  if (alvo) await page.mouse.click(alvo.x, alvo.y)
+  else await page.mouse.click(640, 90)
   await page.waitForTimeout(200)
 }
 esperar('os oito recortes arrumados', (await montagem())?.arrumados, 8)
@@ -337,9 +368,24 @@ esperar('cinco segundos de preto, o hospital, e a casa sem música',
 await limpar()
 esperar('a sombra passou a escrever no caderno', await page.evaluate(() => window.__nos.state.sombraEscreve), true)
 if (OUT) await page.screenshot({ path: `${OUT}/h-depois.png` })
+const soltou = (id) => async () => (await page.evaluate(() => window.__nos.scene.nosSoltos ?? [])).includes(id)
+esperar('clicar no nó da sala desata', await irEUsar(322, soltou('no-mae')), true)
+await limpar()
 esperar('depois do grito, a sala ainda leva ao corredor', await irEUsar(484, emComodo('corredor')), true)
 const liaRecuou = () => page.evaluate(() => window.__nos.state.sabe.has('depois-lia'))
 esperar('a Lia recua quando Liam chega perto', await irEUsar(250, liaRecuou), true)
+await limpar()
+esperar('o nó do corredor desata', await irEUsar(344, soltou('no-pai')), true)
+await limpar()
+esperar('o quarto', await irEUsar(150, emComodo('quarto')), true)
+esperar('o nó do quarto desata', await irEUsar(128, soltou('no-lia')), true)
+await limpar()
+esperar('de volta ao corredor', await irEUsar(300, emComodo('corredor')), true)
+esperar('o quarto da Lia', await irEUsar(404, emComodo('lia')), true)
+esperar('o nó da E. desata', await irEUsar(272, soltou('no-e')), true)
+await limpar()
+esperar('a porta do fim abriu', await page.evaluate(() => window.__nos.scene.portaDoFimAberta), true)
+esperar('de volta ao corredor, de novo', await irEUsar(44, emComodo('corredor')), true)
 await limpar()
 esperar('o recado da mãe encerra a demo', await irEUsar(118, saiuDaCasa, 14), true)
 esperar('o fecho chega', await esperarCena('demo-fim', 60000), true)

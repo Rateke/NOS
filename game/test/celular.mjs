@@ -30,7 +30,7 @@ const erros = []
 page.on('pageerror', (e) => erros.push(String(e)))
 const st = () => page.evaluate(() => {
   const s = window.__nos?.scene
-  return { id: s?.id, fase: s?.fase, frase: s?.frase, x: Math.round(s?.liam?.x ?? 0), falando: !!(s?.dialogue?.active || s?.lendo || s?.ocupado) }
+  return { id: s?.id, fase: s?.fase, frase: s?.frase, x: Math.round(s?.liam?.x ?? 0), falando: !!(s?.dialogue?.active || s?.lendo || s?.ocupado || s?.respiracao?.ativa) }
 })
 const tocar = async (x, y) => { await page.touchscreen.tap(x, y); await page.waitForTimeout(240) }
 console.log('\nverificações (celular):')

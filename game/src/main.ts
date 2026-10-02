@@ -12,6 +12,7 @@ import { musica } from './engine/musica'
 import { clima } from './engine/clima'
 import { FONT_BODY } from './game/systems/dialogue'
 import { voz } from './engine/voz'
+import { memoria } from './game/systems/memoria'
 import { salvo, ORDEM_PONTOS } from './game/systems/salvo'
 import type { Ponto } from './game/systems/salvo'
 import { Pausa, caixaIconePausa, desenharIconePausa, desenharSalvando } from './game/ui/pausa'
@@ -193,7 +194,13 @@ function trocarJa(next: Scene, outSec: number, inSec: number): void {
 }
 
 /** Cala o que a cena deixou tocando e volta ao menu, já aberto. */
+/** Sair no meio da briga ou do Tear: o menu vai lembrar disso. */
+function marcarFuga(): void {
+  if (scene.id === 'demo-mesa' || scene.id === 'demo-tear') memoria.marcarFuga(true)
+}
+
 function voltarAoMenu(): void {
+  marcarFuga()
   adiada = null
   pausa.fechar()
   principal.cortar()
@@ -207,6 +214,7 @@ function voltarAoMenu(): void {
 }
 
 function sair(): void {
+  marcarFuga()
   adiada = null
   // O som fica parado onde a pausa deixou: a despedida é em silêncio.
   pausa.fechar(false)

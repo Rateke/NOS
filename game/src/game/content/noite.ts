@@ -79,6 +79,25 @@ export const PRATO_NO_LIAM: { quem: 'Adrian' | 'Evelyn' | 'Lia'; texto: string }
 ]
 
 /** O primeiro prato que ele leva. Pensamento, rápido. */
+/** Entre um prato e outro, o ar para de entrar. */
+export const MESA_FALTA_AR: Line[] = [
+  { text: 'O ar não entra direito.' },
+  { text: 'Quatro pra dentro. Quatro pra fora. Do jeito que a mãe ensinou.' },
+]
+
+/** Conseguiu respirar. O pai viu. */
+export const MESA_RESPIROU: Line[] = [
+  { text: '...Entrou.' },
+  { speaker: 'Adrian', text: 'TÁ RESPIRANDO ASSIM POR QUÊ?! OLHA PRA MIM!', style: 'speech', grito: true },
+  { text: 'Até respirar é errado.' },
+]
+
+/** Não conseguiu. */
+export const MESA_SEM_AR: Line[] = [
+  { text: 'Puxo e não vem. Puxo e não vem.' },
+  { text: 'A cozinha fica pequena. A luz fica longe.' },
+]
+
 export const PRATO_PENSAMENTO: Line[] = [
   { text: 'Fico no meio. Aí eles param.' },
 ]

@@ -17,7 +17,7 @@
  * tempo.
  */
 import { audio, sons } from './audio'
-import { musica, ESCALA, TEMA } from './musica'
+import { musica, ESCALA, TEMA, criarArco } from './musica'
 
 export interface Mistura {
   pulso?: number
@@ -30,11 +30,13 @@ export interface Mistura {
   caixinha?: number
   coracao?: number
   chuva?: number
+  /** O violino sozinho tocando o tema, longe: o Dentro. */
+  violino?: number
 }
 
 type Chave = keyof Mistura
 const ZERO: Required<Mistura> = {
-  pulso: 0, bpm: 84, cordas: 0, aperto: 0, relogio: 0, ritmoRelogio: 1, caixinha: 0, coracao: 0, chuva: 0,
+  pulso: 0, bpm: 84, cordas: 0, aperto: 0, relogio: 0, ritmoRelogio: 1, caixinha: 0, coracao: 0, chuva: 0, violino: 0,
 }
 const NOTAS_CAIXINHA = TEMA.flat()
 
@@ -42,7 +44,7 @@ class Clima {
   private atual: Required<Mistura> = { ...ZERO }
   private alvo: Required<Mistura> = { ...ZERO }
   private velocidade: Record<Chave, number> = {
-    pulso: 1, bpm: 1, cordas: 1, aperto: 1, relogio: 1, ritmoRelogio: 1, caixinha: 1, coracao: 1, chuva: 1,
+    pulso: 1, bpm: 1, cordas: 1, aperto: 1, relogio: 1, ritmoRelogio: 1, caixinha: 1, coracao: 1, chuva: 1, violino: 1,
   }
   private proxPulso = 0
   private idxPulso = 0
@@ -51,14 +53,17 @@ class Clima {
   private proxCaixinha = 0
   private idxCaixinha = 0
   private proxCoracao = 0
+  private proxViolino = 0
+  private idxViolino = 0
 
   private nos: {
-    cordasG: GainNode
-    lp: BiquadFilterNode
+    celloG: GainNode
+    violinoG: GainNode
     tremolo: GainNode
-    apertoOscs: OscillatorNode[]
+    cello: (f: number, quando: number, suave?: number) => void
     chuvaG: GainNode
   } | null = null
+  private degrauCello = 0
 
   /** Para onde a música vai, e em quantos segundos chega. */
   set(m: Mistura, segundos = 2): void {
@@ -83,48 +88,37 @@ class Clima {
     if (this.nos) return true
     const ctx = audio.contexto
     const out = audio.saida
-    if (!ctx || !out) return false
-
-    const cordasG = ctx.createGain()
-    cordasG.gain.value = 0
-    const tremolo = ctx.createGain()
-    tremolo.gain.value = 1
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 700
-    lp.Q.value = 0.8
-    lp.connect(tremolo).connect(cordasG).connect(out)
-    // Tremolo: o volume tremendo rápido. A profundidade sobe com o aperto.
-    const lfo = ctx.createOscillator()
-    lfo.frequency.value = 7
-    const lfoG = ctx.createGain()
-    lfoG.gain.value = 0
-    lfo.connect(lfoG).connect(tremolo.gain)
-    lfo.start()
-
-    const corda = (freq: number, vol: number): OscillatorNode => {
-      const o = ctx.createOscillator()
-      o.type = 'sawtooth'
-      o.frequency.value = freq
-      o.detune.value = (Math.random() - 0.5) * 10
-      const vib = ctx.createOscillator()
-      vib.frequency.value = 4.6 + Math.random()
-      const vg = ctx.createGain()
-      vg.gain.value = freq * 0.004
-      vib.connect(vg).connect(o.frequency)
-      vib.start()
-      const g = ctx.createGain()
-      g.gain.value = vol
-      o.connect(g).connect(lp)
-      o.start()
-      return o
+    const sala = musica.destinos
+    if (!ctx || !out || !sala) return false
+    const ligar = (g: GainNode): void => {
+      g.connect(sala.seco)
+      g.connect(sala.sala)
     }
-    // Ré e lá embaixo, firmes.
-    corda(73.42, 0.3)
-    corda(146.83, 0.22)
-    corda(220, 0.16)
-    // As duas que apertam: começam em fá e dó e descem até mi bemol e si.
-    const apertoOscs = [corda(174.61, 0.14), corda(261.63, 0.1)]
+    const SEMPRE = 1e6
+
+    // O violoncelo: um pedal grave que segura a nota. Na tensão, desce meio
+    // tom por vez.
+    const celloG = ctx.createGain()
+    celloG.gain.value = 0
+    ligar(celloG)
+    const cello = criarArco(ctx, 'violoncelo', 73.42, celloG, ctx.currentTime, SEMPRE)
+
+    // O violino: duas notas em segunda menor, lá em cima, com tremolo — só
+    // entra quando aperta.
+    const violinoG = ctx.createGain()
+    violinoG.gain.value = 0
+    const trem = ctx.createGain()
+    trem.gain.value = 1
+    trem.connect(violinoG)
+    ligar(violinoG)
+    criarArco(ctx, 'violino', 880, trem, ctx.currentTime, SEMPRE)
+    criarArco(ctx, 'violino', 932.33, trem, ctx.currentTime, SEMPRE)
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 9
+    const tremolo = ctx.createGain()
+    tremolo.gain.value = 0
+    lfo.connect(tremolo).connect(trem.gain)
+    lfo.start()
 
     // Chuva na vidraça: ruído em banda média, com gotas mais fortes.
     const len = ctx.sampleRate * 3
@@ -146,7 +140,7 @@ class Clima {
     chuva.connect(bp).connect(hp).connect(chuvaG).connect(out)
     chuva.start()
 
-    this.nos = { cordasG, lp, tremolo: lfoG, apertoOscs, chuvaG }
+    this.nos = { celloG, violinoG, tremolo, cello, chuvaG }
     return true
   }
 
@@ -159,7 +153,7 @@ class Clima {
       this.atual[k] = Math.abs(b - a) <= passo ? b : a + Math.sign(b - a) * passo
     }
     const m = this.atual
-    const algo = m.pulso + m.cordas + m.relogio + m.caixinha + m.coracao + m.chuva > 0.001
+    const algo = m.pulso + m.cordas + m.relogio + m.caixinha + m.coracao + m.chuva + m.violino > 0.001
     if (!algo && !this.nos) return
     if (!this.montar() || !this.nos) return
     const ctx = audio.contexto
@@ -167,13 +161,15 @@ class Clima {
     const t = ctx.currentTime
     const n = this.nos
 
-    // Camadas contínuas.
-    n.cordasG.gain.setTargetAtTime(m.cordas * 0.09, t, 0.1)
-    n.lp.frequency.setTargetAtTime(500 + m.aperto * 2200, t, 0.2)
-    n.tremolo.gain.setTargetAtTime(m.aperto * 0.55, t, 0.2)
-    const [a1, a2] = n.apertoOscs
-    a1?.frequency.setTargetAtTime(174.61 - m.aperto * (174.61 - 155.56), t, 0.3)
-    a2?.frequency.setTargetAtTime(261.63 - m.aperto * (261.63 - 233.08), t, 0.3)
+    // Camadas contínuas: o violoncelo segura; o violino só quando aperta.
+    n.celloG.gain.setTargetAtTime(m.cordas * 0.55, t, 0.15)
+    n.violinoG.gain.setTargetAtTime(m.cordas * Math.max(0, m.aperto - 0.25) * 0.9, t, 0.15)
+    n.tremolo.gain.setTargetAtTime(m.aperto * 0.6, t, 0.2)
+    const degrau = Math.min(3, Math.floor(m.aperto * 4))
+    if (degrau !== this.degrauCello) {
+      this.degrauCello = degrau
+      n.cello(73.42 * Math.pow(2, -degrau / 12), t, 0.12)
+    }
     n.chuvaG.gain.setTargetAtTime(m.chuva * 0.06, t, 0.4)
 
     // Pulso: colcheias de contrabaixo.
@@ -202,6 +198,16 @@ class Clima {
       this.idxCaixinha++
       // Respira entre as frases do tema.
       if ([4, 9].includes(this.idxCaixinha % NOTAS_CAIXINHA.length)) this.proxCaixinha += 1.2
+    }
+    // O violino sozinho, longe: o tema uma oitava acima, devagar.
+    this.proxViolino -= dt
+    if (m.violino > 0.01 && this.proxViolino <= 0) {
+      this.proxViolino = 1.55
+      const grau = NOTAS_CAIXINHA[this.idxViolino % NOTAS_CAIXINHA.length] ?? 0
+      const f = ESCALA[grau]
+      if (f) musica.arco('violino', f * 2, 2.6, 0.35 + m.violino * 0.45, 'piano')
+      this.idxViolino++
+      if ([4, 9].includes(this.idxViolino % NOTAS_CAIXINHA.length)) this.proxViolino += 1.8
     }
     // Coração.
     this.proxCoracao -= dt

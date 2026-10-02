@@ -205,6 +205,11 @@ export class Input {
     return v
   }
 
+  /** Alguma tecla ou toque neste quadro, sem consumir. */
+  peekAny(): boolean {
+    return this.anyQueued || this.down.size > 0 || this.pointerDown
+  }
+
   consumeAny(): boolean {
     const v = this.anyQueued
     this.anyQueued = false

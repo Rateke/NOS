@@ -13,6 +13,8 @@ import {
 import { CasaScene } from './casa'
 import { Etiquetas } from '../../ui/etiqueta'
 import { Camada } from '../../ui/camada'
+import { memoria } from '../../systems/memoria'
+import { DE_NOVO_PROLOGO, DE_NOVO_ACERTOU } from '../../content/deNovo'
 
 type Fase = 'entrada' | 'escuta' | 'toca' | 'livre' | 'fecho' | 'saida'
 
@@ -81,7 +83,9 @@ export class PrologoScene implements Scene {
     musica.abafado = 0
     musica.iniciarPad()
     musica.setPad(0.5, 6)
-    this.dialogue.play(PROLOGO_ABERTURA, () => this.comecarFrase())
+    // Na segunda vez, o pai percebe antes de qualquer coisa.
+    const abre = memoria.terminou ? [...DE_NOVO_PROLOGO, ...PROLOGO_ABERTURA.slice(1)] : PROLOGO_ABERTURA
+    this.dialogue.play(abre, () => this.comecarFrase())
   }
 
   private comecarFrase(): void {
@@ -159,7 +163,7 @@ export class PrologoScene implements Scene {
   }
 
   private acertou(): void {
-    const fala = PROLOGO_ACERTOU_FRASE[this.frase]
+    const fala = this.frase === 0 && memoria.terminou ? DE_NOVO_ACERTOU : PROLOGO_ACERTOU_FRASE[this.frase]
     this.frase++
     if (this.frase < TEMA.length) {
       if (fala) this.dialogue.play(fala, () => this.comecarFrase())

@@ -43,13 +43,36 @@ const estado = () => page.evaluate(() => {
 // Falando ou lendo: os dois pedem um toque para seguir.
 const falando = () => page.evaluate(() => {
   const s = window.__nos?.scene
-  return !!(s?.dialogue?.active || s?.lendo || s?.ocupado)
+  return !!(s?.dialogue?.active || s?.lendo || s?.ocupado || s?.respiracao?.ativa)
 })
+const respirando = () => page.evaluate(() => !!window.__nos?.scene?.respiracao?.ativa)
+/** Respira no ritmo do anel: segura enquanto ele cresce, solta enquanto encolhe. */
+async function respirarBem() {
+  let segura = false
+  for (let i = 0; i < 600; i++) {
+    const r = await page.evaluate(() => {
+      const x = window.__nos?.scene?.respiracao
+      return x?.ativa ? { puxando: x.puxando } : null
+    })
+    if (!r) break
+    if (r.puxando !== segura) {
+      if (r.puxando) await page.keyboard.down('Space')
+      else await page.keyboard.up('Space')
+      segura = r.puxando
+    }
+    await page.waitForTimeout(30)
+  }
+  if (segura) await page.keyboard.up('Space')
+}
 const caixas = () => page.evaluate(() => window.__nos?.scene?.caixas ?? [])
 
 async function limpar(max = 40) {
   for (let i = 0; i < max; i++) {
     if (!(await falando())) return
+    if (await respirando()) {
+      await respirarBem()
+      continue
+    }
     await page.keyboard.press('Space')
     await page.waitForTimeout(260)
   }
@@ -308,25 +331,41 @@ esperar('Liam entra na frente do prato', (await mesa()).noLiam, 1)
 await limpar()
 
 // Os vestígios, entre um prato e outro. Um prato no ar engole o E: insiste.
-for (const alvo of [116, 158, 200, 262]) {
+for (const alvo of [262, 200, 158, 116]) {
   const antes = (await estado()).achados ?? 0
   for (let tentativa = 0; tentativa < 6; tentativa++) {
     if ((await estado()).id !== 'demo-mesa' || ((await estado()).achados ?? 0) > antes) break
-    for (let i = 0; i < 150; i++) {
+    // Segura a seta até chegar (andar em toquinhos gastava o tempo da cena).
+    let segurando = null
+    for (let i = 0; i < 300; i++) {
       const st = await estado()
-      if (st.id !== 'demo-mesa' || Math.abs(st.x - alvo) < 12) break
-      if ((await mesa()).prato || (await falando())) { await limpar(1); await page.waitForTimeout(120); continue }
+      if (st.id !== 'demo-mesa' || Math.abs(st.x - alvo) < 8) break
+      if ((await mesa()).prato || (await falando())) {
+        if (segurando) { await page.keyboard.up(segurando); segurando = null }
+        await limpar(1)
+        continue
+      }
       const t = st.x < alvo ? 'ArrowRight' : 'ArrowLeft'
-      await page.keyboard.down(t)
-      await page.waitForTimeout(70)
-      await page.keyboard.up(t)
+      if (t !== segurando) {
+        if (segurando) await page.keyboard.up(segurando)
+        await page.keyboard.down(t)
+        segurando = t
+      }
+      await page.waitForTimeout(30)
     }
+    if (segurando) await page.keyboard.up(segurando)
     await page.keyboard.press('KeyE')
     await page.waitForTimeout(320)
     await limpar()
   }
 }
 esperar('os quatro vestígios foram encontrados', (await estado()).achados, 4)
+// Entre os pratos o ar falta. Respirando no ritmo, ele consegue — e o pai grita por isso.
+for (let i = 0; i < 80 && !(await page.evaluate(() => window.__nos.state.sabe.has('respirou') || window.__nos.state.sabe.has('sem-ar'))); i++) {
+  await limpar(1)
+  await page.waitForTimeout(150)
+}
+esperar('respirou no ritmo, na cozinha', await page.evaluate(() => window.__nos.state.sabe.has('respirou')), true)
 if (OUT) await page.screenshot({ path: `${OUT}/d-achados.png` })
 
 // O fundo do poço é em voz: o pai sobe, Liam sobe pedindo para parar, e as
@@ -378,11 +417,21 @@ const montagem = () => page.evaluate(() => {
   const m = window.__nos?.scene?.montagem
   return m ? { arrumados: m.arrumados, fase: m.faseAtual, fila: m.dialogue.fila, completa: m.dialogue.completa } : null
 })
-// Cada recorte é uma conversa sobre a mãe; os toques passam as falas, e o
-// toque depois da última arruma.
-for (let i = 0; i < 400; i++) {
-  if (((await montagem())?.arrumados ?? 0) >= 6) break
+// Espaço passa a fala mas não arruma: depois da conversa, a coisa continua torta.
+for (let i = 0; i < 40; i++) {
+  if (await page.evaluate(() => window.__nos.scene.montagem?.esperandoArrumar)) break
   await page.keyboard.press('Space')
+  await page.waitForTimeout(220)
+}
+await page.keyboard.press('Space')
+await page.waitForTimeout(600)
+esperar('espaço não arruma', (await montagem())?.arrumados, 0)
+if (OUT) await page.screenshot({ path: `${OUT}/g1-arrumar.png` })
+// Cada recorte é uma conversa sobre a mãe; o E passa as falas e, depois da
+// última, arruma (Liam anda até a coisa torta e endireita).
+for (let i = 0; i < 500; i++) {
+  if (((await montagem())?.arrumados ?? 0) >= 6) break
+  await page.keyboard.press('KeyE')
   await page.waitForTimeout(200)
 }
 esperar('seis recortes arrumados', (await montagem())?.arrumados, 6)
@@ -467,12 +516,31 @@ esperar('cinco segundos de preto, o hospital, e a casa sem música',
 await limpar()
 esperar('a sombra passou a escrever no caderno', await page.evaluate(() => window.__nos.state.sombraEscreve), true)
 if (OUT) await page.screenshot({ path: `${OUT}/h-depois.png` })
+const nos = () => page.evaluate(() => window.__nos.scene.nosSoltos ?? [])
+// Os nós: um em cada cômodo. Desatar mostra uma lembrança.
+await andarAte(322); await usar(); await limpar()
+esperar('o nó da sala desata', (await nos()).includes('no-mae'), true)
 await andarAte(484); await usar()
 esperar('depois do grito, a sala ainda leva ao corredor', await comodo(), 'corredor')
 await andarAte(250)
 await limpar()
 esperar('a Lia recua quando Liam chega perto',
   await page.evaluate(() => window.__nos.state.sabe.has('depois-lia')), true)
+await andarAte(344); await usar(); await limpar()
+esperar('o nó do corredor desata', (await nos()).includes('no-pai'), true)
+await andarAte(118); await usar(); await limpar()
+esperar('o recado espera os nós', (await estado()).id, 'demo-casa')
+await andarAte(150); await usar()
+await andarAte(128); await usar(); await limpar()
+esperar('o nó do quarto desata', (await nos()).includes('no-lia'), true)
+await andarAte(300); await usar()
+await andarAte(404); await usar()
+esperar('o quarto da Lia, depois', await comodo(), 'lia')
+await andarAte(272); await usar(); await limpar()
+esperar('os quatro nós soltos abrem a porta do fim', await page.evaluate(() => window.__nos.scene.portaDoFimAberta), true)
+if (OUT) await page.screenshot({ path: `${OUT}/h2-nos.png` })
+await andarAte(44); await usar()
+await limpar()
 await andarAte(118); await usar()
 esperar('o recado da mãe encerra a demo', await esperarCena('demo-fim', 60000), true)
 esperar('sem erros de runtime', errs, [])

@@ -41,6 +41,8 @@ export interface EstadoSala {
   /** Tecla do piano da cena acesa agora (0..7), ou -1. */
   tecla?: number
   brilhoTecla?: number
+  /** 0..1: alguém parado embaixo do poste, lá fora. */
+  vulto?: number
 }
 
 const PAREDE_FRIA: RGB = [22, 26, 38]
@@ -111,22 +113,25 @@ function drawJanela(c: CanvasRenderingContext2D, k: number, t: number): void {
   // Noite: nesta casa nunca é dia.
   const g = c.createLinearGradient(0, y, 0, y + h)
   g.addColorStop(0, '#070b18')
-  g.addColorStop(1, '#141b2e')
+  g.addColorStop(0.6, '#121a2e')
+  g.addColorStop(1, '#0c111e')
   c.fillStyle = g
   c.fillRect(x, y, w, h)
   // Lua
   ret(c, x + 44, y + 9, 7, 7, 'rgba(214,222,238,0.8)')
   ret(c, x + 45, y + 8, 5, 9, 'rgba(214,222,238,0.8)')
   ret(c, x + 47, y + 10, 3, 3, 'rgba(160,170,196,0.6)')
+  c.save()
+  c.beginPath()
+  c.rect(x, y, w, h)
+  c.clip()
+  drawRua(c, x, y, w, h, t)
+  c.restore()
   // Galho seco atravessando
   c.fillStyle = 'rgba(4,6,10,0.85)'
-  c.fillRect(x, y + 34, 24, 2)
-  c.fillRect(x + 14, y + 28, 2, 7)
-  c.fillRect(x + 20, y + 36, 9, 1)
-  // Poste lá fora: a única luz da rua, que pisca sempre na mesma ordem.
-  const pisca = posteAceso(t) ? 0.38 : 0.08
-  ret(c, x + 6, y + 50, 2, 16, 'rgba(4,6,10,0.8)')
-  ret(c, x + 4, y + 47, 6, 3, `rgba(236,196,120,${pisca})`)
+  c.fillRect(x, y + 30, 24, 2)
+  c.fillRect(x + 14, y + 24, 2, 7)
+  c.fillRect(x + 20, y + 32, 9, 1)
   // Caixilho
   const caixilho = tom([26, 32, 48], [52, 38, 38], k)
   ret(c, x + w / 2 - 1, y, 2, h, rgb(caixilho))
@@ -147,6 +152,181 @@ function drawJanela(c: CanvasRenderingContext2D, k: number, t: number): void {
   ret(c, x + w - 2, y + h - 10, 14, 2, rgb(clarear(cortina, 22)))
   // O vaso de violeta no peitoril, virado para a rua
   violeta(c, x + 6, y + h + 2)
+}
+
+/**
+ * A rua, do outro lado do vidro: as casas da frente, a calçada molhada, e o
+ * poste — a única luz lá fora. O que ele acende vem depois da sombra da
+ * sala, em luzDaRua.
+ */
+function drawRua(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, t: number): void {
+  const aceso = posteAceso(t)
+  // As casas da frente: telhados recortados, uma janela acesa lá longe.
+  c.fillStyle = '#05070d'
+  c.beginPath()
+  c.moveTo(x, y + h)
+  c.lineTo(x, y + 42)
+  c.lineTo(x + 8, y + 36)
+  c.lineTo(x + 16, y + 42)
+  c.lineTo(x + 26, y + 42)
+  c.lineTo(x + 26, y + 38)
+  c.lineTo(x + 38, y + 38)
+  c.lineTo(x + 38, y + 41)
+  c.lineTo(x + 46, y + 34)
+  c.lineTo(x + 55, y + 41)
+  c.lineTo(x + w, y + 41)
+  c.lineTo(x + w, y + h)
+  c.closePath()
+  c.fill()
+  ret(c, x + 49, y + 43, 3, 3, 'rgba(226,186,120,0.42)')
+  ret(c, x + 30, y + 44, 2, 2, 'rgba(120,140,190,0.25)')
+  // Muro da calçada e o meio-fio.
+  ret(c, x, y + 50, w, 2, '#0b0f19')
+  ret(c, x, y + 56, w, 1, '#1a2132')
+  // Asfalto molhado: faixas de reflexo.
+  const asf = c.createLinearGradient(0, y + 57, 0, y + h)
+  asf.addColorStop(0, '#0d1220')
+  asf.addColorStop(1, '#070a12')
+  c.fillStyle = asf
+  c.fillRect(x, y + 57, w, h - 57)
+  for (let i = 0; i < 5; i++) {
+    const yy = y + 59 + i * 2
+    const dx = Math.sin(t * 0.6 + i) * 3
+    ret(c, x + 34 + dx, yy, 10 + i, 1, 'rgba(120,140,190,0.08)')
+  }
+
+  // O poste: coluna, o braço curvo, a cúpula.
+  const px = x + 12
+  const topo = y + 15
+  const base = y + 58
+  c.fillStyle = '#020306'
+  c.fillRect(px, topo, 2, base - topo)
+  c.fillRect(px - 1, base - 3, 4, 3)
+  c.fillRect(px + 2, topo, 6, 1)
+  c.fillRect(px + 7, topo + 1, 2, 1)
+  // Cúpula
+  c.fillRect(px + 6, topo + 2, 6, 2)
+  c.fillRect(px + 7, topo + 4, 4, 1)
+  // A lâmpada apagada; acesa, a luz entra depois da sombra da sala (luzDaRua).
+  if (!aceso) ret(c, px + 8, topo + 4, 3, 2, 'rgba(150,110,60,0.5)')
+
+  // Gotas escorrendo no vidro.
+  c.fillStyle = 'rgba(170,190,230,0.18)'
+  for (let i = 0; i < 7; i++) {
+    const gx = x + 4 + ((i * 29) % (w - 8))
+    const gy = y + ((t * (5 + (i % 3) * 3) + i * 17) % h)
+    c.fillRect(gx, gy, 1, 2)
+    c.fillRect(gx, gy - 4, 1, 1)
+  }
+}
+
+/** A lâmpada do poste, em coordenadas da sala (a janela começa em 36, 20). */
+const POSTE = { lx: 57, ly: 40, base: 78 }
+const VIDRO = { x: 36, y: 20, w: 64, h: 66 }
+
+/**
+ * A luz da rua, somada depois da sombra da sala: o cone do poste com a
+ * chuva caindo dentro, a poça amarela no asfalto, o reflexo esticado, e um
+ * resto de luz que entra pela janela e cai no chão. Por último, quem está
+ * parado embaixo — desenhado por cima da luz, para continuar preto.
+ */
+function luzDaRua(c: CanvasRenderingContext2D, t: number, vulto: number): void {
+  const aceso = posteAceso(t)
+  const { lx, ly, base } = POSTE
+  c.save()
+  c.beginPath()
+  c.rect(VIDRO.x, VIDRO.y, VIDRO.w, VIDRO.h)
+  c.clip()
+  c.globalCompositeOperation = 'lighter'
+  // O céu lá fora nunca é preto de verdade: a cidade acende as nuvens.
+  const ceu = c.createLinearGradient(0, VIDRO.y, 0, VIDRO.y + VIDRO.h)
+  ceu.addColorStop(0, 'rgba(30,38,70,0.10)')
+  ceu.addColorStop(1, 'rgba(50,50,70,0.16)')
+  c.fillStyle = ceu
+  c.fillRect(VIDRO.x, VIDRO.y, VIDRO.w, VIDRO.h)
+  if (aceso) {
+    const halo = c.createRadialGradient(lx, ly, 0, lx, ly, 16)
+    halo.addColorStop(0, 'rgba(255,214,140,0.75)')
+    halo.addColorStop(0.4, 'rgba(255,190,110,0.22)')
+    halo.addColorStop(1, 'rgba(255,190,110,0)')
+    c.fillStyle = halo
+    c.fillRect(lx - 16, ly - 16, 32, 32)
+    // O cone até o chão.
+    const cone = c.createLinearGradient(0, ly, 0, base + 2)
+    cone.addColorStop(0, 'rgba(255,206,128,0.42)')
+    cone.addColorStop(1, 'rgba(255,206,128,0.16)')
+    c.fillStyle = cone
+    c.beginPath()
+    c.moveTo(lx - 2, ly + 1)
+    c.lineTo(lx + 2, ly + 1)
+    c.lineTo(lx + 14, base + 1)
+    c.lineTo(lx - 14, base + 1)
+    c.closePath()
+    c.fill()
+    // A chuva só aparece dentro da luz.
+    c.save()
+    c.clip()
+    c.fillStyle = 'rgba(255,236,200,0.55)'
+    for (let i = 0; i < 16; i++) {
+      const fx = lx - 14 + ((i * 37) % 28)
+      const fy = ly + ((t * 70 + i * 23) % (base - ly))
+      c.fillRect(fx - Math.floor((fy - ly) / 14), fy, 1, 3)
+    }
+    c.restore()
+    // A poça de luz no asfalto, e o reflexo esticado até a calçada de cá.
+    c.fillStyle = 'rgba(255,200,120,0.4)'
+    c.beginPath()
+    c.ellipse(lx, base + 1, 14, 2.5, 0, 0, Math.PI * 2)
+    c.fill()
+    for (let i = 0; i < 4; i++) {
+      c.fillStyle = `rgba(255,200,120,${(0.2 - i * 0.04).toFixed(2)})`
+      c.fillRect(lx - 1 + Math.round(Math.sin(t * 2 + i) * 1), base + 3 + i * 2, 3, 2)
+    }
+    c.fillStyle = 'rgba(255,248,220,0.95)'
+    c.fillRect(lx - 1, ly - 1, 3, 2)
+  }
+  c.restore()
+
+  // Alguém embaixo do poste. Não se mexe. Não tem guarda-chuva.
+  if (vulto > 0.01) {
+    const fx = lx + 3
+    const a = vulto * (aceso ? 1 : 0.5)
+    c.save()
+    c.beginPath()
+    c.rect(VIDRO.x, VIDRO.y, VIDRO.w, VIDRO.h)
+    c.clip()
+    c.fillStyle = `rgba(4,4,8,${a.toFixed(2)})`
+    c.fillRect(fx - 1, base - 12, 3, 3)          // cabeça
+    c.fillRect(fx - 2, base - 9, 5, 6)           // corpo
+    c.fillRect(fx - 2, base - 3, 2, 4)           // pernas
+    c.fillRect(fx + 1, base - 3, 2, 4)
+    if (aceso) {
+      // A luz de cima pega no topo da cabeça e nos ombros.
+      c.fillStyle = `rgba(255,214,150,${(vulto * 0.5).toFixed(2)})`
+      c.fillRect(fx - 1, base - 13, 3, 1)
+      c.fillRect(fx - 2, base - 9, 1, 1)
+      c.fillRect(fx + 2, base - 9, 1, 1)
+    }
+    c.restore()
+  }
+
+  // Um resto da luz atravessa o vidro e cai no peitoril e no chão.
+  if (aceso) {
+    c.save()
+    c.globalCompositeOperation = 'lighter'
+    c.fillStyle = 'rgba(236,190,120,0.12)'
+    c.fillRect(32, 88, 72, 2)
+    for (let i = 0; i < 14; i++) {
+      c.fillStyle = `rgba(236,190,120,${(0.09 * (1 - i / 14)).toFixed(3)})`
+      c.fillRect(46 + i * 2, CHAO_Y + 2 + i, 24 - i, 1)
+    }
+    const parede = c.createRadialGradient(lx, ly + 30, 0, lx, ly + 30, 70)
+    parede.addColorStop(0, 'rgba(236,190,120,0.05)')
+    parede.addColorStop(1, 'rgba(236,190,120,0)')
+    c.fillStyle = parede
+    c.fillRect(lx - 70, ly - 40, 140, 140)
+    c.restore()
+  }
 }
 
 function drawRetratos(c: CanvasRenderingContext2D, k: number): void {
@@ -425,6 +605,7 @@ export function drawLuzSala(
   c.fillStyle = g
   c.fillRect(0, 0, SALA_W, WORLD_H)
   c.restore()
+  luzDaRua(c, e.t, e.vulto ?? 0)
 }
 
 /**

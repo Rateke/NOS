@@ -37,6 +37,38 @@ const PARENTESCO: Record<string, string> = {
 const apresentados = new Set<string>()
 
 /**
+ * Como a pessoa está lendo. Guarda as últimas falas longas: se ela passou
+ * antes de dar tempo de ler (pulou a máquina de escrever, ou tocou logo que
+ * a frase terminou). A sombra percebe.
+ */
+const pressa: boolean[] = []
+const JANELA_PRESSA = 12
+
+function anotarLeitura(apressou: boolean): void {
+  pressa.push(apressou)
+  if (pressa.length > JANELA_PRESSA) pressa.shift()
+}
+
+/** Das últimas falas longas, quase todas foram puladas. */
+export function leitorApressado(): boolean {
+  if (pressa.length < 8) return false
+  return pressa.filter(Boolean).length >= Math.ceil(pressa.length * 0.7)
+}
+
+/** Para os testes, e para começar uma partida do zero. */
+export function esquecerLeitura(): void {
+  pressa.length = 0
+}
+
+let cobrou = false
+/** A sombra comenta a pressa uma vez só: verdadeiro na primeira vez que ela percebe. */
+export function cobrarPressa(): boolean {
+  if (cobrou || !leitorApressado()) return false
+  cobrou = true
+  return true
+}
+
+/**
  * Caixa de legenda com efeito de máquina de escrever. Desenhada em resolução
  * de tela (não no mundo) para o texto não ficar ilegível na escala pequena.
  */
@@ -50,6 +82,10 @@ export class Dialogue {
   /** Segundos de espera antes de avançar sozinho; 0 = espera o jogador. */
   private auto = 0
   private paradoDesde = 0
+  /** Há quanto tempo a linha está inteira na tela. */
+  private inteiraHa = 0
+  /** A linha atual foi completada à força (pulou a máquina de escrever). */
+  private pulou = false
   /** Parentesco mostrado junto do nome, só na primeira fala da pessoa. */
   private nota = ''
 
@@ -115,6 +151,8 @@ export class Dialogue {
     this.revealed = 0
     this.elapsed = 0
     this.paradoDesde = 0
+    this.inteiraHa = 0
+    this.pulou = false
     this.nota = ''
     const quem = next.speaker
     if (quem && PARENTESCO[quem] && !apresentados.has(quem)) {
@@ -131,10 +169,20 @@ export class Dialogue {
 
   /** Um toque completa a linha; o toque seguinte passa para a próxima. */
   confirm(): void {
-    if (!this.current || this.semControle) return
-    if (this.revealed < this.current.text.length) {
-      this.revealed = this.current.text.length
+    const l = this.current
+    if (!l || this.semControle) return
+    // A que não se pula: o toque não vale até ela ter ficado na tela.
+    if (l.devagar !== undefined && (this.revealed < l.text.length || this.inteiraHa < l.devagar)) return
+    if (this.revealed < l.text.length) {
+      this.revealed = l.text.length
+      this.pulou = true
     } else {
+      // Só conta fala que dá trabalho ler. Fala curta passa rápido mesmo.
+      // Quem lê rápido não conta: só quem pulou a máquina de escrever ou
+      // passou quase no mesmo instante em que a frase terminou.
+      if (l.text.length >= 40 && l.style !== 'read') {
+        anotarLeitura(this.pulou || this.inteiraHa < 0.2 + l.text.length / 400)
+      }
       this.advance()
     }
   }
@@ -143,7 +191,8 @@ export class Dialogue {
     if (!this.current) return
     if (this.revealed < this.current.text.length) {
       this.elapsed += dt
-      const target = Math.min(this.current.text.length, Math.floor(this.elapsed * CHARS_PER_SEC))
+      const cps = this.current.devagar !== undefined ? CHARS_PER_SEC / 3 : CHARS_PER_SEC
+      const target = Math.min(this.current.text.length, Math.floor(this.elapsed * cps))
       if (target > this.revealed) {
         this.revealed = target
         // Quem fala tem voz; pensamento e papel lido, só o tique da letra.
@@ -160,6 +209,7 @@ export class Dialogue {
       }
       return
     }
+    this.inteiraHa += dt
     if (this.semControle) {
       // O tempo de ler o grito inteiro, e ele some.
       this.paradoDesde += dt
@@ -249,7 +299,7 @@ export class Dialogue {
     }
     ctx.shadowBlur = 0
 
-    if (this.revealed >= line.text.length) {
+    if (this.revealed >= line.text.length && (line.devagar === undefined || this.inteiraHa >= line.devagar)) {
       const t = performance.now() / 500
       ctx.globalAlpha = 0.35 + Math.sin(t) * 0.3
       ctx.fillStyle = PAL.ink

@@ -34,12 +34,13 @@ npm test           # joga a fatia inteira num navegador real e confere tudo
 
 Testes de ponta a ponta, num Chromium de verdade: `test/demo.mjs` (a demo
 inteira no teclado, escondendo o caderno a tempo, entrando na frente do
-prato e parando de arrumar), `test/mouse.mjs` (a mesma só no mouse, sendo
-pego com o caderno e arrumando até o fim), `test/escolha.mjs` (a escolha do
+prato, respirando no ritmo e parando de arrumar), `test/mouse.mjs` (a mesma
+só no mouse, sendo pego com o caderno e arrumando até o fim), `test/escolha.mjs` (a escolha do
 Tear numa segunda partida, salvando cada uma), `test/salvar.mjs` (salvar,
 continuar, pausar, sair), `test/celular.mjs` (em pé e deitado, só no
 toque), `test/som.mjs` (vozes audíveis, grito mais
-alto que fala, nada estoura na briga) e `test/playthrough.mjs` (a fatia
+alto que fala, nada estoura na briga), `test/segunda.mjs` (o que muda
+quando o jogo lembra que você já terminou) e `test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
 O teste aponta para `http://localhost:4173` por padrão: rode o `preview` antes,
@@ -117,6 +118,8 @@ os três caminhos são testados de ponta a ponta.
 | Abrir um fio no Tear | tocar a melodia | tocar a melodia | tocar a melodia |
 | Examinar um vestígio | clicar nele | E perto dele | tocar nele |
 | Esconder o caderno da Lia (os passos) | clicar | espaço ou E | tocar |
+| Arrumar a coisa torta, no Dentro | clicar nela | E | tocar nela |
+| Respirar, numa crise | segurar o botão | segurar espaço | segurar o dedo |
 | Entrar na frente de um prato | clicar onde correr | setas | tocar onde correr |
 | Escolher quem salvar, no Tear | clicar na metade dela | ← ou → | tocar na metade dela |
 | Pausar | ícone no canto de cima | Esc ou P | ícone no canto de cima |
@@ -136,6 +139,12 @@ boletim do rádio também. A única exceção são os gritos curtos (até 64
 letras, que se leem num relance): esses passam sozinhos e não dá para
 pular. É o único momento em que o jogo tira o controle de quem joga. Grito
 comprido espera o toque como o resto.
+
+**Respirar.** Às vezes o ar não entra. A tela some em volta, um anel claro
+cresce e encolhe no ritmo certo (quatro pra dentro, quatro pra fora) e o
+círculo de dentro é o ar do Liam: cresce enquanto você segura e esvazia
+quando solta. Acompanhar o anel é conseguir respirar. Não tem botão de
+pular — quem não segura nada também está respirando, mal.
 
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
@@ -235,9 +244,18 @@ apito no ouvido. Na escolha do Tear, as três vozes gritam por cima umas das
 outras, cada uma do seu lado, com o relógio acelerando.
 
 **Música de tensão** (`src/engine/clima.ts`), dosada por cena: um
-contrabaixo em colcheias que corre conforme a tensão, cordas que vão fechando
-em segunda menor com tremolo, um relógio, o coração, chuva na janela da casa,
-e uma caixinha de música tocando o tema no Dentro. Na casa calma, só chuva,
+contrabaixo em colcheias que corre conforme a tensão, um **violoncelo** que
+segura a nota grave e desce meio tom por vez quando aperta, dois **violinos**
+lá em cima que fecham em segunda menor com tremolo, um relógio, o coração,
+chuva na janela da casa, e no Dentro uma caixinha de música e um violino
+sozinho tocando o tema. O tema do piano também ganhou violoncelo e violino
+por baixo. Cordas são sintetizadas (serra com vibrato, ataque de arco e um
+corpo de madeira em filtros), como o resto.
+
+**Silêncio antes do susto.** Os dois sustos da demo vêm depois de um
+silêncio de verdade: a música, a chuva e a casa somem de uma vez, e só
+então o estouro (`sons.susto`: um baque grave, metal, um guincho que desce
+e o zumbido). Na casa calma, só chuva,
 os passos de Liam no assoalho (às vezes a tábua range) e as portas; quando
 os passos do pai vêm, o coração e as cordas entram de uma vez.
 
@@ -286,7 +304,7 @@ mesma interface.
    altura no batente da rouparia; no quarto, a cabana de cobertor, a parede
    de plantas (cada uma diferente, com árvores de giz de cera de outra mão),
    a caixa debaixo da cama, o coelho de um olho só, o diário e o armário.
-   **O corredor cresce enquanto Liam caminha**, de 470 para 1180 pixels, o
+   **O corredor cresce enquanto Liam caminha**, de 520 para 1180 pixels, o
    papel de parede vira floresta e os retratos vão perdendo gente. No fim
    está a **porta que não abre**.
 
@@ -310,6 +328,45 @@ mesma interface.
    aparecer na porta, pegar o caderno da mão dele e rasgar a página — e a
    folha rasgada vai para o caderno de Liam. Nada avisa antes que isso pode
    acontecer.
+
+   **O quarto da Lia**, no corredor, com a porta cheia de adesivos. Ela
+   está arrumando a mala e xinga ele por entrar sem bater. Manda ele passar
+   as coisas — a foto da família (*"Essa não. Ele tá nela."*), o fone, o
+   desenho que ele fez com sete anos —, divide o fone e por um minuto a casa
+   não existe (a música dela toca, abafada, num lado só), até o pai gritar da
+   cozinha. Então ela chama ele para ir junto, hoje, para a tia Catarina. A
+   resposta dele, **na primeira vez, sai com a voz do pai** (*"Não posso
+   deixar o pai sozinho."*); ela joga o travesseiro (*"VOCÊ É IGUALZINHO A
+   ELE, SABIA?"*), manda ele sair — e, quando ele vira, enfia um bilhete no
+   bolso do moletom dele.
+
+   **Os dois sustos.** O espelho do quarto da Lia: quando Liam passa, o
+   reflexo atrasa — uma vez só. Quem estranha e volta para olhar, parado na
+   frente dele, leva o susto. E a primeira vez que a sombra branca aparece,
+   no vidro do retrato do corredor: silêncio, e o rosto dela enche a tela.
+
+   **A janela da sala.** O poste da rua acende num cone amarelo com a chuva
+   caindo dentro, uma poça de luz no asfalto e um resto de luz que entra pela
+   janela e cai no chão. Quem vem da direita olhando a janela de longe, na
+   primeira vez, vê alguém parado embaixo do poste, sem guarda-chuva. Chegando
+   perto, não tem ninguém.
+
+   **O relógio do corredor** anda conforme ele visita os cômodos (22h10,
+   22h15...) e para às 22h40 depois do grito. De madrugada de verdade (entre
+   meia-noite e cinco da manhã de quem joga), ele mostra a hora real e a mãe
+   chama da cozinha: *"Liam? Já passou da meia-noite, filho. Vai dormir."*
+
+   **O cheiro de queimado.** De vez em quando, entrando num cômodo, Liam
+   sente cheiro de queimado. Ninguém mais sente. *"Não vem da cozinha. Vem de
+   perto. Vem de mim."*
+
+   **A crise.** Cada coisa que ele olha tem outra escondida embaixo, e o
+   coração vai subindo junto. Na sétima, o peito fecha: o zumbido, as mãos
+   formigando e a respiração (ver Controles). Conseguindo ou não, passa — de
+   jeitos diferentes.
+
+   **Ninguém veio.** Quem fica dois minutos sem mexer em nada vê Liam sentar
+   no chão, esperando alguém vir procurar.
 
    **O caderno "O que eu sei"** (tecla C, ou o ícone no canto) se escreve
    sozinho com o que Liam vê. Depois do grito, a sombra passa a riscar o que
@@ -363,6 +420,11 @@ mesma interface.
    param). Quem não chega vê o prato quebrar nela. O E não funciona enquanto
    o prato está no ar.
 
+   **O ar.** Depois do primeiro prato, o ar para de entrar e vem a
+   respiração. Dá para conseguir — e o pai ouve: *"TÁ RESPIRANDO ASSIM POR
+   QUÊ?! OLHA PRA MIM!"*. Não conseguindo, a cozinha fica pequena. Nos dois
+   casos piora: a tela fecha mais e não volta inteira.
+
    **O fundo do poço é em voz.** Quando a tensão enche, o pai vira para Liam.
    Ele sobe a voz; Liam sobe a dele pedindo para parar; as falas entram no
    tempo marcado e não saem — se empilham pela tela, cada uma maior, até não
@@ -388,8 +450,12 @@ mesma interface.
 
 5. **Dentro.** Corte seco para a cabeça de Liam: vácuo preto, uma toalha
    xadrez do tamanho do chão, uma luz de cima. As lembranças chegam
-   recortadas, e em cada recorte há uma coisa torta brilhando — arrumar faz o
-   próximo chegar (*Cinco. Quatro. Três.*, contando pratos). Em cada recorte
+   recortadas, e em cada recorte há uma coisa torta brilhando, flutuando
+   torta debaixo de uma lâmpada pendurada que balança. Passar as falas não
+   arruma nada: depois da conversa é **o jogador** que aperta E (ou toca na
+   coisa) e Liam vai até ela e endireita — e só então o próximo recorte chega
+   (*Cinco. Quatro. Três.*, contando pratos). Poeira e fios das cores da
+   família caem devagar do escuro. Em cada recorte
    a **sombra branca**, a parte de Liam que não deve nada a ninguém, conversa
    com ele sobre a mãe: pergunta que tipo de pessoa ela era, deixa a
    lembrança falar, e repete a lição da mãe na boca dela (*"É melhor ser
@@ -436,6 +502,40 @@ mesma interface.
    sombra. A única cor da casa é a luz âmbar da secretária eletrônica: um
    recado da mãe, de terça às 17h40. *"Eu volto mais tarde."*
 
+   **Os nós.** Em cada cômodo tem um nó de fio da cor de alguém: o da mãe na
+   sala, o do pai no corredor, o da Lia no quarto dele, e um lilás no quarto
+   da Lia. Desatar um abre uma lembrança daquela pessoa e pinta a tela da cor
+   dela por um instante. A secretária só toca depois que os quatro estão
+   soltos — e, com o último, a porta do fim do corredor se abre um pouco: um
+   bipe de monitor e a voz da Lia lá de dentro. O relógio está parado nas
+   22h40, a porta da cozinha está trancada (pela fresta, o boletim inteiro
+   do rádio: *"...o adolescente de treze anos segue internado..."*). No
+   quarto da Lia, o espelho está coberto com um lençol, e quem guardou o
+   bilhete lê: *"se mudar de ideia, a gente tá na tia Catarina. — L."*
+
+10. **Os créditos e o colapso.** Os créditos sobem com o tema no piano,
+    terminando em ré maior (segurar espaço ou o dedo acelera). A tela pisca
+    — e o Liam aparece em pânico, de perto, suando, enquanto as frases da
+    noite voam pela tela nas vozes de quem disse, e o som aumenta, aumenta e
+    **aumenta** — até o corte seco. Preto. E então, rápido e discreto: o
+    quarto de hospital, Liam deitado, a Lia dormindo na cadeira, o monitor
+    bipando. O dedo dele mexe. Volta para o menu.
+
+**A segunda partida.** (Spoiler.) Quem termina a demo e aperta *Só mais um*
+de novo não volta para a mesma casa: volta para uma casa que lembra. O S do
+título se soltou e fica pendurado por um fio embaixo do NÓ, e o tema do menu
+volta um pouco fora do tom. O pai abre a aula com *"De novo, filho?"* e,
+quando Liam acerta, *"Você já sabe essa. Eu sei que sabe."* A Lia, no rádio,
+diz que fala a mesma coisa todo dia. A sombra aparece logo na entrada da
+casa (*"Você já esteve aqui."*), o relógio do corredor já começa parado nas
+22h40 e o poste está vazio (*"Da outra vez tinha."*). Na cozinha, *"Eu sei o
+que vem agora. Saber não ajuda em nada."* E, depois do fogo, a sombra lembra
+quem ele salvou da outra vez — e diz se ele fez igual. Mais duas coisas,
+fora da segunda partida: quem sai para o menu no meio da cozinha ou do Tear
+encontra, ao voltar, *"Fugir também é escolher."*; e quem vem passando as
+falas sem ler ouve a sombra, no Dentro, numa fala que não dá para pular:
+*"Você nem lê mais. Só quer que acabe. Igual a ele."*
+
 **A fatia antiga** — o quarto de Liam, o diário e a porta que nunca esteve
 trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 
@@ -467,6 +567,14 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | **Diários, cartas, jornal, caderno** (o texto das páginas) | `src/game/content/documentos.ts` |
 | Leitor de páginas (papel, letras de cada pessoa) | `src/game/systems/leitor.ts` |
 | O fecho (partículas, acorde final, contagem de segredos) | `src/game/scenes/demo/fim.ts` |
+| Créditos, colapso e pós-créditos | `src/game/scenes/demo/fim.ts` (`COLAPSO`, `ECOS`) |
+| O quarto da Lia (falas) | `src/game/content/quartoLia.ts` |
+| O quarto da Lia (arte, espelho, nós da casa depois) | `src/game/world/casa.ts` (`comodoLia`, `ESPELHO`, `NOS`) |
+| Os sustos (silêncio, rosto, estouro) | `src/game/scenes/demo/casa.ts` (`iniciarSusto`), `src/engine/audio.ts` (`susto`) |
+| A respiração (ritmo, tolerância, desenho) | `src/game/ui/respiracao.ts`; a crise da casa em `content/crise.ts`, a da cozinha em `content/noite.ts` |
+| **A segunda partida**, o vulto, o cheiro, "Ninguém veio", a pressa | `src/game/content/deNovo.ts`; o que o jogo lembra em `src/game/systems/memoria.ts` |
+| Quem passa as falas sem ler | `src/game/systems/dialogue.ts` (`leitorApressado`) |
+| A rua pela janela da sala (poste, cone de luz, vulto) | `src/game/world/sala.ts` (`drawRua`, `luzDaRua`) |
 | Cozinha (fogão, pia, rádio, telefone, mesa) | `src/game/world/cozinha.ts` |
 | O Tear e a câmara | `src/game/world/camara.ts` |
 | As lembranças do Tear | `src/game/world/lembrancas.ts` |

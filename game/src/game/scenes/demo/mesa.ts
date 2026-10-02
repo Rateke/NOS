@@ -12,9 +12,13 @@ import {
   MESA_VESTIGIOS, MESA_PRATOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
 } from '../../content/demoScript'
 import {
+  MESA_FALTA_AR, MESA_RESPIROU, MESA_SEM_AR,
   MESA_ESTOURO, ARREMESSO_ADRIAN, PRATO_NELAS, PRATO_NO_LIAM, PRATO_PENSAMENTO, GRITARIA, GRITARIA_FIM,
 } from '../../content/noite'
 import { TearScene } from './tear'
+import { Respiracao } from '../../ui/respiracao'
+import { memoria } from '../../systems/memoria'
+import { DE_NOVO_MESA } from '../../content/deNovo'
 import { Etiquetas } from '../../ui/etiqueta'
 import { CadernoUI } from '../../ui/cadernoUI'
 import type { EstadoCozinha } from '../../world/cozinha'
@@ -116,6 +120,11 @@ export class MesaScene implements Scene {
   private tGritaria = 0
   private idxGrito = 0
   private tFundo = 0
+  /** Entre os pratos, ele tenta respirar. Dando certo ou não, piora. */
+  respiracao = new Respiracao()
+  private respirou = false
+  /** 0..1: o ar que faltou. Fecha a tela e não volta inteiro. */
+  private sufoco = 0
 
   private liam = new Figura({
     ...VISUAL.liam,
@@ -169,7 +178,8 @@ export class MesaScene implements Scene {
     this.dialogue.play(MESA_ESTOURO, () => {
       this.fase = 'abertura'
       audio.setArgument(0.22, 2)
-      this.dialogue.play(MESA_ABERTURA, () => {
+      const abre = memoria.terminou ? [...MESA_ABERTURA.slice(0, 3), ...DE_NOVO_MESA, ...MESA_ABERTURA.slice(3)] : MESA_ABERTURA
+      this.dialogue.play(abre, () => {
         this.fase = 'confronto'
         this.dialogue.play(MESA_CONFRONTO, () => {
           this.fase = 'preso'
@@ -222,6 +232,15 @@ export class MesaScene implements Scene {
         this.jolt = Math.max(this.jolt, 0.8)
         audio.heartbeat(0.2)
       }
+    }
+
+    this.sufoco = Math.max(this.respirou ? 0.35 : 0, this.sufoco - dt * 0.08)
+    if (this.respiracao.ativa) {
+      // Tudo continua em volta. Ele só consegue pensar no ar.
+      this.liam.ofego = 3.2
+      this.liam.tremor = 1
+      this.respiracao.update(dt, ctx.input)
+      return
     }
 
     if (this.fase === 'gritaria') {
@@ -311,6 +330,11 @@ export class MesaScene implements Scene {
       this.arremessar(dt, ctx)
       return
     }
+    // Depois do primeiro prato, o ar falta.
+    if (!this.respirou && this.proxArremesso >= 1 && this.tPreso > (ARREMESSOS_EM[0] ?? 2) + 3.2) {
+      this.faltaAr()
+      return
+    }
 
     if (this.caderno.update(dt, ctx, this.leitor, true)) return
 
@@ -397,6 +421,31 @@ export class MesaScene implements Scene {
       this.destino = null
       void ctx
     }
+  }
+
+  private faltaAr(): void {
+    this.respirou = true
+    this.destino = null
+    this.liam.andando = 0
+    this.dialogue.play(MESA_FALTA_AR, () => {
+      this.respiracao.comecar({
+        ciclos: 2, periodo: 3.4, tolerancia: 0.22,
+        onFim: (ok) => {
+          this.tensao = Math.min(0.97, this.tensao + 0.16)
+          this.sufoco = 1
+          if (ok) {
+            // Ele conseguiu. O pai ouviu o ar entrando.
+            this.jogo?.aprender('respirou')
+            this.jolt = 1
+            this.dialogue.play(MESA_RESPIROU, undefined, 1.2)
+          } else {
+            this.jogo?.aprender('sem-ar')
+            audio.heartbeat(0.3)
+            this.dialogue.play(MESA_SEM_AR)
+          }
+        },
+      })
+    })
   }
 
   /** O braço sobe com o prato. Ele mira na mãe ou na Lia. */
@@ -655,12 +704,12 @@ export class MesaScene implements Scene {
       rgbSplit: this.tensao * 0.7 + this.jolt * 2 + grit * 3,
       wave: grit * 1.2,
       shake: this.tensao * this.tensao * 0.8 + this.jolt * 3.2 + grit * grit * 3,
-      zoom: 1.2 + this.tensao * 0.34 + grit * 0.25,
+      zoom: 1.2 + this.tensao * 0.34 + grit * 0.25 + this.sufoco * 0.06,
       alvoX: this.liam.x * 0.35 + WORLD_W / 2 * 0.65,
       alvoY: 112,
       time: this.t,
     })
-    ctx.display.vignette(0.66 + this.tensao * 0.2 + grit * 0.12)
+    ctx.display.vignette(Math.min(0.98, 0.66 + this.tensao * 0.2 + grit * 0.12 + this.sufoco * 0.14))
 
     if (this.fase === 'fundo') {
       const c0 = ctx.display.ctx
@@ -685,6 +734,7 @@ export class MesaScene implements Scene {
     if (this.fase === 'preso' && !this.leitor.aberto && !this.dialogue.active) {
       this.caderno.draw(c, ctx.display.cssW, ctx.display.cssH, this.jogo?.novidade ?? 0)
     }
+    this.respiracao.draw(c, ctx.display.cssW, ctx.display.cssH, ctx.input.touchMode)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
     this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
   }

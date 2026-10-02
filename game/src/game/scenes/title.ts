@@ -12,6 +12,7 @@ import { PONTOS } from './pontos'
 import { salvo, haQuanto } from '../systems/salvo'
 import type { Salvo } from '../systems/salvo'
 import { desenharLista, navegarLista } from '../ui/lista'
+import { memoria } from '../systems/memoria'
 
 type Fase = 'espera' | 'abrindo' | 'pronto' | 'saindo'
 type Acao = 'continuar' | 'novo' | 'sair'
@@ -83,6 +84,8 @@ export class TitleScene implements Scene {
   private aviso: { texto: string; t: number } | null = null
   /** Volta do jogo: o som já existe, não precisa do toque inicial. */
   private readonly direto: boolean
+  /** Já terminou uma vez: o título lembra. */
+  private deNovo = false
 
   constructor(opcoes: { direto?: boolean } = {}) {
     this.direto = opcoes.direto === true
@@ -92,6 +95,12 @@ export class TitleScene implements Scene {
     menuAberto = this
     ouvirArquivos()
     this.achouPorta = ctx.state.segredos.has('porta-menu')
+    this.deNovo = memoria.terminou
+    // Quem saiu no meio da briga ou do Tear ouve isto ao voltar.
+    if (memoria.fugiu) {
+      memoria.marcarFuga(false)
+      this.aviso = { texto: 'Fugir também é escolher.', t: -2.5 }
+    }
     this.montarItens()
     if (this.direto) this.abrir()
   }
@@ -216,6 +225,7 @@ export class TitleScene implements Scene {
     this.fase = 'saindo'
     this.desde = 0
     menuAberto = null
+    musica.desafinado = 0
     musica.setPad(0.2, 2)
     if (acao === 'sair') {
       musica.nota(73.42, 0.5, 5)
@@ -245,7 +255,8 @@ export class TitleScene implements Scene {
     audio.resume()
     audio.startAmbient()
     audio.setAmbient(0.2, 6)
-    musica.desafinado = 0
+    // Depois da primeira vez, o tema do menu volta um pouco fora do tom.
+    musica.desafinado = this.deNovo ? -0.28 : 0
     musica.abafado = 0.3
     musica.iniciarPad()
     musica.setPad(0.22, 8)
@@ -384,6 +395,47 @@ export class TitleScene implements Scene {
     c.restore()
   }
 
+  /**
+   * Na segunda vez, o S se soltou: fica pendurado por um fio embaixo do NÓ,
+   * balançando devagar.
+   */
+  private tituloPendurado(c: CanvasRenderingContext2D, cx: number, y: number, tam: number): void {
+    const inteiro = c.measureText('NÓS').width
+    const no = c.measureText('NÓ').width
+    const x0 = cx - inteiro / 2
+    c.textAlign = 'left'
+    c.fillText('NÓ', x0, y)
+    const larguraS = c.measureText('S').width
+    // O fio sai da borda do Ó — é o nó que ainda segura o S.
+    const px = x0 + no - larguraS * 0.02
+    const py = y - tam * 0.42
+    const queda = tam * 0.5
+    const ang = -0.32 + Math.sin(this.t * 0.9) * 0.08
+    const fx = px - Math.sin(ang) * queda
+    const fy = py + Math.cos(ang) * queda
+    c.save()
+    c.strokeStyle = PAL.accent
+    c.fillStyle = PAL.accent
+    c.globalAlpha *= 0.8
+    c.lineWidth = Math.max(1, tam * 0.012)
+    c.beginPath()
+    c.moveTo(px, py)
+    c.quadraticCurveTo((px + fx) / 2 + tam * 0.03, (py + fy) / 2, fx, fy)
+    c.stroke()
+    c.beginPath()
+    c.arc(px, py, Math.max(1.5, tam * 0.02), 0, Math.PI * 2)
+    c.fill()
+    c.restore()
+    c.save()
+    c.translate(fx, fy)
+    c.rotate(-ang * 0.9 + 0.1)
+    c.textAlign = 'center'
+    c.textBaseline = 'top'
+    c.fillText('S', 0, -tam * 0.12)
+    c.restore()
+    c.textAlign = 'center'
+  }
+
   private drawMenu(ctx: SceneCtx, luz: number): void {
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
@@ -397,7 +449,8 @@ export class TitleScene implements Scene {
     c.fillStyle = PAL.ink
     c.font = `400 ${tam}px ${FONT_TITLE}`
     c.letterSpacing = `${0.26 - aTit * 0.04}em`
-    c.fillText('NÓS', cssW / 2 + tam * 0.12, cssH * 0.3)
+    if (this.deNovo) this.tituloPendurado(c, cssW / 2 + tam * 0.12, cssH * 0.3, tam)
+    else c.fillText('NÓS', cssW / 2 + tam * 0.12, cssH * 0.3)
     c.letterSpacing = '0em'
 
     // Fio fino sob o título
@@ -421,7 +474,7 @@ export class TitleScene implements Scene {
     c.save()
     c.textAlign = 'center'
 
-    if (this.aviso && this.aviso.t < 5) {
+    if (this.aviso && this.aviso.t > 0 && this.aviso.t < 5) {
       const a = Math.min(1, this.aviso.t / 0.4, (5 - this.aviso.t) / 1) * luz
       c.globalAlpha = a * 0.6
       c.fillStyle = PAL.accent

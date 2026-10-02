@@ -135,17 +135,11 @@ export const ELISA_CORTE: Line[] = [
   { speaker: 'Elisa', text: 'Liam.', style: 'speech' },
 ]
 
-/** O fecho, em três tempos. Cada linha ganha a tela sozinha. */
-export const EPILOGO: string[] = [
-  'A paz da família sempre precisou adoecer alguém.',
-  'E alguém era sempre o mesmo.',
+/** Quem joga de madrugada: a mãe ouve que ele ainda está acordado. */
+export const CASA_MADRUGADA: Line[] = [
+  { speaker: 'Evelyn', text: 'Liam? Já passou da meia-noite, filho. Vai dormir.', style: 'speech', onde: 'da cozinha' },
+  { text: 'O relógio do corredor diz a mesma coisa que ela.' },
 ]
-
-/** Só para quem achou a melodia ao contrário no piano da sala. */
-export const EPILOGO_SUBINDO = 'Mas alguém ensinou a música subindo.'
-
-export const EPILOGO_CREDITO = 'Fernando Rateke Neto  ·  Luana Lupi Vergara'
-export const DEMO_FIM = 'fim da demo'
 
 // --- A Mesa -----------------------------------------------------------------
 

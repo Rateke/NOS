@@ -11,6 +11,8 @@ import {
 } from '../../content/demoScript'
 import { PrologoScene } from './prologo'
 import { CasaScene } from './casa'
+import { memoria } from '../../systems/memoria'
+import { DE_NOVO_LIA } from '../../content/deNovo'
 
 export type VarianteHospital = 'abertura' | 'grito'
 
@@ -127,7 +129,8 @@ export class HospitalScene implements Scene {
         // O rádio desliga. Fica o escuro, e alguém falando nele.
         sons.radio(0, 0, 1.4)
         this.mudar('voz')
-        this.dialogue.play(ABERTURA_LIA, () => this.mudar('saida'), 1.6)
+        const fala = memoria.terminou ? [...ABERTURA_LIA.slice(0, 2), DE_NOVO_LIA, ...ABERTURA_LIA.slice(2)] : ABERTURA_LIA
+        this.dialogue.play(fala, () => this.mudar('saida'), 1.6)
       }
       return
     }

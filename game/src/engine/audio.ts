@@ -369,6 +369,45 @@ export class SonsNos {
     this.cortarCacofonia(false)
   }
 
+  /**
+   * Um respiro: ruído soprado, mais agudo puxando o ar, mais grave soltando.
+   * `aflito` deixa curto e entrecortado — o ar que não entra.
+   */
+  respiro(entrando: boolean, segundos = 1.4, forca = 1, aflito = false): void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b) return
+    const t = ctx.currentTime
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    src.loop = true
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.Q.value = 1.4
+    const de = entrando ? 700 : 1300
+    const ate = entrando ? 1500 : 520
+    bp.frequency.setValueAtTime(de, t)
+    bp.frequency.linearRampToValueAtTime(ate, t + segundos)
+    const g = ctx.createGain()
+    const pico = 0.05 * forca
+    g.gain.setValueAtTime(0.0001, t)
+    if (aflito) {
+      // Três puxadas curtas que não chegam a encher.
+      for (let i = 0; i < 3; i++) {
+        const a = t + i * (segundos / 3)
+        g.gain.linearRampToValueAtTime(pico, a + 0.05)
+        g.gain.linearRampToValueAtTime(0.0001, a + segundos / 3 - 0.04)
+      }
+    } else {
+      g.gain.linearRampToValueAtTime(pico, t + segundos * 0.35)
+      g.gain.linearRampToValueAtTime(0.0001, t + segundos)
+    }
+    src.connect(bp).connect(g).connect(out)
+    src.start(t, Math.random() * 2)
+    src.stop(t + segundos + 0.05)
+  }
+
   /** Um bipe de monitor cardíaco, agendado `quando` segundos à frente. */
   bip(quando = 0, dur = 0.09, freq = 988, vol = 0.06): void {
     const ctx = this.ctx
@@ -1179,6 +1218,153 @@ export class SonsNos {
     o.connect(g).connect(bus)
     o.start(t)
     o.stop(t + segundos + 0.05)
+  }
+
+  /**
+   * O susto: um estalo de metal agudo, um baque que despenca, um guincho
+   * que desce e um sopro de ruído — tudo no mesmo instante, alto. Vem
+   * depois de um silêncio, que é o que faz ele funcionar.
+   */
+  susto(): void {
+    const ctx = this.ctx
+    const bus = this.barramentoCaos()
+    const b = this.buf()
+    if (!ctx || !bus || !b) return
+    const t = ctx.currentTime + 0.003
+    // Baque.
+    const sub = ctx.createOscillator()
+    sub.type = 'sine'
+    sub.frequency.setValueAtTime(90, t)
+    sub.frequency.exponentialRampToValueAtTime(24, t + 0.7)
+    const sg = ctx.createGain()
+    sg.gain.setValueAtTime(0.9, t)
+    sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
+    sub.connect(sg).connect(bus)
+    sub.start(t)
+    sub.stop(t + 0.95)
+    // Metal: parciais que não combinam, morrendo rápido.
+    for (const [f, v] of [[523, 0.3], [1187, 0.22], [1873, 0.18], [2711, 0.14], [3917, 0.1]] as const) {
+      const o = ctx.createOscillator()
+      o.type = 'sine'
+      o.frequency.value = f
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(v, t)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7)
+      o.connect(g).connect(bus)
+      o.start(t)
+      o.stop(t + 0.75)
+    }
+    // Guincho descendo, rasgado.
+    const w = this.rasgo(ctx)
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 1800
+    bp.Q.value = 2
+    const gg = ctx.createGain()
+    gg.gain.setValueAtTime(0.32, t)
+    gg.gain.exponentialRampToValueAtTime(0.0001, t + 0.6)
+    w.connect(bp).connect(gg).connect(bus)
+    for (const det of [0, 37]) {
+      const o = ctx.createOscillator()
+      o.type = 'sawtooth'
+      o.frequency.setValueAtTime(3400, t)
+      o.frequency.exponentialRampToValueAtTime(700, t + 0.55)
+      o.detune.value = det
+      o.connect(w)
+      o.start(t)
+      o.stop(t + 0.6)
+    }
+    // Sopro de ruído.
+    const src = ctx.createBufferSource()
+    src.buffer = b
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 700
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(0.55, t)
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.35)
+    src.connect(hp).connect(ng).connect(bus)
+    src.start(t, Math.random(), 0.4)
+    this.zumbido(0.7, 2.2)
+  }
+
+  /**
+   * A música da Lia no fone: diferente de tudo no jogo. Dó maior, violão
+   * dedilhado, uma bateria fraquinha, e a melodia simples por cima — abafada,
+   * porque vem de um fone só. Devolve quem corta.
+   */
+  musicaDaLia(): () => void {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    if (!ctx || !out || !b) return () => undefined
+    const g = ctx.createGain()
+    g.gain.value = 0
+    const fone = ctx.createBiquadFilter()
+    fone.type = 'lowpass'
+    fone.frequency.value = 3200
+    g.connect(fone).connect(out)
+    const t0 = ctx.currentTime + 0.05
+    g.gain.linearRampToValueAtTime(0.9, t0 + 1.2)
+    const bpm = 92
+    const tempo = 60 / bpm / 2
+    // Dó, Sol, Lá menor, Fá — o acorde que nenhuma música da casa toca.
+    const acordes = [[130.81, 164.81, 196.0, 261.63], [98.0, 123.47, 146.83, 196.0], [110.0, 130.81, 164.81, 220.0], [87.31, 110.0, 130.81, 174.61]]
+    const melodia = [523.25, 0, 587.33, 659.25, 0, 587.33, 523.25, 0, 493.88, 0, 523.25, 587.33, 0, 0, 440, 0]
+    const dedilhar = (f: number, quando: number, v: number): void => {
+      const o = ctx.createOscillator()
+      o.type = 'triangle'
+      o.frequency.value = f
+      const o2 = ctx.createOscillator()
+      o2.type = 'sawtooth'
+      o2.frequency.value = f * 2.001
+      const lp = ctx.createBiquadFilter()
+      lp.type = 'lowpass'
+      lp.frequency.setValueAtTime(2600, quando)
+      lp.frequency.exponentialRampToValueAtTime(500, quando + 0.6)
+      const e = ctx.createGain()
+      e.gain.setValueAtTime(0.0001, quando)
+      e.gain.linearRampToValueAtTime(v, quando + 0.005)
+      e.gain.exponentialRampToValueAtTime(0.0001, quando + 1.1)
+      const e2 = ctx.createGain()
+      e2.gain.value = 0.15
+      o.connect(lp)
+      o2.connect(e2).connect(lp)
+      lp.connect(e).connect(g)
+      o.start(quando)
+      o2.start(quando)
+      o.stop(quando + 1.2)
+      o2.stop(quando + 1.2)
+    }
+    const bater = (quando: number, grave: boolean): void => {
+      const src = ctx.createBufferSource()
+      src.buffer = b
+      const f = ctx.createBiquadFilter()
+      f.type = grave ? 'lowpass' : 'highpass'
+      f.frequency.value = grave ? 180 : 6000
+      const e = ctx.createGain()
+      e.gain.setValueAtTime(grave ? 0.5 : 0.06, quando)
+      e.gain.exponentialRampToValueAtTime(0.0001, quando + (grave ? 0.18 : 0.05))
+      src.connect(f).connect(e).connect(g)
+      src.start(quando, Math.random(), 0.2)
+    }
+    // Doze segundos agendados de uma vez: a cena corta antes.
+    for (let i = 0; i < 64; i++) {
+      const quando = t0 + i * tempo
+      const acorde = acordes[Math.floor(i / 8) % acordes.length] ?? acordes[0] ?? []
+      dedilhar(acorde[[0, 2, 1, 3, 2, 1, 3, 2][i % 8] ?? 0] ?? 130.81, quando, 0.09)
+      if (i % 4 === 0) bater(quando, true)
+      if (i % 2 === 1) bater(quando, false)
+      const m = melodia[i % melodia.length] ?? 0
+      if (m && i >= 8) dedilhar(m, quando, 0.07)
+    }
+    return () => {
+      const t = ctx.currentTime
+      g.gain.cancelScheduledValues(t)
+      g.gain.setValueAtTime(g.gain.value, t)
+      g.gain.linearRampToValueAtTime(0, t + 0.04)
+      fone.disconnect()
+    }
   }
 
   // --- A cacofonia: a gritaria que cresce até não caber mais nada ---------

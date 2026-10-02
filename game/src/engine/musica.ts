@@ -207,6 +207,42 @@ export class Musica {
     }
   }
 
+  /**
+   * Para quem toca instrumento de arco (o clima): o seco e o envio da
+   * reverberação, os mesmos do piano — tudo na mesma sala.
+   */
+  get destinos(): { seco: AudioNode; sala: AudioNode } | null {
+    if (!this.saida || !this.envioReverb) return null
+    return { seco: this.saida, sala: this.envioReverb }
+  }
+
+  /**
+   * Uma nota de arco: violoncelo (o pai) ou violino (a Lia). Serra com o
+   * corpo do instrumento em três ressonâncias, o chiado da crina por cima e
+   * um vibrato que só entra depois do ataque, como num arco de verdade.
+   */
+  arco(tipo: 'violoncelo' | 'violino', freq: number, duracao = 4, forca = 0.5, bus: 'piano' | 'fundo' = 'fundo'): void {
+    const ctx = this.ctx
+    if (!ctx || !this.saida || !this.envioReverb) return
+    const destino = bus === 'fundo' && this.fundo ? this.fundo : null
+    const f = freq * Math.pow(2, this.desafinado / 12)
+    const t = ctx.currentTime
+    const ataque = tipo === 'violoncelo' ? 0.45 : 0.35
+    const pico = (tipo === 'violoncelo' ? 0.075 : 0.05) * forca
+    const env = ctx.createGain()
+    env.gain.setValueAtTime(0, t)
+    env.gain.linearRampToValueAtTime(pico, t + Math.min(ataque, duracao * 0.4))
+    env.gain.setValueAtTime(pico, t + Math.max(ataque, duracao - 0.9))
+    env.gain.linearRampToValueAtTime(0, t + duracao)
+    const voz = criarArco(ctx, tipo, f, env, t, duracao, this.abafado)
+    if (destino) env.connect(destino)
+    else {
+      env.connect(this.saida)
+      env.connect(this.envioReverb)
+    }
+    void voz
+  }
+
   /** Um colchão grave por baixo de tudo. Não é melodia: é a casa respirando. */
   iniciarPad(): void {
     const ctx = this.ctx
@@ -249,6 +285,87 @@ export class Musica {
   }
 }
 
+/**
+ * A voz de um instrumento de arco, ligada em `saida` e parando em `fim`.
+ * Devolve quem muda a altura da nota (para quem segura a nota e desliza).
+ */
+export function criarArco(
+  ctx: AudioContext, tipo: 'violoncelo' | 'violino', freq: number, saida: AudioNode,
+  inicio: number, duracao: number, abafado = 0,
+): (f: number, quando: number, suave?: number) => void {
+  const violino = tipo === 'violino'
+  const fim = inicio + duracao + 0.05
+  const corpo = ctx.createGain()
+  corpo.gain.value = 1
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = (violino ? 5200 : 2300) * (1 - abafado * 0.5)
+  lp.Q.value = 0.5
+  corpo.connect(lp).connect(saida)
+  // As ressonâncias da caixa do instrumento.
+  const formantes = violino ? [[520, 2.4, 0.9], [1150, 2.8, 0.8], [2900, 3.2, 0.5]] : [[210, 2.6, 1], [520, 2.4, 0.8], [1050, 3, 0.45]]
+  const entrada = ctx.createGain()
+  for (const [fr, q, g] of formantes) {
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = fr ?? 500
+    bp.Q.value = q ?? 2
+    const gg = ctx.createGain()
+    gg.gain.value = (g ?? 1) * 1.6
+    entrada.connect(bp).connect(gg).connect(corpo)
+  }
+  const direto = ctx.createGain()
+  direto.gain.value = 0.35
+  entrada.connect(direto).connect(corpo)
+  // Duas serras quase juntas: o arco nunca é um oscilador limpo.
+  const osc = ctx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.value = freq
+  const osc2 = ctx.createOscillator()
+  osc2.type = 'sawtooth'
+  osc2.frequency.value = freq
+  osc2.detune.value = violino ? 7 : 5
+  const g2 = ctx.createGain()
+  g2.gain.value = 0.45
+  osc.connect(entrada)
+  osc2.connect(g2).connect(entrada)
+  // Vibrato que entra depois do ataque.
+  const vib = ctx.createOscillator()
+  vib.frequency.value = violino ? 6.1 : 5.3
+  const vg = ctx.createGain()
+  const prof = freq * (violino ? 0.0045 : 0.0028)
+  vg.gain.setValueAtTime(0, inicio)
+  vg.gain.linearRampToValueAtTime(0, inicio + 0.35)
+  vg.gain.linearRampToValueAtTime(prof, inicio + 0.9)
+  vib.connect(vg)
+  vg.connect(osc.frequency)
+  vg.connect(osc2.frequency)
+  // O chiado da crina.
+  const len = Math.floor(ctx.sampleRate * 0.5)
+  const nb = ctx.createBuffer(1, len, ctx.sampleRate)
+  const nd = nb.getChannelData(0)
+  for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1
+  const crina = ctx.createBufferSource()
+  crina.buffer = nb
+  crina.loop = true
+  const cbp = ctx.createBiquadFilter()
+  cbp.type = 'bandpass'
+  cbp.frequency.value = violino ? 4200 : 2400
+  cbp.Q.value = 1.2
+  const cg = ctx.createGain()
+  cg.gain.value = violino ? 0.05 : 0.035
+  crina.connect(cbp).connect(cg).connect(corpo)
+  for (const n of [osc, osc2, vib, crina]) {
+    n.start(inicio)
+    n.stop(fim)
+  }
+  // Muda a altura das duas serras juntas (o arco desliza até a nota nova).
+  return (f: number, quando: number, suave = 0.15) => {
+    osc.frequency.setTargetAtTime(f, quando, suave)
+    osc2.frequency.setTargetAtTime(f, quando, suave)
+  }
+}
+
 export const musica = new Musica()
 
 // --- Trilha ----------------------------------------------------------------
@@ -270,6 +387,8 @@ export interface Evento {
   completo?: boolean
   /** Corda em vez de piano (só na camada completa). */
   corda?: boolean
+  /** Violoncelo ou violino de arco, tocando junto com o piano. */
+  arco?: 'violoncelo' | 'violino'
 }
 
 /**
@@ -305,6 +424,17 @@ export const TEMA_PRINCIPAL: Evento[] = (() => {
     for (const f of a.cordas) ev.push({ t: t0 + 0.1, freq: f, forca: 0.55, dur: BAR, completo: true, corda: true })
     ev.push({ t: t0 + 0.1, freq: a.baixo, forca: 0.6, dur: BAR, completo: true, corda: true })
   })
+  // O violoncelo (o pai) segura o baixo de cada acorde, baixinho; o
+  // violino (a Lia) aparece em notas longas por cima, quase sem ser ouvido.
+  const raizes = [N.D2, N.Bb2, N.G2, N.A2]
+  raizes.forEach((f, i) => ev.push({ t: i * BAR + 0.3, freq: f, forca: 0.42, dur: BAR - 0.2, arco: 'violoncelo' }))
+  const violino: [number, number, number][] = [
+    [BAR * 0 + 3.2, 440, 3.6],
+    [BAR * 1 + 4.0, 466.16, 2.8],
+    [BAR * 1 + 6.6, 440, 2.4],
+    [BAR * 3 + 2.0, 587.33, 4.8],
+  ]
+  for (const [t, freq, dur] of violino) ev.push({ t, freq, forca: 0.32, dur, arco: 'violino' })
   // O tema do Adrian, uma oitava abaixo, espalhado pelos quatro compassos.
   const melodia: [number, number][] = [
     [2.6, N.D3], [3.7, N.F3], [4.8, N.A3], [6.2, N.G3],
@@ -353,7 +483,8 @@ export class Trilha {
     while (this.proximo < this.eventos.length) {
       const e = this.eventos[this.proximo]
       if (!e || e.t > this.t) break
-      if (e.corda) musica.corda(e.freq, e.dur ?? 6, e.forca)
+      if (e.arco) musica.arco(e.arco, e.freq, e.dur ?? 6, e.forca)
+      else if (e.corda) musica.corda(e.freq, e.dur ?? 6, e.forca)
       else musica.nota(e.freq, e.forca, e.dur ?? 3.2, e.completo ? 'completo' : 'fundo')
       this.proximo++
     }

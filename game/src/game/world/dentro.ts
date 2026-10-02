@@ -1,9 +1,10 @@
 import type { Input } from '../../engine/input'
+import type { Display } from '../../engine/display'
 import type { GameState } from '../systems/state'
-import { WORLD_W, WORLD_H, PAL } from '../../engine/constants'
+import { WORLD_W, WORLD_H } from '../../engine/constants'
 import { audio } from '../../engine/audio'
 import { musica, ESCALA, TEMA } from '../../engine/musica'
-import { Dialogue, FONT_FIM, FONT_BODY } from '../systems/dialogue'
+import { Dialogue, FONT_FIM, FONT_BODY, FIO } from '../systems/dialogue'
 import type { Line } from './types'
 import { Figura, criarSombraBranca, VISUAL } from './figura'
 import { Camada } from '../ui/camada'
@@ -54,6 +55,23 @@ const CORTES: Corte[] = [
   { tipo: 'pratos', pratos: 3, torto: 0.5, conta: DENTRO_CONTA[2] },
 ]
 
+/** Onde está a coisa torta de cada recorte, no mundo (antes de subir 34px). */
+function alvoDe(corte: Corte): { x: number; y: number } {
+  switch (corte.tipo) {
+    case 'pratos': {
+      const n = corte.pratos ?? 5
+      return { x: 192 + (Math.floor(n / 2) - (n - 1) / 2) * 30 + 14, y: 160 }
+    }
+    case 'partitura': return { x: 196, y: 172 }
+    case 'sapatos': return { x: 224, y: 165 }
+    case 'uniforme': return { x: 178, y: 128 }
+    case 'mochila': return { x: 190, y: 150 }
+    case 'chave': return { x: 196, y: 132 }
+  }
+}
+/** O recorte inteiro é desenhado 34px acima da linha do chão. */
+const SOBE = 34
+
 /**
  * A partir de qual recorte parar de arrumar já conta como parar. Antes
  * disso a conversa sobre a mãe ainda não chegou no golpe.
@@ -90,7 +108,13 @@ export class Montagem {
   private antes = { desafinado: 0, abafado: 0 }
   /** Quantos recortes o jogador arrumou (para os testes). */
   arrumados = 0
+  /** Tempo desde que a última fala do recorte terminou de se escrever. */
+  private desdeConversou = 0
+  /** Liam indo até a coisa torta, antes de endireitar. */
+  private indo = false
   private estado: GameState | null = null
+
+  private antesDoPrimeiro: Line[] = []
 
   constructor() {
     this.evelyn.silhueta = true
@@ -104,8 +128,10 @@ export class Montagem {
     return this.fase
   }
 
-  comecar(state: GameState): void {
+  /** `antes`: falas que entram antes do primeiro recorte (a sombra, quando tem o que dizer). */
+  comecar(state: GameState, antes: Line[] = []): void {
     this.estado = state
+    this.antesDoPrimeiro = antes
     this.camada.mostrar(state, 'dentro')
     this.antes = { desafinado: musica.desafinado, abafado: musica.abafado }
     musica.desafinado = 0
@@ -120,21 +146,47 @@ export class Montagem {
     this.parado = 0
     this.arrumando = 0
     this.arrumou = false
+    this.indo = false
+    this.desdeConversou = 0
+    this.liam.x = 150
+    this.liam.andando = 0
+    this.liam.braco = 0
     this.preto = 0.12
     audio.bater(1, 0)
     // Uma nota do tema a cada corte, limpa — aqui dentro ele ainda é afinado.
     const graus = TEMA.flat()
     const f = ESCALA[graus[i % graus.length] ?? 0]
     if (f) musica.nota(f / 2, 0.55, 4)
-    const falas = [...(DENTRO_RECORTES[i] ?? [])]
+    const falas = [...(i === 0 ? this.antesDoPrimeiro : []), ...(DENTRO_RECORTES[i] ?? [])]
     // Quem entrou na frente do prato na cozinha ouve isso no recorte da mãe.
     if (i === 3 && this.estado?.sabe.has('prato-na-frente')) falas.push(DENTRO_PRATOS_NA_FRENTE)
     if (falas.length > 0) this.dialogue.play(falas)
   }
 
-  /** A conversa do recorte acabou: só falta a última linha sair da tela. */
+  /** A conversa do recorte acabou (a última linha inteira na tela, ou já fechada). */
   private get conversou(): boolean {
-    return this.dialogue.completa && this.dialogue.fila === 0
+    return !this.dialogue.active || (this.dialogue.completa && this.dialogue.fila === 0)
+  }
+
+  /** A coisa torta deste recorte, já na altura em que aparece (para o toque e os testes). */
+  get alvo(): { x: number; y: number } | null {
+    const corte = CORTES[this.corte]
+    if (this.fase !== 'cortes' || !corte) return null
+    const a = alvoDe(corte)
+    return { x: a.x, y: a.y - SOBE }
+  }
+
+  /** A conversa acabou e a coisa ainda está torta: é a vez do jogador. */
+  get esperandoArrumar(): boolean {
+    return this.fase === 'cortes' && !this.arrumou && this.conversou && this.desdeConversou > 0.3
+  }
+
+  private tocouNoAlvo(tap: { x: number; y: number }, display: Display): boolean {
+    const a = this.alvo
+    if (!a) return false
+    const wx = display.toWorldX(tap.x)
+    const wy = display.toWorldY(tap.y)
+    return Math.abs(wx - a.x) < 22 && Math.abs(wy - a.y) < 22
   }
 
   private parar(acabou: boolean): void {
@@ -152,7 +204,7 @@ export class Montagem {
     })
   }
 
-  update(dt: number, input: Input): void {
+  update(dt: number, input: Input, display?: Display): void {
     this.t += dt
     this.tCorte += dt
     this.preto = Math.max(0, this.preto - dt)
@@ -169,34 +221,63 @@ export class Montagem {
     if (this.fase !== 'cortes') return
 
     if (this.arrumou) {
-      this.arrumando = Math.min(1, this.arrumando + dt * 4)
-      if (this.arrumando >= 1 && this.tCorte > 0.35) {
+      input.consumeConfirm()
+      input.consumeTap()
+      input.consumeKey('KeyE')
+      const corte = CORTES[this.corte]
+      if (this.indo && corte) {
+        // Ele vai até lá. O corpo sabe o caminho.
+        const alvoX = alvoDe(corte).x - 12
+        const d = alvoX - this.liam.x
+        this.liam.olhar = Math.sign(d) || 1
+        if (Math.abs(d) > 1.5) {
+          this.liam.x += Math.sign(d) * Math.min(Math.abs(d), 110 * dt)
+          this.liam.andando = 1
+          return
+        }
+        this.liam.andando = 0
+        this.indo = false
+        this.tCorte = 0
+        audio.pickup()
+      }
+      this.liam.braco = Math.min(1, this.liam.braco + dt * 6)
+      this.arrumando = Math.min(1, this.arrumando + dt * 3)
+      if (this.arrumando >= 1 && this.tCorte > 0.55) {
+        this.liam.braco = 0
         const prox = this.corte + 1
         if (prox >= CORTES.length) this.parar(true)
         else this.entrarCorte(prox)
       }
-      input.consumeConfirm()
-      input.consumeTap()
       return
     }
 
-    const tocou = input.consumeConfirm() || input.consumeTap() !== null
-    if (tocou && this.tCorte > 0.25) {
-      // Os toques passam a conversa; só depois da última fala, arruma.
-      if (!this.conversou) {
-        this.dialogue.confirm()
-        return
-      }
+    const conversou = this.conversou
+    this.desdeConversou = conversou ? this.desdeConversou + dt : 0
+    const tecla = input.consumeKey('KeyE')
+    const tap = input.consumeTap()
+    const confirmou = input.consumeConfirm()
+    if (this.tCorte <= 0.25) return
+
+    if (!conversou) {
+      // Os toques passam a conversa (E também).
+      if (confirmou || tap) this.dialogue.confirm()
+      return
+    }
+    // Acabou a conversa. Arrumar é um gesto: E, ou tocar na coisa torta.
+    const naCoisa = tap !== null && display !== undefined && this.tocouNoAlvo(tap, display)
+    if ((tecla || naCoisa) && this.desdeConversou > 0.3) {
       if (this.dialogue.active) this.dialogue.confirm()
       this.arrumou = true
+      this.indo = true
       this.arrumando = 0
       this.tCorte = 0
       this.arrumados++
-      audio.pickup()
       return
     }
+    // Espaço ou um toque em outro lugar só fecham a fala. A coisa continua torta.
+    if ((confirmou || tap) && this.dialogue.active) this.dialogue.confirm()
 
-    if (this.conversou) this.parado += dt
+    this.parado += dt
     if (this.corte >= PODE_PARAR && this.parado > PARADO) this.parar(false)
   }
 
@@ -208,10 +289,16 @@ export class Montagem {
 
     this.toalha(c)
     this.luz(c)
+    desenharPoeiraDentro(c, this.t)
 
     if (this.fase === 'cortes') {
       const corte = CORTES[this.corte]
       if (corte) this.recorte(c, corte)
+      // Ele mesmo, no canto do recorte: é quem arruma.
+      c.save()
+      c.translate(0, -SOBE)
+      this.liam.draw(c, 192, 'rgba(255,255,255,0.22)')
+      c.restore()
     } else {
       // Parou: só os dois, frente a frente, no meio da toalha vazia.
       c.save()
@@ -235,7 +322,7 @@ export class Montagem {
   }
 
   private luz(c: CanvasRenderingContext2D): void {
-    desenharLuzDentro(c)
+    desenharLuzDentro(c, this.t)
   }
 
   private recorte(c: CanvasRenderingContext2D, corte: Corte): void {
@@ -278,10 +365,11 @@ export class Montagem {
     c.restore()
   }
 
-  /** Desenha `f` girado em torno de (x, y). */
+  /** Desenha `f` girado em torno de (x, y). Enquanto espera, a coisa torta flutua um pouco. */
   private girado(c: CanvasRenderingContext2D, x: number, y: number, ang: number, f: () => void): void {
     c.save()
-    c.translate(x, y)
+    const flutua = this.arrumou ? 0 : Math.round(Math.sin(this.t * 2.4) * 1.2)
+    c.translate(x, y + flutua)
     c.rotate(ang)
     f()
     c.restore()
@@ -396,8 +484,8 @@ export class Montagem {
     })
   }
 
-  /** O que vai por cima, em resolução de tela: a conta e a voz da sombra. */
-  renderUI(c: CanvasRenderingContext2D, cssW: number, cssH: number): void {
+  /** O que vai por cima, em resolução de tela: a conta, o aviso de arrumar e a voz da sombra. */
+  renderUI(c: CanvasRenderingContext2D, cssW: number, cssH: number, display?: Display, toque = false): void {
     this.camada.draw(c, cssW, cssH)
     const corte = CORTES[this.corte]
     if (this.fase === 'cortes' && corte?.conta && this.preto <= 0) {
@@ -410,14 +498,25 @@ export class Montagem {
       c.fillText(corte.conta, cssW / 2, cssH * 0.16)
       c.restore()
     }
-    if (this.fase === 'cortes' && this.corte < 2 && this.parado > 5 && !this.arrumou) {
-      const s = Math.max(12, Math.min(cssW / 70, 17))
+    // A conversa acabou: a coisa torta espera o gesto.
+    const a = this.alvo
+    if (this.esperandoArrumar && a && display) {
+      const s2 = Math.max(13, Math.min(cssW / 64, 19))
+      const sx = display.toScreenX(a.x)
+      const sy = display.toScreenY(a.y) - s2 * 2.2
       c.save()
       c.textAlign = 'center'
-      c.globalAlpha = 0.35 + Math.sin(this.t * 3) * 0.2
-      c.fillStyle = PAL.inkDim
-      c.font = `${s}px ${FONT_BODY}`
-      c.fillText('E arruma', cssW / 2, cssH * 0.3)
+      c.globalAlpha = Math.min(1, (this.desdeConversou - 0.3) / 0.4) * (0.6 + Math.sin(this.t * 3.2) * 0.25)
+      c.font = `${s2}px ${FONT_BODY}`
+      c.letterSpacing = '0.12em'
+      const texto = toque ? 'toque nele para arrumar' : 'E  ·  arrumar'
+      const larg = c.measureText(texto).width + s2 * 1.6
+      c.fillStyle = 'rgba(6,6,10,0.82)'
+      c.beginPath()
+      c.roundRect(sx - larg / 2, sy - s2 * 1.15, larg, s2 * 1.7, s2 * 0.4)
+      c.fill()
+      c.fillStyle = '#f6ecd2'
+      c.fillText(texto, sx, sy)
       c.restore()
     }
     this.dialogue.render(c, cssW, cssH)
@@ -537,7 +636,8 @@ export class Conversa {
     c.fillStyle = '#020203'
     c.fillRect(0, 0, WORLD_W, WORLD_H)
     desenharToalha(c)
-    desenharLuzDentro(c)
+    desenharLuzDentro(c, this.t)
+    desenharPoeiraDentro(c, this.t)
     c.save()
     c.translate(0, -34)
     // Quem ela chama aparece no escuro, longe da luz.
@@ -607,24 +707,75 @@ function desenharToalha(c: CanvasRenderingContext2D): void {
   c.fillRect(0, topo, WORLD_W, 40)
 }
 
-/** Uma luz só, de cima, em cone. */
-function desenharLuzDentro(c: CanvasRenderingContext2D): void {
+/**
+ * Uma luz só, de cima: uma lâmpada pendurada no fio, balançando devagar, e
+ * o cone dela indo junto. De vez em quando ela falha.
+ */
+function desenharLuzDentro(c: CanvasRenderingContext2D, t = 0): void {
+  const balanco = Math.sin(t * 0.55) * 4
+  const lx = 192 + balanco
+  const falha = Math.sin(t * 13.7) > 0.985 || Math.sin(t * 7.3 + 1) > 0.993 ? 0.45 : 1
+  const forca = (1 + Math.sin(t * 1.7) * 0.06) * falha
+  // O fio e a lâmpada.
+  c.strokeStyle = 'rgba(30,30,34,1)'
+  c.lineWidth = 1
+  c.beginPath()
+  c.moveTo(192, 0)
+  c.lineTo(lx, 22)
+  c.stroke()
+  c.fillStyle = '#2a2a2e'
+  c.fillRect(Math.round(lx) - 2, 22, 4, 2)
+  c.fillStyle = `rgba(255,244,214,${(0.85 * forca).toFixed(3)})`
+  c.fillRect(Math.round(lx) - 2, 24, 4, 3)
   c.save()
   c.globalCompositeOperation = 'lighter'
-  const g = c.createRadialGradient(192, 118, 4, 192, 118, 120)
-  g.addColorStop(0, 'rgba(255,248,236,0.16)')
+  const g = c.createRadialGradient(lx, 118, 4, lx, 118, 120)
+  g.addColorStop(0, `rgba(255,248,236,${(0.16 * forca).toFixed(3)})`)
   g.addColorStop(1, 'rgba(255,248,236,0)')
   c.fillStyle = g
   c.fillRect(0, 0, WORLD_W, WORLD_H)
-  c.fillStyle = 'rgba(255,248,236,0.035)'
+  c.fillStyle = `rgba(255,248,236,${(0.035 * forca).toFixed(3)})`
   c.beginPath()
-  c.moveTo(176, 0)
-  c.lineTo(208, 0)
-  c.lineTo(270, 150)
-  c.lineTo(114, 150)
+  c.moveTo(lx - 3, 26)
+  c.lineTo(lx + 3, 26)
+  c.lineTo(270 + balanco * 2, 150)
+  c.lineTo(114 + balanco * 2, 150)
   c.closePath()
   c.fill()
+  const gb = c.createRadialGradient(lx, 25, 0, lx, 25, 14)
+  gb.addColorStop(0, `rgba(255,240,200,${(0.4 * forca).toFixed(3)})`)
+  gb.addColorStop(1, 'rgba(255,240,200,0)')
+  c.fillStyle = gb
+  c.fillRect(lx - 14, 11, 28, 28)
   c.restore()
+}
+
+/** Poeira girando no cone de luz e, de vez em quando, um fio da família caindo do escuro. */
+function desenharPoeiraDentro(c: CanvasRenderingContext2D, t: number): void {
+  for (let i = 0; i < 26; i++) {
+    const vel = 2 + (i % 4)
+    const y = (i * 41 + t * vel * 3) % 150
+    const abre = y / 150
+    const x = 192 + Math.sin(t * 0.4 + i * 1.7) * (8 + abre * 60) + Math.sin(i * 12.9) * abre * 20
+    const a = 0.12 + 0.18 * Math.abs(Math.sin(t * 0.9 + i))
+    c.fillStyle = `rgba(255,246,226,${a.toFixed(3)})`
+    c.fillRect(Math.round(x), Math.round(y + 20), 1, 1)
+  }
+  const cores = [FIO.Adrian, FIO.Evelyn, FIO.Lia, FIO.Elisa]
+  for (let k = 0; k < 4; k++) {
+    const ciclo = 14 + k * 3
+    const p = ((t + k * 5.3) % ciclo) / ciclo
+    const x = 60 + k * 86 + Math.sin(t * 0.8 + k) * 10
+    const y = -10 + p * (WORLD_H + 20)
+    c.strokeStyle = cores[k] ?? '#999'
+    c.globalAlpha = 0.5 * Math.sin(p * Math.PI)
+    c.lineWidth = 1
+    c.beginPath()
+    c.moveTo(x, y)
+    c.quadraticCurveTo(x + Math.sin(t * 2 + k) * 4, y + 6, x + Math.sin(t * 1.3 + k) * 2, y + 12)
+    c.stroke()
+    c.globalAlpha = 1
+  }
 }
 
 function easeOut(t: number): number {

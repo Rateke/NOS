@@ -1,5 +1,5 @@
 import type { Scene, SceneCtx } from '../types'
-import { Dialogue, FONT_BODY, FONT_FIM, FIO } from '../../systems/dialogue'
+import { Dialogue, FONT_BODY, FONT_FIM, FIO, cobrarPressa } from '../../systems/dialogue'
 import { PAL, WORLD_W, WORLD_H } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
 import { voz } from '../../../engine/voz'
@@ -13,9 +13,13 @@ import {
   TEAR_CONTAR, PRESSAO_ADRIAN, TEAR_LEI, ESCOLHA_ARMADILHA, ESCOLHA_GRITOS, ESCOLHA_ME_QUEIMA,
   ESCOLHA_DEPOIS, DENTRO_2_ABRE, DENTRO_2_ESE, DENTRO_2, TEAR_VOLTA_DEPOIS,
 } from '../../content/noite'
-import type { PassoDentro } from '../../content/noite'
+import type { PassoDentro, FiguraDentro } from '../../content/noite'
+import type { Line } from '../../world/types'
 import { Montagem, Conversa } from '../../world/dentro'
 import { memoria } from '../../systems/memoria'
+import {
+  SOMBRA_APRESSADO, DE_NOVO_DENTRO, DE_NOVO_ESCOLHA, DE_NOVO_IGUAL, DE_NOVO_DIFERENTE,
+} from '../../content/deNovo'
 import { HospitalScene } from './hospital'
 import { DOC_CADERNO_AMELIA } from '../../content/documentos'
 import { Leitor } from '../../systems/leitor'
@@ -194,8 +198,14 @@ export class TearScene implements Scene {
     return this.travada
   }
 
+  /** Já terminou uma vez, e o que escolheu da outra vez. */
+  private deNovo = false
+  private escolhaAntes: 'mae' | 'lia' | 'nenhuma' | null = null
+
   enter(ctx: SceneCtx): void {
     this.jogo = ctx.state
+    this.deNovo = memoria.terminou
+    this.escolhaAntes = memoria.escolhaAnterior
     ctx.state.aprender('tear')
     const cores = ['#7a90b4', '#9a78b0', '#b88a70', '#78a890', '#b07a90', '#8a98b0']
     this.fios = cores.map((cor, i) => ({
@@ -253,7 +263,7 @@ export class TearScene implements Scene {
     }
 
     if (this.fase === 'dentro' && this.montagem) {
-      this.montagem.update(dt, ctx.input)
+      this.montagem.update(dt, ctx.input, ctx.display)
       if (this.montagem.done) this.lei()
       return
     }
@@ -543,8 +553,8 @@ export class TearScene implements Scene {
       // arrumada aperta um pouco mais as cordas por baixo dela.
       const m = this.montagem
       const n = m?.arrumados ?? 0
-      if (m && m.faseAtual !== 'cortes') clima.set({ caixinha: 0, cordas: 0.3, aperto: 0.55, coracao: 0.35, pulso: 0 }, 1.2)
-      else clima.set({ caixinha: 0.55, cordas: 0.08 + n * 0.04, aperto: n * 0.08, pulso: 0, coracao: 0 }, 1)
+      if (m && m.faseAtual !== 'cortes') clima.set({ caixinha: 0, violino: 0, cordas: 0.3, aperto: 0.55, coracao: 0.35, pulso: 0 }, 1.2)
+      else clima.set({ caixinha: 0.3, violino: 0.5, cordas: 0.08 + n * 0.04, aperto: n * 0.06, pulso: 0, coracao: 0 }, 1)
     } else if (f === 'lei') {
       // Ele fala baixo. Só as cordas graves e um relógio.
       clima.set({ cordas: 0.22, aperto: 0.15, pulso: 0, coracao: 0, caixinha: 0, relogio: 0.55, ritmoRelogio: 1 }, 2)
@@ -557,9 +567,9 @@ export class TearScene implements Scene {
     } else if (f === 'fogo') {
       clima.set({ cordas: 0.35, aperto: 0.9, pulso: 0, coracao: 0.5, relogio: 0 }, 0.4)
     } else if (f === 'dentro2') {
-      clima.set({ caixinha: 0.42, cordas: 0.22, aperto: 0.35, pulso: 0, coracao: 0, relogio: 0 }, 2)
+      clima.set({ caixinha: 0, violino: 0.45, cordas: 0.22, aperto: 0.2, pulso: 0, coracao: 0, relogio: 0 }, 2)
     } else if (f === 'volta') {
-      clima.set({ caixinha: 0, cordas: 0.55, aperto: 0.8, coracao: 0.6, pulso: 0.35, bpm: 96 }, 1.5)
+      clima.set({ caixinha: 0, violino: 0, cordas: 0.55, aperto: 0.8, coracao: 0.6, pulso: 0.35, bpm: 96 }, 1.5)
     } else if (f === 'grito') {
       clima.set({ caixinha: 0, cordas: 0.7, aperto: 1, coracao: 0.9, pulso: 0.6, bpm: 140, relogio: 0 }, 1)
     } else {
@@ -576,7 +586,8 @@ export class TearScene implements Scene {
     if (this.tPico > 2.6 && !this.dialogue.active && this.fase === 'pico') {
       this.fase = 'dentro'
       this.montagem = new Montagem()
-      this.montagem.comecar(ctx.state)
+      // Quem vem passando tudo sem ler ouve a sombra antes do primeiro recorte.
+      this.montagem.comecar(ctx.state, cobrarPressa() ? SOMBRA_APRESSADO : [])
     }
   }
 
@@ -681,6 +692,7 @@ export class TearScene implements Scene {
     this.depoisFalado = false
     this.ecos = []
     memoria.marcarEscolha()
+    memoria.guardarEscolha(r)
     sons.cortarCacofonia(true)
     voz.calar()
     this.jogo?.aprender('escolha')
@@ -710,7 +722,19 @@ export class TearScene implements Scene {
   private dentro2(): void {
     const r = this.resultado ?? 'nenhuma'
     const ese = DENTRO_2_ESE[r]
+    const lembra: Line[] = []
+    if (cobrarPressa()) lembra.push(...SOMBRA_APRESSADO)
+    // Na segunda vez, a sombra lembra da outra noite.
+    if (this.deNovo) {
+      lembra.push(...DE_NOVO_DENTRO)
+      const antes = this.escolhaAntes
+      if (antes) {
+        lembra.push({ sombra: true, text: DE_NOVO_ESCOLHA[antes], style: 'speech' })
+        lembra.push({ sombra: true, text: antes === r ? DE_NOVO_IGUAL : DE_NOVO_DIFERENTE, style: 'speech' })
+      }
+    }
     const passos: PassoDentro[] = [
+      ...(lembra.length > 0 ? [{ mostrar: ['cinzas'] as FiguraDentro[], linhas: lembra }] : []),
       { mostrar: ['cinzas'], linhas: DENTRO_2_ABRE[r] },
       ...DENTRO_2.map((p) => ({
         ...p,
@@ -846,7 +870,7 @@ export class TearScene implements Scene {
       ctx.display.applyGrain(0.07)
       ctx.display.present({ rgbSplit: 0, wave: 0, shake: 0, zoom: 1, alvoX: WORLD_W / 2, alvoY: WORLD_H / 2, time: this.t })
       ctx.display.vignette(0.8)
-      this.montagem.renderUI(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+      this.montagem.renderUI(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH, ctx.display, ctx.input.touchMode)
       return
     }
     if (this.fase === 'dentro2' && this.conversa) {

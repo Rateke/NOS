@@ -3,9 +3,10 @@ import type { Ponto } from '../../systems/salvo'
 import type { GameState } from '../../systems/state'
 import type { Comodo, Porta, VestigioCasa, EstadoComodo } from '../../world/casa'
 import {
-  comodoCorredor, comodoQuarto, comodoSala, CORREDOR_BASE, CORREDOR_MAX,
+  comodoCorredor, comodoQuarto, comodoSala, comodoLia, CORREDOR_BASE, CORREDOR_MAX,
+  ESPELHO, LIA_MALA_X, brilhoDoEspelho, NOS, desenharNo,
 } from '../../world/casa'
-import { PIANO, BANCO_Y } from '../../world/sala'
+import { PIANO, BANCO_Y, posteAceso } from '../../world/sala'
 import type { Line } from '../../world/types'
 import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
@@ -24,19 +25,80 @@ import {
   CASA_MELODIA_DELE, CASA_CHAVE, CASA_CHAVE_DEPOIS, CASA_PAREDE,
   EVELYN_PERGUNTA, EVELYN_OPCOES, LIAM_ECO, EVELYN_DEPOIS_ECO, EVELYN_RESPOSTAS,
   LIAM_DEPOIS_ECO, SOMBRA_REFLEXO, DEPOIS_ABERTURA, DEPOIS_LIA, DEPOIS_RECADO,
-  DEPOIS_RECADO_FIM,
+  DEPOIS_RECADO_FIM, CASA_MADRUGADA,
 } from '../../content/demoScript'
 import { CASA_PASSOS_ESCONDEU, CASA_PASSOS_PEGO } from '../../content/noite'
+import {
+  LIA_ENTRA, LIA_ITENS, LIA_ITEM_RESPOSTA, LIA_FONE, LIA_FONE_PAZ, LIA_FONE_CORTE, LIA_CONVITE,
+  LIA_CONVITE_OPCOES, LIA_ECO, LIA_CONVITE_RESPOSTAS, LIA_RAIVA, LIA_SAI, LIA_BILHETE, ESPELHO_DEPOIS,
+} from '../../content/quartoLia'
 import { Etiquetas } from '../../ui/etiqueta'
 import { Camada } from '../../ui/camada'
 import { CadernoUI } from '../../ui/cadernoUI'
 import { Escolha } from '../../ui/escolha'
 import { memoria } from '../../systems/memoria'
+import { Respiracao } from '../../ui/respiracao'
+import { CRISE_ABRE, CRISE_PASSOU, CRISE_NAO_PASSOU } from '../../content/crise'
+import {
+  DE_NOVO_CASA, DE_NOVO_JANELA, VULTO_SUMIU, NINGUEM_VEIO, CHEIRO_QUEIMADO,
+} from '../../content/deNovo'
 import { MesaScene } from './mesa'
 import { FimScene } from './fim'
 
 /** Cenas que o jogador assiste: Liam não obedece às setas enquanto duram. */
-type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado' | 'passos'
+type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado' | 'passos' | 'conversaLia' | 'susto'
+
+/**
+ * O rosto da sombra, de perto: oval branco, as órbitas fundas e pretas, uma
+ * rachada no lugar da boca. Sem nariz, sem nada. É o rosto do Liam sem
+ * nada que seja dele.
+ */
+function desenharRostoBranco(w: CanvasRenderingContext2D, t: number): void {
+  const cx = WORLD_W / 2
+  const cy = 112
+  w.fillStyle = '#f4f5fa'
+  w.beginPath()
+  w.ellipse(cx, cy, 62, 84, 0, 0, Math.PI * 2)
+  w.fill()
+  // Sombra do lado, para ter volume.
+  w.fillStyle = 'rgba(160,166,190,0.35)'
+  w.beginPath()
+  w.ellipse(cx + 24, cy + 8, 34, 74, 0, -Math.PI / 2, Math.PI / 2)
+  w.fill()
+  // As órbitas: fundas, pretas, um pouco tortas.
+  w.fillStyle = '#050507'
+  w.beginPath()
+  w.ellipse(cx - 24, cy - 12, 13, 19, 0.12, 0, Math.PI * 2)
+  w.ellipse(cx + 24, cy - 10, 12, 20, -0.1, 0, Math.PI * 2)
+  w.fill()
+  // A boca: uma rachadura, não um sorriso.
+  w.strokeStyle = '#141418'
+  w.lineWidth = 2
+  w.beginPath()
+  w.moveTo(cx - 26, cy + 42)
+  w.lineTo(cx - 8, cy + 45)
+  w.lineTo(cx + 2, cy + 41)
+  w.lineTo(cx + 22, cy + 46)
+  w.stroke()
+  // Grão por cima, para não ficar limpo demais.
+  for (let i = 0; i < 260; i++) {
+    const x = cx - 70 + ((i * 53 + Math.floor(t * 90) * 17) % 140)
+    const y = cy - 90 + ((i * 37 + Math.floor(t * 90) * 29) % 180)
+    w.fillStyle = `rgba(0,0,0,${(0.05 + (i % 5) * 0.03).toFixed(2)})`
+    w.fillRect(x, y, 1, 1)
+  }
+}
+
+/** Entre a meia-noite e as cinco da manhã de quem está jogando. */
+function madrugada(): boolean {
+  const h = new Date().getHours()
+  return h >= 0 && h < 5
+}
+
+/** Quantas coisas lidas até o peito fechar. */
+const LIMITE_CRISE = 7
+/** Segundos parado até ele sentar no chão. */
+const ESPERA_NINGUEM = 120
 
 /** Quanto tempo Liam tem para esconder o caderno antes de o pai abrir a porta. */
 const JANELA_PASSOS = 2.8
@@ -114,6 +176,66 @@ export class CasaScene implements Scene {
     cor: { roupa: '#2e2430', cabelo: '#16100f', pele: '#7a584c', sombra: 'rgba(0,0,0,0.5)' },
   })
   private adrianVisivel = 0
+  // --- O quarto da Lia ---
+  private liaQuarto = new Figura({
+    ...VISUAL.lia,
+    x: LIA_MALA_X, y: 167, altura: 32, cabelo: 'rabo',
+    cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
+  })
+  /** Já conversou com ela (para os testes, e para não repetir). */
+  conversouLia = false
+  private liaSentada = false
+  private liaAlvoX: number | null = null
+  /** Contagem até o pai gritar, com o fone tocando. */
+  private esperaFone = 0
+  private pararMusicaLia: (() => void) | null = null
+  private travesseiro: { x: number; y: number; vx: number; vy: number; caiu: boolean } | null = null
+  // --- O espelho ---
+  private reflexoLiam = new Figura({ ...VISUAL.liam, x: 0, y: 0, altura: 24, cor: { ...COR_LIAM } })
+  private espelhoHist: { t: number; x: number; olhar: number; andando: number; costas: boolean }[] = []
+  /** novo → atrasou uma vez → armado (o próximo olhar assusta) → feito. */
+  espelhoEstado: 'novo' | 'atrasando' | 'armado' | 'feito' = 'novo'
+  private espelhoAtraso = 0
+  private paradoNoEspelho = 0
+  private reflexoParado: { x: number; olhar: number; costas: boolean } | null = null
+  // --- Os nós (depois) ---
+  /** 0..1 por nó: o fio caindo depois de desatado. */
+  private desatando = new Map<string, number>()
+  /** A cor da lembrança na tela, enquanto ela dura. */
+  private lembrancaNo: { cor: string; t: number } | null = null
+  /** Os quatro soltos: a porta do fim abriu. */
+  portaDoFimAberta = false
+  /** Os nós já desatados (para os testes). */
+  get nosSoltos(): string[] {
+    return [...this.desatando.keys()]
+  }
+  private vozDaPorta = false
+  private proxBipPorta = 0
+  // --- Os sustos ---
+  private susto: { tipo: 'espelho' | 'retrato'; t: number; flashou: boolean; onFim: () => void } | null = null
+  /** Quantos sustos já aconteceram (para os testes). */
+  sustos = 0
+  private rostoSusto = new Figura({ ...VISUAL.liam, x: 0, y: 0, altura: 30, cor: { roupa: '#1a1e2a', cabelo: '#0a0b10', pele: '#c9b4a8', sombra: 'rgba(0,0,0,0)' } })
+
+  // --- A segunda vez, o vulto, o cheiro, a crise ---
+  /** Já terminou a demo uma vez: a casa lembra. */
+  private outraVez = false
+  /** 0..1: alguém embaixo do poste da rua. Só na primeira vez, antes de olhar. */
+  private vulto = 0
+  private vultoVisto = false
+  /** Quantas portas ele já atravessou antes do jantar, e quantas vezes sentiu o cheiro. */
+  private portasPassadas = 0
+  private cheiros = 0
+  /** A crise de ansiedade: segredo demais, o peito fecha. */
+  respiracao = new Respiracao()
+  /** Já teve a crise (para os testes, e para não repetir). */
+  criseFeita = false
+  private coracaoAlvo = 0
+  /** Segundos sem o jogador tocar em nada. */
+  private quieto = 0
+  /** Sentou no chão esperando alguém. */
+  sentouNoChao = false
+
   /** Como acabou o susto do caderno: escondido a tempo, ou não. */
   passosResultado: 'escondeu' | 'pego' | null = null
   /** Quanto Liam andou desde o último passo que soou. */
@@ -175,7 +297,7 @@ export class CasaScene implements Scene {
 
   /** Alguma coisa que o jogador só assiste ou escolhe — não é hora de andar. */
   get ocupado(): boolean {
-    return this.cutscene !== null || this.escolha.ativa
+    return this.cutscene !== null || this.escolha.ativa || this.respiracao.ativa
   }
 
   get cutsceneAtual(): string | null {
@@ -184,6 +306,7 @@ export class CasaScene implements Scene {
 
   enter(ctx: SceneCtx): void {
     this.jogo = ctx.state
+    this.outraVez = memoria.terminou
     this.montar()
     this.atual = this.comodos.get('sala') as Comodo
     this.visitados.add('sala')
@@ -220,7 +343,14 @@ export class CasaScene implements Scene {
   private montar(): void {
     this.comodos = new Map<string, Comodo>()
     const d = this.depois
-    for (const c of [comodoSala(d), comodoCorredor(this.corredorLargura, d), comodoQuarto(d)]) {
+    const bilhete = this.jogo?.sabe.has('bilhete-lia') ?? false
+    for (const c of [comodoSala(d), comodoCorredor(this.corredorLargura, d), comodoQuarto(d), comodoLia(d, bilhete)]) {
+      if (d) {
+        // Depois do grito: o nó de cada cômodo.
+        for (const n of NOS.filter((k) => k.comodo === c.id)) {
+          c.vestigios = [...c.vestigios, { id: n.id, x: n.x, rotulo: 'Desatar', acao: 'no', linhas: n.lembranca }]
+        }
+      }
       this.comodos.set(c.id, c)
     }
   }
@@ -238,6 +368,19 @@ export class CasaScene implements Scene {
     this.etiquetas.update(dt)
     this.camada.update(dt)
     this.reflexo = Math.max(0, this.reflexo - dt * 0.5)
+    this.jolt = Math.max(0, this.jolt - dt * 1.4)
+    this.liaQuarto.update(dt)
+    this.reflexoLiam.update(dt)
+    this.moverTravesseiro(dt)
+    if (this.atual?.id === 'lia' && !this.depois) this.espelho(dt)
+    if (this.depois && this.atual) this.animarNos(dt)
+    this.olharVulto(dt)
+    this.batimento()
+    this.poeiraNoAr(dt)
+    if (this.susto) {
+      this.rodarSusto(dt, ctx)
+      return
+    }
     if (this.depois && this.t >= this.proxTique) {
       this.proxTique = this.t + 1
       sons.tique(Math.floor(this.t) % 2 === 0)
@@ -246,6 +389,12 @@ export class CasaScene implements Scene {
     if (this.escolha.ativa) {
       this.liam.andando = 0
       this.escolha.update(dt, ctx.input)
+      return
+    }
+    if (this.respiracao.ativa) {
+      this.liam.andando = 0
+      this.liam.ofego = 3
+      this.respiracao.update(dt, ctx.input)
       return
     }
     if (this.cutscene && !this.leitor.aberto) {
@@ -283,6 +432,13 @@ export class CasaScene implements Scene {
       this.aoPiano(ctx)
       return
     }
+
+    // Coisa demais escondida nesta casa: o peito fecha.
+    if (!this.depois && !this.criseFeita && this.lidos() >= LIMITE_CRISE) {
+      this.crise()
+      return
+    }
+    if (this.esperar(dt, ctx)) return
 
     if (this.caderno.update(dt, ctx, this.leitor, true)) return
     this.gatilhos(ctx)
@@ -390,7 +546,31 @@ export class CasaScene implements Scene {
     this.deCostas = Boolean(v.naParede)
 
     const primeira = !this.achados.has(v.id)
+    if (v.acao === 'conversaLia') {
+      this.achados.add(v.id)
+      if (!this.conversouLia) this.iniciarConversaLia()
+      else this.dialogue.play(v.linhas)
+      return
+    }
+    if (v.id === 'lia-espelho' && this.espelhoEstado === 'armado') {
+      this.achados.add(v.id)
+      this.dispararEspelho()
+      return
+    }
+    if (v.acao === 'no') {
+      if (this.desatando.has(v.id)) return
+      this.achados.add(v.id)
+      this.desatar(v)
+      return
+    }
     if (v.acao === 'secretaria') {
+      if (this.depois && !this.portaDoFimAberta) {
+        this.dialogue.play([
+          { text: 'A luzinha da secretária pisca. Tem um recado.' },
+          { text: 'Eu ainda não consigo apertar. Tem coisa amarrada nesta casa.' },
+        ])
+        return
+      }
       this.achados.add(v.id)
       this.iniciarRecado(v.linhas)
       return
@@ -402,6 +582,15 @@ export class CasaScene implements Scene {
       if (v.segredo && !v.deNovo) this.segredo(v.segredo)
       if (v.acao === 'piano') {
         this.dialogue.play(v.linhas, () => this.sentar())
+        return
+      }
+      if (v.id === 'janela') {
+        // Quem viu alguém lá embaixo chega perto e não tem ninguém. Na
+        // segunda vez, o poste está vazio desde o começo.
+        const [primeiraLinha, ...resto] = v.linhas
+        if (this.outraVez && primeiraLinha) this.dialogue.play([primeiraLinha, ...DE_NOVO_JANELA, ...resto])
+        else if (this.vultoVisto) this.dialogue.play([...VULTO_SUMIU, ...v.linhas])
+        else this.dialogue.play(v.linhas)
         return
       }
       const doc = v.documento
@@ -570,6 +759,7 @@ export class CasaScene implements Scene {
     else if (this.cutscene === 'reflexo') this.reflexo = 1
     else if (this.cutscene === 'lia') this.cutLia(dt)
     else if (this.cutscene === 'passos') this.cutPassos(dt, ctx)
+    else if (this.cutscene === 'conversaLia') this.cutConversaLia(dt)
   }
 
   /** O que dispara uma cena só de andar até certo ponto. */
@@ -625,6 +815,10 @@ export class CasaScene implements Scene {
         this.dialogue.play(CASA_ABERTURA, () => {
           this.dialogue.play(CASA_PAREDE, () => {
             this.cutscene = null
+            // Na segunda vez, alguém já sabe. De madrugada, a mãe percebe
+            // que ele ainda está acordado (o relógio parado não concorda).
+            const extra = this.outraVez ? DE_NOVO_CASA : madrugada() ? CASA_MADRUGADA : []
+            if (extra.length > 0) this.dialogue.play(extra)
           })
         })
       })
@@ -682,12 +876,16 @@ export class CasaScene implements Scene {
         memoria.marcarEvelyn()
         if (this.falouPeloPai) {
           this.dialogue.play(LIAM_DEPOIS_ECO, () => {
-            this.cutscene = 'reflexo'
             this.deCostas = true
             this.liam.costas = true
-            this.dialogue.play(SOMBRA_REFLEXO, () => {
-              this.cutscene = null
-              this.deCostas = false
+            // Susto 2: o som some inteiro, e a sombra aparece de uma vez.
+            this.iniciarSusto('retrato', () => {
+              this.cutscene = 'reflexo'
+              this.reflexo = 1
+              this.dialogue.play(SOMBRA_REFLEXO, () => {
+                this.cutscene = null
+                this.deCostas = false
+              })
             })
           })
         } else {
@@ -731,6 +929,473 @@ export class CasaScene implements Scene {
       if (this.etiquetas.visivel) return
       this.liaVisivel = Math.max(0, this.liaVisivel - dt * 0.7)
       if (this.liaVisivel <= 0) this.cutscene = null
+    }
+  }
+
+  /**
+   * A hora no relógio do corredor. A noite anda cinco minutos a cada cômodo
+   * novo, até perto das 22:40; depois do grito, para nas 22:40. De
+   * madrugada, mostra a hora de verdade de quem joga.
+   */
+  // --- O vulto, o coração, a crise, a espera -----------------------------
+
+  /**
+   * Alguém embaixo do poste. Aparece para quem vem da direita olhando a
+   * janela de longe, e some quando ele chega perto. Só na primeira vez.
+   */
+  private olharVulto(dt: number): void {
+    if (this.depois || this.atual?.id !== 'sala') {
+      this.vulto = 0
+      return
+    }
+    const quer = !this.outraVez && !this.achados.has('janela') && this.liam.x > 104 ? 1 : 0
+    this.vulto += (quer - this.vulto) * Math.min(1, dt * (quer ? 0.8 : 5))
+    // Só conta como visto se a janela estava na tela e o poste aceso.
+    if (this.vulto > 0.6 && this.liam.x < 230 && posteAceso(this.t)) this.vultoVisto = true
+  }
+
+  /** Poeira boiando na luz de cada cômodo: a casa nunca está parada. */
+  private poeiraNoAr(dt: number): void {
+    const c = this.atual
+    if (!c || Math.random() > dt * 2.5) return
+    this.po.emitir({
+      x: c.luzX + (Math.random() - 0.5) * 120,
+      y: 50 + Math.random() * 100,
+      vx: (Math.random() - 0.5) * 2,
+      vy: -(0.6 + Math.random() * 1.6),
+      vida: 5 + Math.random() * 4,
+      total: 9,
+      tam: 1,
+      cor: this.depois ? 'rgba(200,210,236,' : 'rgba(240,214,170,',
+    })
+  }
+
+  /** Coisas lidas nesta casa, sem contar as conversas. */
+  private lidos(): number {
+    let n = 0
+    for (const a of this.achados) if (!a.endsWith('+') && a !== 'lia-conversa') n++
+    return n
+  }
+
+  /** O coração sobe junto com o que ele sabe. Antes da crise. */
+  private batimento(): void {
+    if (this.depois) return
+    const n = this.lidos()
+    const alvo = this.criseFeita ? 0.08 : Math.max(0, Math.min(0.4, (n - 2) * 0.08))
+    if (Math.abs(alvo - this.coracaoAlvo) > 0.01) {
+      this.coracaoAlvo = alvo
+      clima.set({ coracao: alvo }, 3)
+    }
+  }
+
+  private crise(): void {
+    this.criseFeita = true
+    this.coracaoAlvo = 0.08
+    this.destino = null
+    this.liam.andando = 0
+    this.liam.curvatura = 0.6
+    this.liam.tremor = 1.2
+    sons.zumbido(0.8, 4)
+    clima.set({ coracao: 0.7, cordas: 0.25, aperto: 0.6 }, 2)
+    this.dialogue.play(CRISE_ABRE, () => {
+      this.respiracao.comecar({
+        ciclos: 3, periodo: 4.4, tolerancia: 0.22,
+        onFim: (ok) => {
+          this.liam.curvatura = ok ? 0 : 0.3
+          this.liam.tremor = ok ? 0 : 0.5
+          clima.set({ coracao: ok ? 0.06 : 0.3, cordas: 0, aperto: 0 }, ok ? 3 : 6)
+          this.jogo?.aprender(ok ? 'crise-respirou' : 'crise')
+          this.dialogue.play(ok ? CRISE_PASSOU : CRISE_NAO_PASSOU, () => {
+            this.liam.curvatura = 0
+            this.liam.tremor = 0
+          })
+        },
+      })
+    })
+  }
+
+  /**
+   * Parado tempo demais: ele senta no chão, esperando alguém vir procurar.
+   * Ninguém vem. Devolve true enquanto ele está sentado.
+   */
+  private esperar(dt: number, ctx: SceneCtx): boolean {
+    if (this.liam.pose === 'sentado' && !this.tocando) {
+      // Andar (ou apertar de novo) levanta ele.
+      const levanta = ctx.input.moveAxis() !== null || ctx.input.consumeTap() !== null || ctx.input.consumeConfirm()
+      if (levanta) {
+        this.liam.pose = 'de-pe'
+        this.liam.curvatura = 0
+        this.quieto = 0
+      }
+      return true
+    }
+    const mexeu = ctx.input.peekAny() || ctx.input.moveAxis() !== null
+    if (mexeu) {
+      this.quieto = 0
+      return false
+    }
+    this.quieto += dt
+    // Parado, ele olha em volta de vez em quando.
+    const antes = Math.floor((this.quieto - dt) / 3.6)
+    if (this.quieto > 7 && Math.floor(this.quieto / 3.6) !== antes && !this.deCostas) this.liam.olhar = -this.liam.olhar || 1
+    if (this.quieto >= ESPERA_NINGUEM && !this.sentouNoChao) {
+      this.sentouNoChao = true
+      this.destino = null
+      this.liam.andando = 0
+      this.liam.pose = 'sentado'
+      this.liam.curvatura = 0.5
+      this.liam.costas = false
+      this.jogo?.aprender('ninguem-veio')
+      this.dialogue.play(NINGUEM_VEIO)
+      return true
+    }
+    return false
+  }
+
+  private horaDaCasa(): { h: number; m: number; parado: boolean } {
+    // Na segunda vez, o relógio já começa parado onde parou.
+    if (this.outraVez && !this.depois) return { h: 22, m: 40, parado: true }
+    const agora = new Date()
+    if (madrugada()) return { h: agora.getHours(), m: agora.getMinutes(), parado: false }
+    if (this.depois) return { h: 22, m: 40, parado: true }
+    const m = Math.min(35, 10 + this.visitados.size * 5)
+    return { h: 22, m, parado: false }
+  }
+
+  // --- Os nós ------------------------------------------------------------
+
+  private desatar(v: VestigioCasa): void {
+    const no = NOS.find((n) => n.id === v.id)
+    if (!no) return
+    this.desatando.set(no.id, 0)
+    this.lembrancaNo = { cor: no.cor, t: 0 }
+    sons.estalo()
+    // Um pedaço do tema, em maior, bem baixinho: a lembrança é boa.
+    for (const [i, f] of [293.66, 369.99, 440, 587.33].entries()) {
+      window.setTimeout(() => musica.nota(f, 0.28, 3.2), 200 + i * 380)
+    }
+    this.dialogue.play(no.lembranca, () => {
+      this.lembrancaNo = null
+      const soltos = NOS.filter((n) => this.desatando.has(n.id)).length
+      if (soltos >= NOS.length && !this.portaDoFimAberta) {
+        this.portaDoFimAberta = true
+        this.ctxAtual?.state.aprender('nos-soltos')
+        this.dialogue.play([
+          { text: 'O último fio cai.' },
+          { text: 'Lá no fim do corredor, a porta que nunca abriu está aberta. Sai uma luz branca. E um bipe.' },
+          { text: 'A luzinha da secretária parou de piscar. Ficou acesa.' },
+        ])
+      }
+    })
+  }
+
+  private animarNos(dt: number): void {
+    for (const [id, k] of this.desatando) if (k < 1) this.desatando.set(id, Math.min(1, k + dt * 0.6))
+    if (this.lembrancaNo) this.lembrancaNo.t += dt
+    if (this.portaDoFimAberta && this.atual.id === 'corredor') {
+      this.proxBipPorta -= dt
+      if (this.proxBipPorta <= 0) {
+        sons.bip(0, 0.08, 880, 0.035)
+        this.proxBipPorta = 1.1
+      }
+      this.sinal = Math.max(this.sinal, 0.8)
+      // Perto da porta, a voz dela fica clara.
+      const porta = this.atual.largura - 46
+      if (!this.vozDaPorta && this.liam.x > porta - 90 && !this.cutscene && !this.dialogue.active) {
+        this.vozDaPorta = true
+        this.dialogue.play([
+          { speaker: 'Lia', text: 'Liam? Eu tô aqui, tá? Eu não fui embora.', style: 'speech', onde: 'do outro lado' },
+          { speaker: 'Lia', text: 'Volta, seu idiota.', style: 'speech', onde: 'do outro lado' },
+        ])
+      }
+    }
+  }
+
+  // --- O quarto da Lia ----------------------------------------------------
+
+  private iniciarConversaLia(): void {
+    const ctx = this.ctxAtual
+    this.conversouLia = true
+    this.cutscene = 'conversaLia'
+    this.deCostas = false
+    this.destino = null
+    this.liam.olhar = Math.sign(this.liaQuarto.x - this.liam.x) || 1
+    this.liaQuarto.olhar = -this.liam.olhar
+    ctx?.state.aprender('lia-quarto')
+    this.dialogue.play(LIA_ENTRA, () => {
+      this.escolha.abrir({
+        opcoes: LIA_ITENS, escrita: 40, forcarEm: 30, travada: false,
+        onForcada: () => this.liaItem(1),
+        onEscolha: (i) => this.liaItem(i),
+      })
+    })
+  }
+
+  private liaItem(i: number): void {
+    this.dialogue.play(LIA_ITEM_RESPOSTA[i] ?? [], () => {
+      // O fone: um lado para cada um, sentados na cama.
+      this.liaSentada = true
+      this.liaQuarto.x = LIA_MALA_X - 30
+      this.liam.x = LIA_MALA_X - 8
+      this.liam.olhar = -1
+      this.liaQuarto.olhar = 1
+      this.dialogue.play(LIA_FONE, () => {
+        principal.volume(0, 1.4)
+        audio.setAmbient(0, 1.4)
+        musica.setPad(0, 1.4)
+        clima.set({ chuva: 0 }, 1.4)
+        this.pararMusicaLia = sons.musicaDaLia()
+        this.esperaFone = 8.5
+        this.dialogue.play(LIA_FONE_PAZ)
+      })
+    })
+  }
+
+  private cutConversaLia(dt: number): void {
+    if (this.esperaFone > 0) {
+      this.esperaFone -= dt
+      if (this.esperaFone <= 0) {
+        // O pai grita da cozinha. Ela arranca o fone.
+        this.pararMusicaLia?.()
+        this.pararMusicaLia = null
+        this.jolt = 1
+        principal.volume(0.5, 2)
+        audio.setAmbient(0.36, 2)
+        musica.setPad(0.12, 3)
+        clima.set({ chuva: 0.45 }, 2)
+        this.dialogue.play(LIA_FONE_CORTE, () => this.liaConvite())
+      }
+    }
+    // Lia andando até onde a cena pede (o bilhete).
+    if (this.liaAlvoX !== null) {
+      const d = this.liaAlvoX - this.liaQuarto.x
+      if (Math.abs(d) > 1) {
+        this.liaQuarto.x += Math.sign(d) * Math.min(Math.abs(d), 40 * dt)
+        this.liaQuarto.olhar = Math.sign(d)
+        this.liaQuarto.andando = 1
+      } else {
+        this.liaQuarto.andando = 0
+      }
+    }
+  }
+
+  private liaConvite(): void {
+    this.liaSentada = false
+    this.liaQuarto.x = LIA_MALA_X
+    this.liaQuarto.olhar = -1
+    this.liam.olhar = 1
+    this.dialogue.play(LIA_CONVITE, () => {
+      const primeira = !memoria.viuLia
+      this.escolha.abrir({
+        opcoes: LIA_CONVITE_OPCOES,
+        escrita: primeira ? 4 : 40,
+        forcarEm: primeira ? 3.4 : 9,
+        travada: primeira,
+        onForcada: () => {
+          this.ctxAtual?.state.aprender('lia-eco')
+          this.dialogue.play(LIA_ECO, () => this.liaRaiva())
+        },
+        onEscolha: (i) => {
+          this.dialogue.play(LIA_CONVITE_RESPOSTAS[i] ?? [], () => (i === 1 ? this.liaRaiva() : this.liaFim()))
+        },
+      })
+    })
+  }
+
+  private liaRaiva(): void {
+    this.dialogue.play(LIA_RAIVA, () => {
+      this.jogarTravesseiro()
+      this.dialogue.play(LIA_SAI, () => this.liaFim())
+    })
+  }
+
+  private liaFim(): void {
+    // Ele vira para a porta; ela chega perto, e volta para a mala.
+    this.liam.olhar = -1
+    this.liaAlvoX = this.liam.x + 16
+    this.dialogue.play(LIA_BILHETE, () => {
+      this.ctxAtual?.state.aprender('bilhete-lia')
+      memoria.marcarLia()
+      this.liaAlvoX = LIA_MALA_X
+      this.cutscene = null
+    })
+  }
+
+  private jogarTravesseiro(): void {
+    const de = this.liaQuarto.x
+    this.travesseiro = { x: de, y: this.atual.passoY - 24, vx: (this.liam.x - de) / 0.45, vy: -70, caiu: false }
+  }
+
+  private moverTravesseiro(dt: number): void {
+    const p = this.travesseiro
+    if (!p || p.caiu) return
+    p.vy += 300 * dt
+    p.x += p.vx * dt
+    p.y += p.vy * dt
+    if (Math.abs(p.x - this.liam.x) < 5 && p.vx !== 0) {
+      // Bateu nele. Não dói. É pior que doer.
+      sons.passo(0, 0.5)
+      this.jolt = Math.max(this.jolt, 0.6)
+      this.liam.tremor = 1
+      p.vx = -p.vx * 0.15
+    }
+    if (p.y >= this.atual.passoY - 2) {
+      p.y = this.atual.passoY - 2
+      p.caiu = true
+      this.liam.tremor = 0
+    }
+  }
+
+  // --- O espelho ----------------------------------------------------------
+
+  /**
+   * Na primeira vez que Liam passa pelo espelho, o reflexo vem meio segundo
+   * atrasado — e depois anda normal. Quem desconfia volta para olhar: parado
+   * na frente, o reflexo não acompanha mais. Aí vem o susto.
+   */
+  private espelho(dt: number): void {
+    const cx = ESPELHO.x + ESPELHO.w / 2
+    const perto = Math.abs(this.liam.x - cx) < 34
+    this.espelhoHist.push({ t: this.t, x: this.liam.x, olhar: this.liam.olhar, andando: this.liam.andando, costas: this.liam.costas })
+    while (this.espelhoHist.length > 0 && this.t - (this.espelhoHist[0]?.t ?? this.t) > 1.2) this.espelhoHist.shift()
+    if (this.espelhoEstado === 'novo' && perto && this.liam.andando > 0.5 && !this.cutscene) {
+      this.espelhoEstado = 'atrasando'
+      this.espelhoAtraso = 2.2
+    }
+    if (this.espelhoEstado === 'atrasando') {
+      this.espelhoAtraso -= dt
+      if (this.espelhoAtraso <= 0) this.espelhoEstado = 'armado'
+    }
+    if (this.espelhoEstado === 'armado' && perto && this.liam.andando < 0.1 && !this.dialogue.active && !this.cutscene && !this.escolha.ativa) {
+      this.paradoNoEspelho += dt
+      if (this.paradoNoEspelho > 1) this.dispararEspelho()
+    } else {
+      this.paradoNoEspelho = 0
+    }
+  }
+
+  private dispararEspelho(): void {
+    this.espelhoEstado = 'feito'
+    const agora = this.espelhoHist[this.espelhoHist.length - 1]
+    this.reflexoParado = { x: agora?.x ?? this.liam.x, olhar: agora?.olhar ?? 1, costas: agora?.costas ?? false }
+    this.iniciarSusto('espelho', () => {
+      this.reflexoParado = null
+      this.dialogue.play(ESPELHO_DEPOIS)
+    })
+  }
+
+  // --- Os sustos ----------------------------------------------------------
+
+  /** Primeiro o som some inteiro. O jogador estranha o silêncio. Depois, de uma vez. */
+  private iniciarSusto(tipo: 'espelho' | 'retrato', onFim: () => void): void {
+    this.susto = { tipo, t: 0, flashou: false, onFim }
+    this.cutscene = 'susto'
+    this.destino = null
+    this.liam.andando = 0
+    principal.volume(0, 0.3)
+    audio.setAmbient(0, 0.3)
+    musica.setPad(0, 0.3)
+    clima.set({ chuva: 0, coracao: 0, cordas: 0 }, 0.3)
+  }
+
+  private silencioDoSusto(tipo: 'espelho' | 'retrato'): number {
+    return tipo === 'retrato' ? 1.5 : 1.2
+  }
+
+  private rodarSusto(dt: number, ctx: SceneCtx): void {
+    const s = this.susto
+    if (!s) return
+    s.t += dt
+    ctx.input.consumeConfirm()
+    ctx.input.consumeTap()
+    const silencio = this.silencioDoSusto(s.tipo)
+    if (!s.flashou && s.t >= silencio) {
+      s.flashou = true
+      this.sustos++
+      sons.susto()
+      this.jolt = 1
+    }
+    if (s.t >= silencio + 1) {
+      this.susto = null
+      this.cutscene = null
+      principal.volume(0.5, 1.6)
+      audio.setAmbient(0.36, 1.6)
+      musica.setPad(0.12, 2)
+      clima.set({ chuva: 0.45 }, 2)
+      s.onFim()
+    }
+  }
+
+  /** O rosto que enche a tela no instante do susto. */
+  private desenharRostoSusto(ctx: SceneCtx, tipo: 'espelho' | 'retrato'): void {
+    const w = ctx.display.beginWorld()
+    w.fillStyle = '#000'
+    w.fillRect(0, 0, WORLD_W, 216)
+    w.save()
+    if (tipo === 'retrato') {
+      desenharRostoBranco(w, this.t)
+    } else {
+      this.rostoSusto.panico = true
+      this.rostoSusto.olhar = 0
+      w.translate(WORLD_W / 2, 108 + 10 * 24.5)
+      w.scale(10, 10)
+      this.rostoSusto.draw(w, 0, 'rgba(160,190,255,0.5)')
+    }
+    w.restore()
+    ctx.display.present({ rgbSplit: 3, wave: 1.5, shake: 3, time: this.t })
+  }
+
+  /** O reflexo no espelho, a Lia arrumando a mala, o travesseiro. */
+  private desenharQuartoLia(w: CanvasRenderingContext2D): void {
+    if (!this.depois) {
+      // O reflexo: o mesmo Liam, menor, dentro do vidro.
+      const atraso = this.espelhoEstado === 'atrasando' ? 0.55 : 0
+      const alvoT = this.t - atraso
+      let amostra = this.espelhoHist[this.espelhoHist.length - 1]
+      for (const h of this.espelhoHist) if (h.t <= alvoT) amostra = h
+      const fonte = this.reflexoParado ?? (amostra ? { x: amostra.x, olhar: amostra.olhar, costas: amostra.costas } : null)
+      const cx = ESPELHO.x + ESPELHO.w / 2
+      if (fonte && Math.abs(fonte.x - cx) < 46) {
+        const r = this.reflexoLiam
+        r.x = cx + (fonte.x - cx) * 0.55
+        r.y = ESPELHO.y + ESPELHO.h - 3
+        const deFrente = Math.abs(fonte.olhar) < 0.35 && !fonte.costas
+        r.costas = deFrente
+        r.olhar = fonte.costas ? 0 : fonte.olhar
+        r.andando = this.reflexoParado ? 0 : amostra?.andando ?? 0
+        // No susto, ele vira o rosto para o Liam, devagar.
+        if (this.susto && this.susto.tipo === 'espelho') {
+          const k = Math.min(1, this.susto.t / this.silencioDoSusto('espelho'))
+          r.costas = false
+          r.olhar = (fonte.olhar || 1) * (1 - k)
+        }
+        w.save()
+        w.beginPath()
+        w.rect(ESPELHO.x, ESPELHO.y, ESPELHO.w, ESPELHO.h)
+        w.clip()
+        w.globalAlpha = 0.75
+        r.draw(w, cx, 'rgba(170,190,240,0.3)')
+        w.globalAlpha = 1
+        w.fillStyle = 'rgba(40,60,100,0.18)'
+        w.fillRect(ESPELHO.x, ESPELHO.y, ESPELHO.w, ESPELHO.h)
+        w.restore()
+      }
+      brilhoDoEspelho(w)
+      // A Lia: arrumando a mala, de pé; ou sentada na cama, com o fone.
+      const l = this.liaQuarto
+      l.y = this.atual.passoY
+      l.pose = this.liaSentada ? 'sentado' : 'de-pe'
+      if (this.liaSentada) l.y = this.atual.passoY - 10
+      l.braco = this.cutscene === 'conversaLia' || this.liaSentada ? 0 : 0.45 + 0.45 * Math.sin(this.t * 2.6)
+      if (!this.cutscene && this.liaAlvoX === null) l.olhar = -1
+      l.draw(w, this.atual.luzX, 'rgba(255,200,180,0.25)')
+    }
+    const p = this.travesseiro
+    if (p) {
+      w.fillStyle = '#e0d4c4'
+      w.fillRect(Math.round(p.x) - 5, Math.round(p.y) - 3, 10, 5)
+      w.fillStyle = '#f0e6d8'
+      w.fillRect(Math.round(p.x) - 5, Math.round(p.y) - 3, 10, 1)
     }
   }
 
@@ -849,6 +1514,15 @@ export class CasaScene implements Scene {
     this.liam.x = Math.max(destino.limiteEsq, Math.min(destino.limiteDir, p.entraEm))
     this.liam.y = destino.passoY
     this.po.limpar()
+    // Antes do jantar, de vez em quando, um cheiro que ninguém mais sente.
+    if (!this.depois) {
+      this.portasPassadas++
+      const fala = CHEIRO_QUEIMADO[this.cheiros]
+      if (fala && this.portasPassadas === 3 + this.cheiros * 3) {
+        this.cheiros++
+        this.dialogue.play(fala)
+      }
+    }
   }
 
   /**
@@ -938,6 +1612,8 @@ export class CasaScene implements Scene {
       brilhoTecla: this.dedilhado,
       vistos: this.achados,
       sinal: this.sinal,
+      hora: this.horaDaCasa(),
+      vulto: this.vulto,
     }
 
     w.fillStyle = '#020306'
@@ -949,6 +1625,13 @@ export class CasaScene implements Scene {
     // fundo do corredor engolia o próprio jogador.
     this.atual.atmosfera?.(w, estado)
     if (this.atual.id === 'corredor') this.desenharGente(w)
+    if (this.atual.id === 'lia') this.desenharQuartoLia(w)
+    if (this.depois) {
+      for (const n of NOS) {
+        if (n.comodo !== this.atual.id) continue
+        desenharNo(w, n.x, n.cor, this.t, this.desatando.get(n.id) ?? 0)
+      }
+    }
     if (!this.escondido) this.liam.draw(w, this.atual.luzX, 'rgba(210,200,230,0.32)')
     this.atual.desenharFrente?.(w, estado)
     this.po.draw(w, true)
@@ -964,13 +1647,27 @@ export class CasaScene implements Scene {
       zoom: z + susto * 0.12, alvoX: focoX, alvoY: focoY, time: this.t,
     })
     ctx.display.vignette(0.6 + susto * 0.3)
+    // A lembrança de um nó: a tela inteira na cor de quem ela é.
+    if (this.lembrancaNo) {
+      const k = Math.min(1, this.lembrancaNo.t / 0.8)
+      const c0 = ctx.display.ctx
+      c0.save()
+      c0.globalCompositeOperation = 'soft-light'
+      c0.globalAlpha = 0.55 * k
+      c0.fillStyle = this.lembrancaNo.cor
+      c0.fillRect(0, 0, ctx.display.cssW, ctx.display.cssH)
+      c0.restore()
+    }
+    // O instante do susto: o rosto enche a tela.
+    const s = this.susto
+    if (s && s.flashou && s.t < this.silencioDoSusto(s.tipo) + 0.32) this.desenharRostoSusto(ctx, s.tipo)
 
     const c = ctx.display.ctx
     const { cssW, cssH } = ctx.display
     if (this.tocando) {
       this.piano.draw(ctx.display, {})
       this.piano.drawDica(ctx.display, ctx.input.touchMode ? 'toque o que quiser  ·  toque fora das teclas para levantar' : 'toque o que quiser  ·  A S D F G H J K  ·  E ou Esc levanta')
-    } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa) {
+    } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa && !this.respiracao.ativa) {
       this.drawInterface(ctx, cam)
       if (!this.dialogue.active && !this.saindo) this.caderno.draw(c, cssW, cssH, ctx.state.novidade)
     }
@@ -983,6 +1680,7 @@ export class CasaScene implements Scene {
     this.drawEstrela(ctx)
     this.escolha.draw(c, cssW, cssH)
     if (susto > 0) this.drawPassos(c, cssW, cssH, susto)
+    this.respiracao.draw(c, cssW, cssH, ctx.input.touchMode)
     this.dialogue.render(c, cssW, cssH)
     this.leitor.render(c, cssW, cssH)
   }

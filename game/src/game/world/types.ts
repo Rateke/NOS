@@ -34,6 +34,11 @@ export interface Line {
    * tela no começo da fala. A tela tem de acompanhar o que se diz.
    */
   grito?: boolean
+  /**
+   * Esta não se pula: escreve devagar, e o toque só vale depois de ela
+   * ficar inteira na tela por este tanto de segundos.
+   */
+  devagar?: number
 }
 
 export interface Interactable {
