@@ -431,7 +431,8 @@ export class MesaScene implements Scene {
       this.respiracao.comecar({
         ciclos: 2, periodo: 3.4, tolerancia: 0.22,
         onFim: (ok) => {
-          this.tensao = Math.min(0.97, this.tensao + 0.16)
+          // Piora: a tela fecha e não abre mais inteira; a briga anda um pouco.
+          this.tensao = Math.min(0.97, this.tensao + 0.08)
           this.sufoco = 1
           if (ok) {
             // Ele conseguiu. O pai ouviu o ar entrando.

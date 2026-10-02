@@ -172,13 +172,18 @@ esperar('um clique volta ao menu', await cena(), 'title')
 await page.goto(URL + '?debug=1&cena=fim')
 await page.waitForTimeout(800)
 esperar('o fim também é ponto', await pontoSalvo(), 'fim')
-await page.evaluate(() => {
-  window.__nos.scene.t = 60
-})
-await page.waitForTimeout(200)
-await page.keyboard.press('Space')
-await ate(async () => (await cena()) === 'title')
-esperar('depois do fim, um toque volta ao menu', await cena(), 'title')
+// Os créditos sobem (segurar espaço acelera), a tela entra em colapso, o
+// hospital passa rápido, e o jogo volta sozinho ao menu.
+const fases = new Set()
+await page.keyboard.down('Space')
+await ate(async () => {
+  const f = await page.evaluate(() => window.__nos?.scene?.fase ?? null)
+  if (f) fases.add(f)
+  return (await cena()) === 'title'
+}, 150000)
+await page.keyboard.up('Space')
+esperar('os créditos, o colapso e o hospital passam', ['creditos', 'colapso', 'hospital'].every((f) => fases.has(f)), true)
+esperar('depois do fim, volta sozinho ao menu', await cena(), 'title')
 esperar('e a história terminada não fica salva', await pontoSalvo(), null)
 
 esperar('nenhum erro de página', erros.join(' | '), '')

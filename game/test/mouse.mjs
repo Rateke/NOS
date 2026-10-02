@@ -243,7 +243,7 @@ if (OUT) await page.screenshot({ path: `${OUT}/c-mesa.png` })
 // Clicar em cima de um vestígio: Liam anda até lá e examina ao chegar.
 // Insiste até o vestígio entrar na lista — um pensamento pode interromper a
 // caminhada no meio, e aí é só clicar de novo.
-for (const [alvo, id] of [[116, 'malas'], [158, 'bilhete'], [200, 'fogao'], [262, 'telefone']]) {
+for (const [alvo, id] of [[262, 'telefone'], [200, 'fogao'], [158, 'bilhete'], [116, 'malas']]) {
   for (let tentativa = 0; tentativa < 6; tentativa++) {
     const st = await estado()
     if (st.id !== 'demo-mesa' || st.quais?.includes(id)) break
@@ -254,6 +254,8 @@ for (const [alvo, id] of [[116, 'malas'], [158, 'bilhete'], [200, 'fogao'], [262
     for (let i = 0; i < 40; i++) {
       const s2 = await estado()
       if (s2.id !== 'demo-mesa' || s2.quais?.includes(id)) break
+      // Um pensamento ou a falta de ar no meio do caminho: resolve e segue.
+      if (await falando()) break
       await page.waitForTimeout(150)
     }
     await limpar()

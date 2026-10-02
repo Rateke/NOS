@@ -66,8 +66,9 @@ console.log('\nverificações (a escolha, segunda partida):')
     await page.waitForTimeout(250)
   }
   esperar('depois do fogo, a conversa', (await tear()).fase, 'dentro2')
-  const abertura = await page.evaluate(() => window.__nos.scene.conversa.passos[0].linhas.map((l) => l.text).join(' '))
-  esperar('a sombra fala de quem foi salva', abertura.includes('Lia'), true)
+  // A sombra pode falar antes (a pressa de quem passa tudo sem ler): procura na conversa inteira.
+  const abertura = await page.evaluate(() => window.__nos.scene.conversa.passos.flatMap((p) => p.linhas).map((l) => l.text).join(' '))
+  esperar('a sombra fala de quem foi salva', abertura.includes('Você escolheu a Lia'), true)
   esperar('o "e se" foi preenchido', await page.evaluate(() =>
     window.__nos.scene.conversa.passos.some((p) => p.linhas.some((l) => l.text.includes('{')))), false)
   esperar('sem erros de runtime', errs, [])
