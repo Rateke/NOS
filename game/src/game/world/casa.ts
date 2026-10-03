@@ -58,6 +58,7 @@ export interface VestigioCasa {
   naParede?: boolean
   /** Em vez de só ler: sentar ao piano, entrar na cabana, ouvir o recado. */
   acao?: 'piano' | 'cabana' | 'secretaria' | 'conversaLia' | 'no' | 'violoncelo'
+    | 'foneLia' | 'entrarCabana' | 'armarioFloresta' | 'caixinha' | 'lata' | 'deitar'
   /** O que Liam fica sabendo ao olhar (vira linha no caderno). */
   aprende?: string
   /** Só existe quando o corredor já esticou até este comprimento. */
@@ -128,6 +129,46 @@ function brilho(
   g.addColorStop(1, `rgba(${cor},0)`)
   c.fillStyle = g
   c.fillRect(x - r, y - r, r * 2, r * 2)
+  c.restore()
+}
+
+/**
+ * Um facho de luz: de uma fonte estreita em (x, y) até uma base larga a
+ * `alt` pixels de distância (negativo sobe). Some no fim, como luz de
+ * verdade. Somado por cima — a textura continua aparecendo embaixo.
+ */
+function facho(
+  c: CanvasRenderingContext2D, x: number, y: number, boca: number, base: number, alt: number, cor: string, a: number,
+): void {
+  if (a <= 0.002) return
+  c.save()
+  c.globalCompositeOperation = 'lighter'
+  const g = c.createLinearGradient(0, y, 0, y + alt)
+  g.addColorStop(0, `rgba(${cor},${a})`)
+  g.addColorStop(1, `rgba(${cor},0)`)
+  c.fillStyle = g
+  c.beginPath()
+  c.moveTo(x - boca / 2, y)
+  c.lineTo(x + boca / 2, y)
+  c.lineTo(x + base / 2, y + alt)
+  c.lineTo(x - base / 2, y + alt)
+  c.closePath()
+  c.fill()
+  c.restore()
+}
+
+/** Uma poça de luz no chão, achatada. */
+function poca(c: CanvasRenderingContext2D, x: number, y: number, larg: number, cor: string, a: number): void {
+  if (a <= 0.002) return
+  c.save()
+  c.globalCompositeOperation = 'lighter'
+  c.translate(x, y)
+  c.scale(1, 0.22)
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, larg / 2)
+  g.addColorStop(0, `rgba(${cor},${a})`)
+  g.addColorStop(1, `rgba(${cor},0)`)
+  c.fillStyle = g
+  c.fillRect(-larg / 2, -larg / 2, larg, larg)
   c.restore()
 }
 
@@ -239,7 +280,6 @@ export function comodoSala(depois = false): Comodo {
           { text: '"e granulado por cima!!" — a lápis roxo, letra redonda, de criança.' },
           { text: 'Ninguém nesta casa escreve assim.' },
         ],
-        segredo: 'receita',
       },
     ],
     desenharFundo(c, e) {
@@ -457,7 +497,6 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
           { text: 'E. L. I.', style: 'read' },
           { text: 'Alguém mediu essa pessoa todo ano. Até ela ficar mais alta que a porta da minha memória.' },
         ],
-        segredo: 'nome',
       },
       {
         id: 'ninguem', x: ultimoRetrato, rotulo: 'Olhar', naParede: true,
@@ -468,7 +507,6 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
           { text: 'Quem tirou a foto não aparece.' },
           { text: 'Alguém sempre ficava do outro lado da câmera.' },
         ],
-        segredo: 'ninguem',
       },
     ],
     ...(depois ? { vestigios: CORREDOR_DEPOIS } : {}),
@@ -488,11 +526,9 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
       cantos(c, largura, CHAO, WORLD_H, PAREDE_CORR)
 
       // Arandelas: cada vez mais espaçadas e mais fracas. A terceira pisca.
-      for (let i = 0; ; i++) {
-        const lx = 96 + i * 150
-        if (lx > largura - 90) break
+      arandelas(largura).forEach((lx, i) => {
         arandela(c, lx, i === 2 ? (Math.sin(t * 13) > 0.7 ? 0.2 : 1) : 1 - Math.min(0.7, i * 0.1))
-      }
+      })
 
       aparador(c, 72)
       if (depois) secretaria(c, 72)
@@ -560,12 +596,18 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
 
     atmosfera(c, e) {
       sombra(c, largura, 'rgb(182,186,204)')
-      for (let i = 0; ; i++) {
-        const lx = 96 + i * 150
-        if (lx > largura - 90) break
-        const acesa = i === 2 ? (Math.sin(e.t * 13) > 0.7 ? 0.2 : 1) : 1 - Math.min(0.7, i * 0.1)
-        brilho(c, lx, 50, 70, '255,214,160', 0.16 * acesa * (depois ? 0.5 : 1))
-      }
+      arandelas(largura).forEach((lx, i) => {
+        const acesa = (i === 2 ? (Math.sin(e.t * 13) > 0.7 ? 0.2 : 1) : 1 - Math.min(0.7, i * 0.1)) * (depois ? 0.5 : 1)
+        brilho(c, lx, ARANDELA_Y + 10, 70, '255,214,160', 0.16 * acesa)
+        // A arandela lava a parede para cima e para baixo, e chega no chão.
+        facho(c, lx, ARANDELA_Y + 1, 10, 46, -44, '255,206,150', 0.1 * acesa)
+        facho(c, lx, ARANDELA_Y + 7, 12, 70, CHAO - ARANDELA_Y - 7, '255,206,150', 0.07 * acesa)
+        poca(c, lx, CHAO + 5, 70, '255,200,140', 0.12 * acesa)
+      })
+      // A luz por baixo das portas acesas se espalha no assoalho.
+      poca(c, 42, CHAO + 3, 52, '236,190,130', 0.14)
+      if (!depois) poca(c, 268, CHAO + 3, 56, '236,170,110', 0.12 + Math.max(0, Math.sin(e.t * 2.3)) * 0.08)
+      if (!depois) poca(c, LIA_PORTA, CHAO + 3, 50, '255,160,180', 0.1)
       brilho(c, 42, CHAO - 4, 40, '236,190,130', 0.12)
       if (!depois) brilho(c, 268, CHAO - 4, 44, '236,170,110', 0.1 + Math.max(0, Math.sin(e.t * 2.3)) * 0.08)
       if (depois) {
@@ -639,12 +681,26 @@ function passadeira(c: CanvasRenderingContext2D, x0: number, x1: number): void {
   }
 }
 
+/** Altura da cúpula das arandelas: entre as portas, abaixo do alto delas. */
+const ARANDELA_Y = 64
+
+/**
+ * Onde ficam as arandelas: sempre entre duas portas, nunca em cima de uma.
+ * Depois da porta da Lia, cada vez mais espaçadas.
+ */
+function arandelas(largura: number): number[] {
+  const xs = [96, 214, 344]
+  for (let x = 482, passo = 150; x <= largura - 90; x += passo, passo += 20) xs.push(x)
+  return xs
+}
+
 function arandela(c: CanvasRenderingContext2D, x: number, acesa: number): void {
-  ret(c, x - 1, 44, 3, 8, '#2d3140')
-  ret(c, x - 3, 51, 7, 2, '#3a3f52')
+  const y = ARANDELA_Y
+  ret(c, x - 1, y + 7, 3, 8, '#2d3140')
+  ret(c, x - 3, y + 14, 7, 2, '#3a3f52')
   for (let i = 0; i < 7; i++) {
     const meio = 3 + Math.round(i * 0.6)
-    ret(c, x - meio, 37 + i, meio * 2 + 1, 1, `rgba(${200 + i * 4},${170 + i * 3},${126},${0.3 + acesa * 0.55})`)
+    ret(c, x - meio, y + i, meio * 2 + 1, 1, `rgba(${200 + i * 4},${170 + i * 3},${126},${0.3 + acesa * 0.55})`)
   }
 }
 
@@ -682,19 +738,23 @@ function aparador(c: CanvasRenderingContext2D, x: number): void {
 }
 
 function cabideiro(c: CanvasRenderingContext2D, x: number): void {
-  ret(c, x - 1, 60, 3, CHAO - 60, '#3a2e2c')
+  // Da altura de um adulto, bem abaixo do alto das portas.
+  const topo = CHAO - 70
+  ret(c, x - 1, topo, 3, CHAO - topo, '#3a2e2c')
   ret(c, x - 7, CHAO - 2, 15, 3, '#2c2224')
-  ret(c, x - 6, 62, 13, 2, '#4a3a36')
+  ret(c, x - 6, topo + 2, 13, 2, '#4a3a36')
+  ret(c, x - 4, topo - 1, 9, 1, '#4a3a36')
   // O casaco: mostarda, pequeno demais para um adulto.
   const cor: RGB = [112, 88, 44]
-  ret(c, x - 7, 64, 14, 30, rgb(cor))
-  ret(c, x - 8, 66, 3, 22, rgb(clarear(cor, -14)))
-  ret(c, x + 5, 66, 3, 22, rgb(clarear(cor, -14)))
-  ret(c, x - 1, 66, 1, 26, rgb(clarear(cor, -22)))
-  ret(c, x - 5, 80, 4, 5, rgb(clarear(cor, -10)))
-  ret(c, x - 3, 64, 6, 4, rgb(clarear(cor, 12)))
+  const y = topo + 4
+  ret(c, x - 7, y, 14, 26, rgb(cor))
+  ret(c, x - 8, y + 2, 3, 19, rgb(clarear(cor, -14)))
+  ret(c, x + 5, y + 2, 3, 19, rgb(clarear(cor, -14)))
+  ret(c, x - 1, y + 2, 1, 23, rgb(clarear(cor, -22)))
+  ret(c, x - 5, y + 14, 4, 5, rgb(clarear(cor, -10)))
+  ret(c, x - 3, y, 6, 4, rgb(clarear(cor, 12)))
   // Cachecol listrado caindo
-  for (let i = 0; i < 6; i++) ret(c, x + 3, 64 + i * 3, 3, 3, i % 2 ? '#6a2c30' : '#b0a28a')
+  for (let i = 0; i < 6; i++) ret(c, x + 3, y + i * 3, 3, 3, i % 2 ? '#6a2c30' : '#b0a28a')
 }
 
 /** Rouparia estreita; no batente, os riscos de altura. */
@@ -704,19 +764,20 @@ function rouparia(c: CanvasRenderingContext2D, x: number, deNovo: boolean): void
   ret(c, x - 11, CHAO - 69, 22, 69, rgb(cor))
   for (let y = CHAO - 64; y < CHAO - 10; y += 4) ret(c, x - 8, y, 16, 1, rgb(clarear(cor, -10)))
   ret(c, x + 6, CHAO - 36, 2, 4, '#b8964e')
-  // Riscos: dois nomes quase juntos e uma fileira mais alta, lixada.
+  // Riscos: dois nomes quase juntos, na altura deles (dos três anos até
+  // hoje), e uma fileira mais alta, de alguém mais velho, lixada.
   const bx = x - 22
   ret(c, bx, CHAO - 76, 6, 76, rgb(clarear(cor, -6)))
   for (let i = 0; i < 7; i++) {
-    const y = CHAO - 22 - i * 5
+    const y = CHAO - 13 - i * 3
     ret(c, bx, y, 5, 1, 'rgba(210,200,176,0.7)')
-    ret(c, bx + 1, y + 2, 4, 1, 'rgba(170,190,210,0.5)')
+    ret(c, bx + 1, y + 1, 4, 1, 'rgba(170,190,210,0.5)')
   }
   for (let i = 0; i < 6; i++) {
-    ret(c, bx, CHAO - 58 - i * 3, 6, 1, 'rgba(220,210,190,0.55)')
+    ret(c, bx, CHAO - 36 - i * 3, 6, 1, 'rgba(220,210,190,0.55)')
   }
   // A mancha clara onde lixaram
-  ret(c, bx, CHAO - 76, 6, 20, `rgba(200,190,170,${deNovo ? 0.28 : 0.16})`)
+  ret(c, bx, CHAO - 54, 6, 20, `rgba(200,190,170,${deNovo ? 0.28 : 0.16})`)
 }
 
 /** Relógio do corredor. Anda para trás — ninguém nunca comenta. */
@@ -831,7 +892,7 @@ function retratoVazio(c: CanvasRenderingContext2D, x: number, y: number): void {
 
 /** A porta que não deveria existir. Mais velha, mais clara, com um desenho. */
 function portaDoFim(c: CanvasRenderingContext2D, x: number, sinal: number, t: number): void {
-  porta(c, x, CHAO, { cor: [58, 56, 66], alt: 72 })
+  porta(c, x, CHAO, { cor: [58, 56, 66], alt: 108 })
   // Luz fria por baixo, que respira. Quando alguém está do outro lado, sobe.
   const a = 0.1 + Math.sin(t * 0.8) * 0.04 + sinal * 0.5
   ret(c, x - 15, CHAO - 2, 30, 2, `rgba(196,208,255,${a})`)
@@ -890,7 +951,6 @@ export function comodoQuarto(depois = false): Comodo {
           { speaker: 'Voz', text: 'Lembra quando você não conseguia dormir e vinha pra cá? Eu tocava aquela música pra você, só que ao contrário.', style: 'speech' },
           { speaker: 'Voz', text: 'Subindo. Pra ela não acabar lá embaixo. Você ria disso.', style: 'speech' },
         ],
-        segredo: 'cabana',
       },
       {
         id: 'plantas', x: 146, rotulo: 'Olhar', naParede: true,
@@ -1006,8 +1066,12 @@ export function comodoQuarto(depois = false): Comodo {
     atmosfera(c, e) {
       sombra(c, QUARTO_W, 'rgb(172,176,200)')
       if (depois) dessaturar(c, QUARTO_W)
-      // Luminária da escrivaninha
+      // Luminária da escrivaninha: o facho na mesa e a poça no chão
       brilho(c, LUMINARIA.x, LUMINARIA.y, 90, '255,210,150', 0.2)
+      facho(c, LUMINARIA.x, LUMINARIA.y + 2, 6, 40, 20, '255,214,160', 0.16)
+      poca(c, LUMINARIA.x - 6, CHAO + 6, 80, '255,206,150', 0.1)
+      // O luar entrando pela janela e deitando no chão
+      facho(c, 352, 40, 30, 70, CHAO - 34, '170,190,240', 0.05)
       // Lua pela janela
       brilho(c, 352, 40, 70, '170,190,240', 0.1)
       // Lanterna dentro da cabana, que treme como pilha fraca
@@ -1458,7 +1522,7 @@ const PAREDE_LIA: RGB = [26, 40, 48]
 const LAMBRI_LIA: RGB = [20, 28, 36]
 const CHAO_LIA: RGB = [34, 28, 34]
 /** O espelho da porta do armário, em pixels de mundo. */
-export const ESPELHO = { x: 326, y: 64, w: 20, h: 72 }
+export const ESPELHO = { x: 326, y: 80, w: 20, h: 58 }
 /** Onde a Lia fica, arrumando a mala. */
 export const LIA_MALA_X = 160
 
@@ -1467,11 +1531,11 @@ export const LIA_MALA_X = 160
  * da cama, o fone, os pôsteres de quem ouve música alta para não ouvir a
  * casa. O espelho do armário mostra o Liam — quase sempre na hora certa.
  */
-export function comodoLia(depois = false, temBilhete = false): Comodo {
+export function comodoLia(depois = false, temBilhete = false, retrato: 'pegou' | 'quebrou' | null = null): Comodo {
   const vestigios: VestigioCasa[] = depois
     ? [
       {
-        id: 'lia-fone-depois', x: 150, rotulo: 'Pegar',
+        id: 'lia-fone-depois', x: 150, rotulo: 'Ouvir', acao: 'foneLia',
         linhas: [
           { text: 'O fone dela, em cima da cama desarrumada. Ainda tocando, baixinho.' },
           { speaker: 'Lia', text: 'Eu trouxe o seu fone, seu idiota. Tá tocando aquela.', style: 'speech', onde: 'no fone' },
@@ -1488,6 +1552,31 @@ export function comodoLia(depois = false, temBilhete = false): Comodo {
           ],
         }]
         : []),
+      {
+        id: 'lia-caixa', x: 96, rotulo: 'Abrir',
+        linhas: [
+          { text: 'Uma caixa de sapato puxada de baixo da cama dela, aberta.' },
+          { text: 'Dentro, todos os desenhos que eu dei pra ela. Até os feios. Até os que eu disse que tinha jogado fora.' },
+          { text: 'Ela guardou tudo. Em ordem. Com a data atrás, na letra dela.' },
+        ],
+      },
+      ...(retrato === 'quebrou'
+        ? [{
+          id: 'lia-retrato-chao', x: 70, rotulo: 'Olhar',
+          linhas: [
+            { text: 'A foto da família continua no chão, onde quebrou. Ninguém juntou os cacos.' },
+            { text: 'A rachadura passa bem no rosto dele.' },
+          ],
+        }]
+        : retrato === 'pegou'
+          ? [{
+            id: 'lia-retrato-cama', x: 70, rotulo: 'Olhar',
+            linhas: [
+              { text: 'A foto que eu peguei no ar. Ela guardou de volta — virada pra baixo, embaixo do travesseiro.' },
+              { text: 'Não jogou fora. Só não quer ver.' },
+            ],
+          }]
+          : []),
       {
         id: 'lia-volta', x: 124, rotulo: 'Olhar', naParede: true,
         linhas: [
@@ -1567,6 +1656,32 @@ export function comodoLia(depois = false, temBilhete = false): Comodo {
           { text: 'Eu no espelho. Cara de quem não dorme.' },
         ],
       },
+      {
+        id: 'lia-calendario', x: 258, rotulo: 'Olhar', naParede: true,
+        linhas: [
+          { text: 'O calendário dela. Os dias riscados de caneta, um por um, desde o começo do mês.' },
+          { text: 'Hoje está circulado. Embaixo, pequeno: "tia C., 23h".' },
+          { text: 'Ela estava contando os dias. Eu nem sabia que tinha uma conta.' },
+        ],
+      },
+      {
+        id: 'lia-tira', x: 352, rotulo: 'Olhar', naParede: true,
+        linhas: [
+          { text: 'Uma tira de fotos de cabine, colada na porta do armário.' },
+          { text: 'Nós dois pequenos, fazendo careta. Três fotos.' },
+          { text: 'A quarta foi cortada fora, na tesoura. Tinha mais alguém na cabine.' },
+        ],
+        deNovo: [
+          { text: 'Na beira do corte sobrou um pedacinho de manga. Roxa.' },
+        ],
+      },
+      {
+        id: 'lia-skate', x: 380, rotulo: 'Olhar',
+        linhas: [
+          { text: 'O skate dela, encostado na parede, com a roda da frente torta.' },
+          { text: 'Ela anda até tarde só pra não voltar pra casa. A mãe finge que acredita que é treino.' },
+        ],
+      },
     ]
 
   return {
@@ -1612,6 +1727,13 @@ export function comodoLia(depois = false, temBilhete = false): Comodo {
       else ret(c, 230, 36, 16, 20, 'rgba(0,0,0,0.25)')
       janelaLia(c, 266, 24, t)
       armarioLia(c, 312, depois)
+      calendarioLia(c, 252, 62, depois)
+      tiraDeFotos(c, 349, 90)
+      skate(c, 380)
+      if (depois) {
+        caixaDeSapato(c, 92)
+        if (retrato === 'quebrou') retratoQuebrado(c, 70)
+      }
       sombraDeContato(c, 150, CHAO, 90)
       sombraDeContato(c, 330, CHAO, 50)
     },
@@ -1620,6 +1742,9 @@ export function comodoLia(depois = false, temBilhete = false): Comodo {
       sombra(c, LIA_W, 'rgb(190,170,190)')
       if (depois) dessaturar(c, LIA_W)
       brilho(c, 232, 96, 80, '255,200,170', depois ? 0.06 : 0.18)
+      facho(c, 232, 98, 8, 46, 30, '255,190,170', depois ? 0.04 : 0.14)
+      poca(c, 232, CHAO + 6, 90, '255,190,170', depois ? 0.03 : 0.09)
+      facho(c, 290, 40, 26, 60, CHAO - 34, '170,190,240', 0.04)
       brilho(c, 290, 40, 60, '170,190,240', 0.08)
       // As luzinhas do varal acendem umas depois das outras.
       for (let i = 0; i < 12; i++) {
@@ -1976,9 +2101,9 @@ function janelaLia(c: CanvasRenderingContext2D, x: number, y: number, t: number)
 }
 
 function armarioLia(c: CanvasRenderingContext2D, x: number, depois: boolean): void {
-  ret(c, x, CHAO - 96, 48, 96, '#3a2a30')
-  ret(c, x, CHAO - 96, 48, 2, '#4e3a42')
-  ret(c, x + 23, CHAO - 92, 2, 88, '#2a1e24')
+  ret(c, x, CHAO - 82, 48, 82, '#3a2a30')
+  ret(c, x, CHAO - 82, 48, 2, '#4e3a42')
+  ret(c, x + 23, CHAO - 78, 2, 74, '#2a1e24')
   // A porta da direita: madeira. A da esquerda: o espelho.
   ret(c, ESPELHO.x - 2, ESPELHO.y - 2, ESPELHO.w + 4, ESPELHO.h + 4, '#5a4650')
   if (depois) {
@@ -1995,6 +2120,70 @@ function armarioLia(c: CanvasRenderingContext2D, x: number, depois: boolean): vo
   ret(c, x + 40, CHAO - 54, 2, 6, '#b8a070')
   // Roupas penduradas para fora da porta mal fechada
   ret(c, x + 46, CHAO - 70, 3, 18, '#c85a6a')
+}
+
+/** O calendário da Lia: os dias riscados em X, e hoje circulado. */
+function calendarioLia(c: CanvasRenderingContext2D, x: number, y: number, depois: boolean): void {
+  ret(c, x, y, 14, 16, '#e8e2d4')
+  ret(c, x, y, 14, 3, '#b83a4a')
+  ret(c, x + 3, y - 1, 1, 2, '#2a2a30')
+  ret(c, x + 10, y - 1, 1, 2, '#2a2a30')
+  for (let i = 0; i < 20; i++) {
+    const cx = x + 1 + (i % 5) * 2.6
+    const cy = y + 4 + Math.floor(i / 5) * 3
+    if (i < 13) ret(c, Math.round(cx), Math.round(cy), 2, 2, 'rgba(176,40,52,0.85)')
+    else ret(c, Math.round(cx), Math.round(cy), 1, 1, 'rgba(60,60,70,0.5)')
+  }
+  // Hoje: circulado
+  c.strokeStyle = depois ? 'rgba(176,40,52,0.6)' : 'rgba(176,40,52,0.95)'
+  c.lineWidth = 1
+  c.beginPath()
+  c.arc(x + 9.5, y + 11.5, 2.4, 0, Math.PI * 2)
+  c.stroke()
+}
+
+/** Tira de fotos de cabine: três quadrinhos e o quarto cortado. */
+function tiraDeFotos(c: CanvasRenderingContext2D, x: number, y: number): void {
+  ret(c, x, y, 7, 19, '#ece6da')
+  for (let i = 0; i < 3; i++) {
+    ret(c, x + 1, y + 1 + i * 6, 5, 5, '#3a3440')
+    ret(c, x + 2, y + 3 + i * 6, 1, 2, '#c8a890')
+    ret(c, x + 4, y + 3 + i * 6, 1, 2, '#c8a890')
+  }
+  // O corte, torto, e a pontinha roxa que sobrou
+  ret(c, x, y + 19, 7, 1, '#cfc8bc')
+  ret(c, x + 5, y + 19, 2, 1, '#8a5ac8')
+  ret(c, x - 1, y - 1, 3, 2, 'rgba(230,220,180,0.7)')
+}
+
+/** O skate dela, de pé contra a parede. */
+function skate(c: CanvasRenderingContext2D, x: number): void {
+  ret(c, x - 2, CHAO - 30, 5, 30, '#1e1e24')
+  ret(c, x - 2, CHAO - 30, 5, 1, '#3a3a44')
+  ret(c, x - 1, CHAO - 24, 3, 3, '#d8b43a')
+  ret(c, x - 1, CHAO - 15, 3, 2, '#c85a6a')
+  ret(c, x + 3, CHAO - 27, 2, 3, '#b8b4ac')
+  ret(c, x + 3, CHAO - 6, 2, 3, '#b8b4ac')
+  ret(c, x + 4, CHAO - 7, 2, 2, '#e8e4dc')
+}
+
+/** A caixa de sapato com os desenhos, puxada de baixo da cama. */
+function caixaDeSapato(c: CanvasRenderingContext2D, x: number): void {
+  ret(c, x - 9, CHAO + 4, 18, 7, '#c8a878')
+  ret(c, x - 9, CHAO + 4, 18, 1, '#e0c898')
+  ret(c, x - 7, CHAO + 2, 14, 3, '#efe6d2')
+  ret(c, x - 5, CHAO + 1, 4, 2, 'rgba(70,140,80,0.8)')
+  ret(c, x + 1, CHAO + 1, 3, 2, 'rgba(200,80,60,0.8)')
+  ret(c, x - 12, CHAO + 9, 6, 2, '#b89868')
+}
+
+/** A foto da família no chão, com o vidro estourado em volta. */
+function retratoQuebrado(c: CanvasRenderingContext2D, x: number): void {
+  ret(c, x - 4, CHAO + 8, 8, 6, '#6a4a36')
+  ret(c, x - 3, CHAO + 9, 6, 4, '#a8acb4')
+  ret(c, x - 2, CHAO + 9, 1, 4, 'rgba(255,255,255,0.7)')
+  ret(c, x, CHAO + 10, 3, 1, 'rgba(255,255,255,0.7)')
+  for (let i = 0; i < 9; i++) ret(c, x - 10 + ((i * 7) % 22), CHAO + 7 + ((i * 3) % 7), 1, 1, 'rgba(220,226,236,0.7)')
 }
 
 /** O brilho do vidro, por cima do reflexo. */
@@ -2129,10 +2318,18 @@ const QUARTO_DEPOIS: VestigioCasa[] = [
     linhas: VIOLONCELO_PEGAR,
   },
   {
-    id: 'd-cabana', x: 58, rotulo: 'Olhar',
+    id: 'd-cabana', x: 58, rotulo: 'A luz', acao: 'entrarCabana',
     linhas: [
       { text: 'A cabana desabou. As cadeiras de lado, o cobertor no chão.' },
-      { text: 'A lanterna ainda está acesa lá embaixo, fraca.' },
+      { text: 'Mas a lanterna ainda está acesa lá embaixo, por baixo do pano.' },
+      { text: 'Eu encosto a mão na luz.' },
+    ],
+  },
+  {
+    id: 'd-armario', x: 392, rotulo: 'Entrar', acao: 'armarioFloresta',
+    linhas: [
+      { text: 'O armário. A porta de giz no fundo sumiu.' },
+      { text: 'Eu entro, dobro os joelhos e puxo a porta. Deixo uma fresta.' },
     ],
   },
   {

@@ -1563,6 +1563,135 @@ export class SonsNos {
     }
   }
 
+  /**
+   * O outro lado do guarda-roupa: vento nas folhas, grilos, uma coruja de
+   * vez em quando. `abertura` (0..1) é quanto a porta está aberta — o som
+   * entra pela fresta. Devolve o controle: ajustar a fresta e parar.
+   */
+  floresta(): { abrir: (k: number) => void; parar: () => void } {
+    const ctx = this.ctx
+    const out = this.out
+    const b = this.buf()
+    const nada = { abrir: () => undefined, parar: () => undefined }
+    if (!ctx || !out || !b) return nada
+    const t = ctx.currentTime
+    const total = ctx.createGain()
+    total.gain.value = 0
+    total.connect(out)
+    // Vento: ruído grave, passando por um filtro que respira.
+    const vento = ctx.createBufferSource()
+    vento.buffer = b
+    vento.loop = true
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 520
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 0.09
+    const lfoG = ctx.createGain()
+    lfoG.gain.value = 260
+    lfo.connect(lfoG).connect(lp.frequency)
+    const gv = ctx.createGain()
+    gv.gain.value = 0.22
+    vento.connect(lp).connect(gv).connect(total)
+    // Folhas: ruído agudo e fraco.
+    const folhas = ctx.createBufferSource()
+    folhas.buffer = b
+    folhas.loop = true
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 3200
+    const gf = ctx.createGain()
+    gf.gain.value = 0.03
+    folhas.connect(hp).connect(gf).connect(total)
+    vento.start(t, Math.random() * 2)
+    folhas.start(t, Math.random() * 2)
+    lfo.start(t)
+    // Grilos e a coruja, agendados de pouco em pouco.
+    const cantar = (): void => {
+      const agora = ctx.currentTime
+      for (let i = 0; i < 6; i++) {
+        const o = ctx.createOscillator()
+        o.type = 'sine'
+        o.frequency.value = 4300 + Math.random() * 300
+        const g = ctx.createGain()
+        const q = agora + Math.random() * 2.5
+        g.gain.setValueAtTime(0, q)
+        for (let k = 0; k < 3; k++) {
+          g.gain.linearRampToValueAtTime(0.012, q + k * 0.07 + 0.01)
+          g.gain.linearRampToValueAtTime(0, q + k * 0.07 + 0.045)
+        }
+        o.connect(g).connect(total)
+        o.start(q)
+        o.stop(q + 0.3)
+      }
+      if (Math.random() < 0.35) {
+        // Hu... huuu.
+        for (const [d, f] of [[0, 392], [0.42, 370]] as const) {
+          const o = ctx.createOscillator()
+          o.type = 'sine'
+          const q = agora + 1 + d
+          o.frequency.setValueAtTime(f, q)
+          o.frequency.linearRampToValueAtTime(f * 0.94, q + 0.36)
+          const g = ctx.createGain()
+          g.gain.setValueAtTime(0, q)
+          g.gain.linearRampToValueAtTime(0.05, q + 0.06)
+          g.gain.linearRampToValueAtTime(0, q + (d ? 0.6 : 0.3))
+          o.connect(g).connect(total)
+          o.start(q)
+          o.stop(q + 0.7)
+        }
+      }
+    }
+    cantar()
+    const timer = window.setInterval(cantar, 2600)
+    return {
+      abrir: (k: number) => {
+        const a = ctx.currentTime
+        total.gain.cancelScheduledValues(a)
+        total.gain.setTargetAtTime(0.15 + Math.max(0, Math.min(1, k)) * 0.85, a, 0.15)
+      },
+      parar: () => {
+        window.clearInterval(timer)
+        const a = ctx.currentTime
+        total.gain.cancelScheduledValues(a)
+        total.gain.setTargetAtTime(0, a, 0.2)
+        window.setTimeout(() => {
+          vento.stop()
+          folhas.stop()
+          lfo.stop()
+          total.disconnect()
+        }, 1500)
+      },
+    }
+  }
+
+  /**
+   * Caixinha de música: cada nota, um sino curto e brilhante, uma oitava e
+   * meia acima. Devolve quanto tempo leva.
+   */
+  caixinha(freqs: number[], passo = 0.42): number {
+    const ctx = this.ctx
+    const out = this.out
+    if (!ctx || !out) return 0
+    const t0 = ctx.currentTime + 0.05
+    freqs.forEach((f, i) => {
+      const q = t0 + i * passo * (i === freqs.length - 1 ? 1.15 : 1) + (Math.random() - 0.5) * 0.02
+      for (const [h, v] of [[1, 0.09], [2.76, 0.03], [5.4, 0.012]] as const) {
+        const o = ctx.createOscillator()
+        o.type = 'sine'
+        o.frequency.value = f * 4 * h
+        const g = ctx.createGain()
+        g.gain.setValueAtTime(0, q)
+        g.gain.linearRampToValueAtTime(v, q + 0.004)
+        g.gain.exponentialRampToValueAtTime(0.0001, q + 1.6 / h)
+        o.connect(g).connect(out)
+        o.start(q)
+        o.stop(q + 1.7)
+      }
+    })
+    return freqs.length * passo + 1.2
+  }
+
   // --- A cacofonia: a gritaria que cresce até não caber mais nada ---------
 
   private cacofoniaNos: { oscs: OscillatorNode[]; fontes: AudioScheduledSourceNode[]; g: GainNode; lp: BiquadFilterNode; multidao: GainNode; base: number[] } | null = null

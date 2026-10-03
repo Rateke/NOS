@@ -71,6 +71,9 @@ export const VISUAL = {
   lia: { estilo: 'moletom', calca: '#33425c', sapato: '#d4d0c6', solado: '#f0ece2', cordao: '#e4d8c8' },
 } as const satisfies Record<string, Partial<OpcoesFigura>>
 
+/** A altura de cada um, em pixels, nas cenas da casa. */
+export const ALTURA = { liam: 31, lia: 32, evelyn: 38, adrian: 42 } as const
+
 /** Figura toda preta, sem rosto: alguém que a memória não deixa ver. */
 const SILHUETA: CorFigura = { roupa: '#030204', cabelo: '#030204', pele: '#030204', sombra: 'rgba(0,0,0,0.4)' }
 

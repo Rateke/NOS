@@ -73,6 +73,8 @@ export function cobrarPressa(): boolean {
  * de tela (não no mundo) para o texto não ficar ilegível na escala pequena.
  */
 export class Dialogue {
+  /** 0..1: o quanto a voz do Adrian está engrossando (a sombra dele, na cena). */
+  graveAdrian = 0
   private queue: Line[] = []
   private current: Line | null = null
   private revealed = 0
@@ -201,6 +203,8 @@ export class Dialogue {
           voz.legenda(quem, this.current.text, target, {
             grito: this.current.grito === true,
             abafado: this.current.onde !== undefined,
+            // A voz do pai engrossa junto com a sombra dele (a cena diz quanto).
+            grave: quem === 'Adrian' ? this.graveAdrian : 0,
           })
         } else {
           this.lastTypeSound += 1

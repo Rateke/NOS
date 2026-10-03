@@ -84,6 +84,8 @@ export interface JeitoDeFalar {
   pan?: number
   /** Multiplica o volume. */
   volume?: number
+  /** 0..1: a voz engrossando — mais grave, a boca maior, mais forte. */
+  grave?: number
 }
 
 /** Um número entre 0 e 1 que só depende da letra e da posição: a mesma fala soa sempre igual. */
@@ -290,6 +292,11 @@ class Voz {
       forca *= 1.5
     }
     forca *= jeito.volume ?? 1
+    const grave = Math.max(0, Math.min(1, jeito.grave ?? 0))
+    if (grave > 0) {
+      f0 *= 1 - grave * 0.55
+      forca *= 1 + grave * 0.6
+    }
     this.silaba(tb, v, ataque(texto, i), f0, forca, quando, jeito, c === 'ã' || c === 'õ' || texto[i + 1] === 'm' || texto[i + 1] === 'n')
   }
 
@@ -316,8 +323,10 @@ class Voz {
     // As ressonâncias da boca.
     const [f1b, f2b] = VOGAIS[v] ?? VOGAIS.a ?? [800, 1220]
     const abre = jeito.grito ? 1.12 : 1
-    const f1 = f1b * tb.boca * abre
-    const f2 = f2b * tb.boca
+    // Engrossando, a boca "cresce": as ressonâncias descem junto.
+    const tamBoca = tb.boca * (1 - Math.max(0, Math.min(1, jeito.grave ?? 0)) * 0.28)
+    const f1 = f1b * tamBoca * abre
+    const f2 = f2b * tamBoca
     const boca = ctx.createGain()
     boca.gain.setValueAtTime(0, tv)
     boca.gain.linearRampToValueAtTime(pico, tv + 0.012)

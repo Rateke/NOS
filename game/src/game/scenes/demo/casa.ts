@@ -12,18 +12,18 @@ import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
 import { Leitor } from '../../systems/leitor'
 import type { Documento } from '../../systems/leitor'
-import { Figura, criarSombraBranca, VISUAL } from '../../world/figura'
+import { Figura, criarSombraBranca, VISUAL, ALTURA } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
 import { clima } from '../../../engine/clima'
-import { musica, TEMA } from '../../../engine/musica'
+import { musica, TEMA, ESCALA } from '../../../engine/musica'
 import { principal } from '../../../engine/principal'
 import {
   CASA_ABERTURA, CASA_CORREDOR, CASA_ANTES_DA_COZINHA, CASA_PRONTO,
   CASA_OBJETIVO_INICIAL, CASA_OBJETIVO_COZINHA, CASA_PORTA_FIM, CASA_MELODIA,
   CASA_MELODIA_DELE, CASA_CHAVE, CASA_CHAVE_DEPOIS, CASA_PAREDE,
-  EVELYN_PERGUNTA, EVELYN_OPCOES, LIAM_ECO, EVELYN_DEPOIS_ECO, EVELYN_RESPOSTAS,
+  EVELYN_PERGUNTA, EVELYN_RESPIRA_ABRE, EVELYN_RESPIRA_FECHA, EVELYN_OPCOES, LIAM_ECO, EVELYN_DEPOIS_ECO, EVELYN_RESPOSTAS,
   LIAM_DEPOIS_ECO, SOMBRA_REFLEXO, DEPOIS_ABERTURA, DEPOIS_LIA, DEPOIS_RECADO,
   DEPOIS_RECADO_FIM, CASA_MADRUGADA,
 } from '../../content/demoScript'
@@ -31,6 +31,7 @@ import { CASA_PASSOS_ESCONDEU, CASA_PASSOS_PEGO } from '../../content/noite'
 import {
   LIA_ENTRA, LIA_ITENS, LIA_ITEM_RESPOSTA, LIA_FONE, LIA_FONE_PAZ, LIA_FONE_CORTE, LIA_CONVITE,
   LIA_CONVITE_OPCOES, LIA_ECO, LIA_CONVITE_RESPOSTAS, LIA_RAIVA, LIA_SAI, LIA_BILHETE, ESPELHO_DEPOIS,
+  LIA_RETRATO_PEGO, LIA_RETRATO_QUEBROU, LIA_FONE_MOMENTOS, LIA_FONE_DURACAO,
 } from '../../content/quartoLia'
 import { Etiquetas } from '../../ui/etiqueta'
 import { Camada } from '../../ui/camada'
@@ -47,11 +48,13 @@ import { CRISE_ABRE, CRISE_PASSOU, CRISE_NAO_PASSOU } from '../../content/crise'
 import {
   DE_NOVO_CASA, DE_NOVO_JANELA, VULTO_SUMIU, NINGUEM_VEIO, CHEIRO_QUEIMADO,
 } from '../../content/deNovo'
+import { ArmarioFloresta } from '../../world/armarioFloresta'
+import { comodoCabana } from '../../world/cabanaDentro'
 import { MesaScene } from './mesa'
 import { FimScene } from './fim'
 
 /** Cenas que o jogador assiste: Liam não obedece às setas enquanto duram. */
-type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado' | 'passos' | 'conversaLia' | 'susto'
+type Cutscene = 'chave' | 'evelyn' | 'reflexo' | 'lia' | 'recado' | 'passos' | 'conversaLia' | 'susto' | 'retratoLia'
 
 /** Entre a meia-noite e as cinco da manhã de quem está jogando. */
 function madrugada(): boolean {
@@ -66,6 +69,15 @@ const ASSENTO_SOFA = 134
 
 /** Onde os dois sentam na cama da Lia para dividir o fone, e a altura do colchão. */
 const CAMA_LIA_X = 113
+/**
+ * A foto que a Lia joga: o mesmo aviso dos pratos da cozinha (o braço
+ * erguido, a marca vermelha no chão), aqui sem perigo nenhum. É onde o
+ * jogador aprende que dá para correr e entrar na frente.
+ */
+const RETRATO_ALVO_X = 70
+const RETRATO_AVISO = 2.1
+const RETRATO_VOO = 0.5
+const RETRATO_CORRIDA = 84
 const CAMA_LIAM_X = 128
 const SENTADO_NA_CAMA = 139
 
@@ -132,13 +144,13 @@ export class CasaScene implements Scene {
   private evelynFeita = false
   private evelyn = new Figura({
     ...VISUAL.evelyn,
-    x: 268, y: 167, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
+    x: 268, y: 167, altura: ALTURA.evelyn, cabelo: 'longo', gola: '#a8b4bc',
     cor: { roupa: '#3e5664', cabelo: '#2a1a16', pele: '#7a5a4e', sombra: 'rgba(0,0,0,0.5)' },
   })
   private evelynVisivel = 0
   private lia = new Figura({
     ...VISUAL.lia,
-    x: 300, y: 167, altura: 32, cabelo: 'rabo', mochila: '#2e3e56',
+    x: 300, y: 167, altura: ALTURA.lia, cabelo: 'rabo', mochila: '#2e3e56',
     cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
   })
   private liaVisivel = 1
@@ -146,14 +158,14 @@ export class CasaScene implements Scene {
   // O pai, no corredor, só quando os passos chegam a tempo de ver.
   private adrian = new Figura({
     ...VISUAL.adrian,
-    x: 268, y: 167, altura: 42, barba: true, gola: '#d4ccc0',
+    x: 268, y: 167, altura: ALTURA.adrian, barba: true, gola: '#d4ccc0',
     cor: { roupa: '#2e2430', cabelo: '#16100f', pele: '#7a584c', sombra: 'rgba(0,0,0,0.5)' },
   })
   private adrianVisivel = 0
   // --- O quarto da Lia ---
   private liaQuarto = new Figura({
     ...VISUAL.lia,
-    x: LIA_MALA_X, y: 167, altura: 32, cabelo: 'rabo',
+    x: LIA_MALA_X, y: 167, altura: ALTURA.lia, cabelo: 'rabo',
     cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
   })
   /** Já conversou com ela (para os testes, e para não repetir). */
@@ -164,8 +176,20 @@ export class CasaScene implements Scene {
   private liaAlvoX: number | null = null
   /** Contagem até o pai gritar, com o fone tocando. */
   private esperaFone = 0
+  /** Qual das coisas pequenas da música já apareceu. */
+  private momentoFone = 0
+  /** Depois do grito: a música dela tocando no quarto, enquanto ele estiver lá. */
+  private musicaQuarto: (() => void) | null = null
+  /** A luz da cabana: a tela clareia, e do outro lado ele está dentro. */
+  private brilhoCabana: { t: number; trocou: boolean } | null = null
+  /** Dentro do guarda-roupa, olhando pela fresta. */
+  private armario: ArmarioFloresta | null = null
+  private somFloresta: { abrir: (k: number) => void; parar: () => void } | null = null
   private pararMusicaLia: (() => void) | null = null
-  private travesseiro: { x: number; y: number; vx: number; vy: number; caiu: boolean } | null = null
+  /** A foto da família no ar, jogada pela Lia. */
+  private retratoLia: { fase: 'aviso' | 'voo'; t: number; deX: number; deY: number } | null = null
+  /** Cacos do vidro da foto, no chão do quarto dela. */
+  private cacosRetrato: { x: number; y: number; vx: number; vy: number; noChao: boolean }[] = []
   // --- O espelho ---
   private reflexoLiam = new Figura({ ...VISUAL.liam, x: 0, y: 0, altura: 24, cor: { ...COR_LIAM } })
   private espelhoHist: { t: number; x: number; olhar: number; andando: number; costas: boolean }[] = []
@@ -245,7 +269,7 @@ export class CasaScene implements Scene {
   private comodos = new Map<string, Comodo>()
   private atual!: Comodo
   private t = 0
-  private liam = new Figura({ ...VISUAL.liam, x: 300, y: 163, altura: 31, cor: { ...COR_LIAM } })
+  private liam = new Figura({ ...VISUAL.liam, x: 300, y: 163, altura: ALTURA.liam, cor: { ...COR_LIAM } })
   private po = new Particulas()
   private piano = new Piano()
   private leitor = new Leitor()
@@ -270,8 +294,6 @@ export class CasaScene implements Scene {
   private dedilhado = 0
   private tentativasFim = 0
   private sinal = 0
-  /** Brilho do aviso de segredo no canto. */
-  private estrela = 0
   private zoomPiano = 0
 
   /** Exposto para os testes. */
@@ -342,7 +364,11 @@ export class CasaScene implements Scene {
     this.comodos = new Map<string, Comodo>()
     const d = this.depois
     const bilhete = this.jogo?.sabe.has('bilhete-lia') ?? false
-    for (const c of [comodoSala(d), comodoCorredor(this.corredorLargura, d), comodoQuarto(d), comodoLia(d, bilhete)]) {
+    const sabe = this.jogo?.sabe
+    const retrato = sabe?.has('retrato-quebrou') ? 'quebrou' : sabe?.has('pegou-retrato') ? 'pegou' : null
+    const comodos = [comodoSala(d), comodoCorredor(this.corredorLargura, d), comodoQuarto(d), comodoLia(d, bilhete, retrato)]
+    if (d) comodos.push(comodoCabana())
+    for (const c of comodos) {
       if (d) {
         // Depois do grito: o nó de cada cômodo.
         for (const n of NOS.filter((k) => k.comodo === c.id)) {
@@ -370,7 +396,7 @@ export class CasaScene implements Scene {
     this.exclamacao = Math.max(0, this.exclamacao - dt)
     this.liaQuarto.update(dt)
     this.reflexoLiam.update(dt)
-    this.moverTravesseiro(dt)
+    this.moverCacosRetrato(dt)
     if (this.atual?.id === 'lia' && !this.depois) this.espelho(dt)
     if (this.depois && this.atual) this.animarNos(dt)
     this.olharVulto(dt)
@@ -382,6 +408,10 @@ export class CasaScene implements Scene {
     this.poeiraNoAr(dt)
     if (this.susto) {
       this.rodarSusto(dt, ctx)
+      return
+    }
+    if (this.brilhoCabana) {
+      this.rodarBrilhoCabana(dt)
       return
     }
     if (this.depois && this.t >= this.proxTique) {
@@ -409,7 +439,6 @@ export class CasaScene implements Scene {
     }
     this.dedilhado = Math.max(0, this.dedilhado - dt * 3)
     this.sinal = Math.max(0, this.sinal - dt * 0.35)
-    this.estrela = Math.max(0, this.estrela - dt * 0.3)
     this.zoomPiano += ((this.tocando ? 1 : 0) - this.zoomPiano) * Math.min(1, dt * 3)
 
     // Lendo: o papel fica com a entrada toda, e Liam fica parado olhando.
@@ -432,6 +461,10 @@ export class CasaScene implements Scene {
     if (this.saindo) return
     if (this.tocandoCello) {
       this.aoCello(ctx)
+      return
+    }
+    if (this.armario) {
+      this.noArmario(dt, ctx)
       return
     }
 
@@ -593,6 +626,36 @@ export class CasaScene implements Scene {
       this.iniciarRecado(v.linhas)
       return
     }
+    if (v.acao === 'entrarCabana') {
+      this.achados.add(v.id)
+      this.dialogue.play(primeira ? v.linhas : v.linhas.slice(-1), () => this.entrarNaCabana())
+      return
+    }
+    if (v.acao === 'armarioFloresta') {
+      this.achados.add(v.id)
+      this.dialogue.play(primeira ? v.linhas : v.linhas.slice(-1), () => this.entrarNoArmario())
+      return
+    }
+    if (v.acao === 'foneLia') {
+      this.achados.add(v.id)
+      this.dialogue.play(primeira ? v.linhas : [{ text: 'A música dela, de novo. Eu deixo tocar.' }], () => this.tocarFoneLia())
+      return
+    }
+    if (v.acao === 'caixinha') {
+      this.achados.add(v.id)
+      this.dialogue.play(v.linhas, () => this.darCorda(primeira))
+      return
+    }
+    if (v.acao === 'lata') {
+      this.achados.add(v.id)
+      this.dialogue.play(primeira ? v.linhas : v.linhas.slice(-1), () => this.escutarLata(primeira))
+      return
+    }
+    if (v.acao === 'deitar') {
+      this.achados.add(v.id)
+      this.deitarNaCabana(v.linhas)
+      return
+    }
     if (primeira) {
       this.achados.add(v.id)
       audio.interact()
@@ -607,7 +670,7 @@ export class CasaScene implements Scene {
         // segunda vez, o poste está vazio desde o começo.
         const [primeiraLinha, ...resto] = v.linhas
         if (this.outraVez && primeiraLinha) this.dialogue.play([primeiraLinha, ...DE_NOVO_JANELA, ...resto])
-        else if (this.vultoVisto) this.dialogue.play([...VULTO_SUMIU, ...v.linhas])
+        else if (this.vultoVisto) this.dialogue.play([...VULTO_SUMIU, ...v.linhas], () => this.segredo('poste'))
         else this.dialogue.play(v.linhas)
         return
       }
@@ -760,10 +823,8 @@ export class CasaScene implements Scene {
   private jogo: GameState | null = null
 
   private segredo(id: string): void {
-    if (!this.jogo?.descobrir(id)) return
-    audio.segredo()
-    this.estrela = 1
-    this.po.poeira(this.liam.x - 14, this.liam.y - 36, 28, 30)
+    // Sem som, sem estrela: quem achou, sabe. O fecho conta.
+    this.jogo?.descobrir(id)
   }
 
   // --- Cenas assistidas ---------------------------------------------------
@@ -778,6 +839,7 @@ export class CasaScene implements Scene {
     else if (this.cutscene === 'lia') this.cutLia(dt)
     else if (this.cutscene === 'passos') this.cutPassos(dt, ctx)
     else if (this.cutscene === 'conversaLia') this.cutConversaLia(dt)
+    else if (this.cutscene === 'retratoLia') this.cutRetratoLia(dt, ctx)
   }
 
   /** O que dispara uma cena só de andar até certo ponto. */
@@ -917,23 +979,14 @@ export class CasaScene implements Scene {
       this.evelyn.andando = 0
       this.passoCut = 1
       this.etiquetas.apresentar(ctx.state, 'Evelyn')
-      this.dialogue.play(EVELYN_PERGUNTA, () => {
-        // Até zerar a demo, a frase do pai sai sempre. Só depois ele responde.
-        const primeira = !memoria.terminou
-        this.escolha.abrir({
-          opcoes: EVELYN_OPCOES,
-          escrita: primeira ? 4 : 40,
-          forcarEm: primeira ? 3.4 : 9,
-          travada: primeira,
-          onForcada: () => {
-            this.falouPeloPai = true
-            ctx.state.aprender('evelyn-eco')
-            this.dialogue.play(LIAM_ECO, () => {
-              this.dialogue.play(EVELYN_DEPOIS_ECO, () => this.evelynSai())
-            })
-          },
-          onEscolha: (i) => {
-            this.dialogue.play(EVELYN_RESPOSTAS[i] ?? [], () => this.evelynSai())
+      // Ela chama, repara no ar curto dele, e respira junto. Só depois pergunta.
+      this.dialogue.play([...EVELYN_PERGUNTA.slice(0, 1), ...EVELYN_RESPIRA_ABRE], () => {
+        this.respiracao.comecar({
+          ciclos: 2, periodo: 6, ensino: true,
+          onFim: () => {
+            ctx.state.aprender('respirar')
+            this.liam.ofego = 1
+            this.dialogue.play([...EVELYN_RESPIRA_FECHA, ...EVELYN_PERGUNTA.slice(1)], () => this.evelynPergunta(ctx))
           },
         })
       })
@@ -968,6 +1021,28 @@ export class CasaScene implements Scene {
         }
       }
     }
+  }
+
+  /** A pergunta da mãe: a mochila. Na primeira vez, a frase do pai sai antes. */
+  private evelynPergunta(ctx: SceneCtx): void {
+    // Até zerar a demo, a frase do pai sai sempre. Só depois ele responde.
+    const primeira = !memoria.terminou
+    this.escolha.abrir({
+      opcoes: EVELYN_OPCOES,
+      escrita: primeira ? 4 : 40,
+      forcarEm: primeira ? 3.4 : 9,
+      travada: primeira,
+      onForcada: () => {
+        this.falouPeloPai = true
+        ctx.state.aprender('evelyn-eco')
+        this.dialogue.play(LIAM_ECO, () => {
+          this.dialogue.play(EVELYN_DEPOIS_ECO, () => this.evelynSai())
+        })
+      },
+      onEscolha: (i) => {
+        this.dialogue.play(EVELYN_RESPOSTAS[i] ?? [], () => this.evelynSai())
+      },
+    })
   }
 
   private evelynSai(): void {
@@ -1033,6 +1108,128 @@ export class CasaScene implements Scene {
   // --- O violoncelo ----------------------------------------------------
 
   /** Senta na beira da cama com o violoncelo entre os joelhos. */
+  // --- Depois do grito: a cabana, o armário, o fone dela ---------------------
+
+  /** A mão na luz: a tela clareia e, do outro lado, ele está dentro. */
+  private entrarNaCabana(): void {
+    this.brilhoCabana = { t: 0, trocou: false }
+    this.destino = null
+    this.liam.andando = 0
+    audio.reveal()
+  }
+
+  private rodarBrilhoCabana(dt: number): void {
+    const b = this.brilhoCabana
+    if (!b) return
+    b.t += dt
+    if (!b.trocou && b.t >= 0.9) {
+      b.trocou = true
+      const dentro = this.comodos.get('cabana')
+      if (dentro) {
+        this.atual = dentro
+        this.visitados.add(dentro.id)
+        this.liam.x = 92
+        this.liam.y = dentro.passoY
+        this.po.limpar()
+        // Lá dentro, a música ao contrário — subindo, pra não acabar lá embaixo.
+        window.setTimeout(() => sons.caixinha(MELODIA_SUBINDO.map((g) => ESCALA[g] ?? 220), 0.5), 900)
+      }
+    }
+    if (b.t >= 2.1) this.brilhoCabana = null
+  }
+
+  private darCorda(primeira: boolean): void {
+    const dur = sons.caixinha([...MELODIA_SUBINDO, ...MELODIA_SUBINDO].map((g) => ESCALA[g] ?? 220), 0.46)
+    window.setTimeout(() => {
+      if (this.atual.id !== 'cabana') return
+      this.dialogue.play(primeira
+        ? [
+          { text: 'A música do pai. Ao contrário: subindo.' },
+          { text: 'Alguém tocava assim pra mim, aqui dentro, quando eu não conseguia dormir.' },
+          { text: 'Pra ela não acabar lá embaixo.' },
+        ]
+        : [{ text: 'Subindo. Sempre subindo.' }])
+    }, Math.min(dur, 6) * 1000)
+  }
+
+  private escutarLata(primeira: boolean): void {
+    sons.zumbido(0.25, 2.5)
+    this.dialogue.play(primeira
+      ? [
+        { text: 'Primeiro, só o chiado. Depois, longe, alguém respirando do outro lado.' },
+        { speaker: 'Lia', text: '...Liam? Se você tá ouvindo...', style: 'speech', onde: 'na lata' },
+        { speaker: 'Lia', text: 'Eu tô aqui fora. Eu não vou embora. Então você também não vai.', style: 'speech', onde: 'na lata' },
+        { text: 'O barbante estica. Do outro lado, alguém está segurando.' },
+      ]
+      : [{ speaker: 'Lia', text: '...eu tô aqui fora.', style: 'speech', onde: 'na lata' }], () => {
+      if (primeira) this.segredo('lata')
+    })
+  }
+
+  private deitarNaCabana(linhas: Line[]): void {
+    this.liam.pose = 'sentado'
+    this.liam.curvatura = 0.5
+    audio.heartbeat(0.05)
+    this.dialogue.play(linhas, () => {
+      this.liam.pose = 'de-pe'
+      this.liam.curvatura = 0
+      this.liam.y = this.atual.passoY
+    })
+  }
+
+  /** A música dela, tocando no quarto vazio enquanto ele estiver lá. */
+  private tocarFoneLia(): void {
+    if (this.musicaQuarto) return
+    principal.volume(0.15, 1.6)
+    this.musicaQuarto = sons.musicaDaLia(0.6)
+  }
+
+  private pararFoneLia(): void {
+    if (!this.musicaQuarto) return
+    this.musicaQuarto()
+    this.musicaQuarto = null
+    principal.volume(0.5, 2)
+  }
+
+  private entrarNoArmario(): void {
+    this.armario = new ArmarioFloresta()
+    this.somFloresta = sons.floresta()
+    this.destino = null
+    this.liam.andando = 0
+    sons.porta()
+  }
+
+  private noArmario(dt: number, ctx: SceneCtx): void {
+    const a = this.armario
+    if (!a) return
+    const r = a.update(dt, ctx.input, ctx.display)
+    this.somFloresta?.abrir(a.fresta)
+    if (r.viuAgora) {
+      // Ela estava lá. A música dela vem de longe, por um instante.
+      const parar = sons.musicaDaLia(0.16)
+      window.setTimeout(parar, 9000)
+      this.segredo('floresta')
+    }
+    if (a.acabou) {
+      this.somFloresta?.parar()
+      this.somFloresta = null
+      this.armario = null
+      sons.porta()
+      this.liam.x = 392
+      this.dialogue.play(a.viu
+        ? [
+          { text: 'Ela estava lá. Do outro lado da porta, no meio das árvores.' },
+          { text: 'Não veio. Mas também não foi embora antes de eu ver.' },
+        ]
+        : a.abriuTudo
+          ? [
+            { text: 'Quando eu abro a porta inteira, é só o meu quarto.' },
+            { text: 'A floresta só existe pela fresta.' },
+          ]
+          : [{ text: 'Eu saio do armário. O quarto continua o mesmo.' }])
+    }
+  }
+
   private sentarComCello(): void {
     this.tocandoCello = true
     this.partituraIdx = 0
@@ -1420,8 +1617,9 @@ export class CasaScene implements Scene {
         musica.setPad(0, 1.4)
         clima.set({ chuva: 0 }, 1.4)
         this.pararMusicaLia = sons.musicaDaLia()
-        this.esperaFone = 8.5
-        this.dialogue.play(LIA_FONE_PAZ)
+        this.esperaFone = LIA_FONE_DURACAO
+        this.momentoFone = 0
+        this.dialogue.play(LIA_FONE_PAZ, undefined, 3.2)
       })
     }
   }
@@ -1430,6 +1628,15 @@ export class CasaScene implements Scene {
     if (this.sentarFase) this.sentarNaCama(dt)
     if (this.esperaFone > 0) {
       this.esperaFone -= dt
+      // Coisas pequenas, de longe em longe, enquanto a música toca.
+      const passou = LIA_FONE_DURACAO - this.esperaFone
+      const m = LIA_FONE_MOMENTOS[this.momentoFone]
+      if (m && passou >= m.em && !this.dialogue.active) {
+        this.momentoFone++
+        this.dialogue.play(m.linhas, undefined, 3.4)
+      }
+      // Ela mexe a cabeça no ritmo.
+      this.liaQuarto.curvatura = 0.08 + 0.08 * Math.max(0, Math.sin(passou * Math.PI * 2 / 1.7))
       if (this.esperaFone <= 0) {
         // O pai grita da cozinha. Ela arranca o fone.
         this.pararMusicaLia?.()
@@ -1485,9 +1692,72 @@ export class CasaScene implements Scene {
 
   private liaRaiva(): void {
     this.dialogue.play(LIA_RAIVA, () => {
-      this.jogarTravesseiro()
-      this.dialogue.play(LIA_SAI, () => this.liaFim())
+      // Ela ergue a foto. O jogador tem dois segundos.
+      this.cutscene = 'retratoLia'
+      this.destino = null
+      this.liaQuarto.olhar = -1
+      this.retratoLia = { fase: 'aviso', t: 0, deX: this.liaQuarto.x - 2, deY: this.atual.passoY - this.liaQuarto.altura - 4 }
+      this.jolt = Math.max(this.jolt, 0.4)
+      audio.heartbeat(0.12)
     })
+  }
+
+  /** A foto no ar. Liam corre mais rápido, para onde o jogador mandar. */
+  private cutRetratoLia(dt: number, ctx: SceneCtx): void {
+    const r = this.retratoLia
+    if (!r) return
+    r.t += dt
+    this.liaQuarto.braco = r.fase === 'aviso' ? 1 : 0.3
+    const tap = ctx.input.consumeTap()
+    if (tap) this.destino = ctx.display.toWorldX(tap.x) + this.camX()
+    const eixo = ctx.input.moveAxis()
+    let dx = eixo ? eixo.x : 0
+    if (eixo) this.destino = null
+    if (this.destino !== null && dx === 0) {
+      const d = this.destino - this.liam.x
+      if (Math.abs(d) < 3) this.destino = null
+      else dx = Math.sign(d)
+    }
+    this.liam.andando = dx !== 0 ? 1 : 0
+    if (dx !== 0) this.liam.olhar = Math.sign(dx)
+    this.liam.x = Math.max(this.atual.limiteEsq, Math.min(this.atual.limiteDir, this.liam.x + dx * RETRATO_CORRIDA * dt))
+    if (r.fase === 'aviso' && r.t >= RETRATO_AVISO) {
+      r.fase = 'voo'
+      r.t = 0
+      sons.pisada(0.6)
+      return
+    }
+    if (r.fase === 'voo' && r.t >= RETRATO_VOO) {
+      const pegou = Math.abs(this.liam.x - RETRATO_ALVO_X) < 16
+      this.retratoLia = null
+      this.destino = null
+      this.liam.andando = 0
+      this.liaQuarto.braco = 0
+      if (pegou) {
+        ctx.state.aprender('pegou-retrato')
+        this.jolt = Math.max(this.jolt, 0.7)
+        this.liam.tremor = 1
+        sons.passo(0, 0.6)
+        this.dialogue.play(LIA_RETRATO_PEGO, () => this.liaSaiDoQuarto())
+      } else {
+        ctx.state.aprender('retrato-quebrou')
+        sons.prato()
+        this.jolt = 1
+        for (let i = 0; i < 14; i++) {
+          this.cacosRetrato.push({
+            x: RETRATO_ALVO_X, y: this.atual.passoY - 4,
+            vx: (Math.random() - 0.5) * 90, vy: -(20 + Math.random() * 60), noChao: false,
+          })
+        }
+        this.dialogue.play(LIA_RETRATO_QUEBROU, () => this.liaSaiDoQuarto())
+      }
+    }
+  }
+
+  private liaSaiDoQuarto(): void {
+    this.cutscene = 'conversaLia'
+    this.liam.tremor = 0
+    this.dialogue.play(LIA_SAI, () => this.liaFim())
   }
 
   private liaFim(): void {
@@ -1502,29 +1772,71 @@ export class CasaScene implements Scene {
     })
   }
 
-  private jogarTravesseiro(): void {
-    const de = this.liaQuarto.x
-    this.travesseiro = { x: de, y: this.atual.passoY - 24, vx: (this.liam.x - de) / 0.45, vy: -70, caiu: false }
+  private moverCacosRetrato(dt: number): void {
+    for (const k of this.cacosRetrato) {
+      if (k.noChao) continue
+      k.vy += 260 * dt
+      k.x += k.vx * dt
+      k.y += k.vy * dt
+      if (k.y >= this.atual.passoY + 1) {
+        k.y = this.atual.passoY + 1 + Math.random() * 4
+        k.noChao = true
+      }
+    }
   }
 
-  private moverTravesseiro(dt: number): void {
-    const p = this.travesseiro
-    if (!p || p.caiu) return
-    p.vy += 300 * dt
-    p.x += p.vx * dt
-    p.y += p.vy * dt
-    if (Math.abs(p.x - this.liam.x) < 5 && p.vx !== 0) {
-      // Bateu nele. Não dói. É pior que doer.
-      sons.passo(0, 0.5)
-      this.jolt = Math.max(this.jolt, 0.6)
-      this.liam.tremor = 1
-      p.vx = -p.vx * 0.15
+  /**
+   * A foto: na mão dela, acima da cabeça, enquanto ela mira; depois no ar,
+   * girando. No chão, onde vai estourar, a marca vermelha que pulsa — a
+   * mesma dos pratos.
+   */
+  private desenharRetratoLia(w: CanvasRenderingContext2D): void {
+    for (const k of this.cacosRetrato) {
+      w.fillStyle = k.noChao ? 'rgba(220,226,236,0.7)' : '#eef2f8'
+      w.fillRect(Math.round(k.x), Math.round(k.y), 1, 1)
     }
-    if (p.y >= this.atual.passoY - 2) {
-      p.y = this.atual.passoY - 2
-      p.caiu = true
-      this.liam.tremor = 0
+    const r = this.retratoLia
+    if (!r) return
+    const chao = this.atual.passoY
+    const p = 0.5 + Math.sin(this.t * 14) * 0.5
+    w.save()
+    w.fillStyle = `rgba(255,60,60,${0.18 + p * 0.18})`
+    w.beginPath()
+    w.ellipse(RETRATO_ALVO_X, chao + 1, 12, 3.4, 0, 0, Math.PI * 2)
+    w.fill()
+    w.strokeStyle = `rgba(255,90,90,${0.55 + p * 0.45})`
+    w.lineWidth = 1
+    w.beginPath()
+    w.ellipse(RETRATO_ALVO_X, chao + 1, 12 + p * 3, 3.4 + p, 0, 0, Math.PI * 2)
+    w.stroke()
+    w.restore()
+    let x = r.deX
+    let y = r.deY
+    let ang = Math.sin(this.t * 9) * 0.2
+    if (r.fase === 'voo') {
+      const k = Math.min(1, r.t / RETRATO_VOO)
+      x = r.deX + (RETRATO_ALVO_X - r.deX) * k
+      y = r.deY + (chao - 14 - r.deY) * k - Math.sin(k * Math.PI) * 16
+      ang = r.t * 18
+    } else {
+      w.fillStyle = `rgba(255,80,80,${0.6 + p * 0.4})`
+      w.fillRect(Math.round(this.liaQuarto.x) - 1, Math.round(r.deY) - 14, 3, 7)
+      w.fillRect(Math.round(this.liaQuarto.x) - 1, Math.round(r.deY) - 5, 3, 2)
     }
+    w.save()
+    w.translate(x, y)
+    w.rotate(ang)
+    w.fillStyle = 'rgba(255,250,240,0.18)'
+    w.fillRect(-6, -5, 12, 10)
+    w.fillStyle = '#6a4a36'
+    w.fillRect(-4, -3, 8, 7)
+    w.fillStyle = '#c8ccd4'
+    w.fillRect(-3, -2, 6, 5)
+    w.fillStyle = '#3a3440'
+    w.fillRect(-2, 0, 1, 2)
+    w.fillRect(0, -1, 1, 3)
+    w.fillRect(2, 0, 1, 2)
+    w.restore()
   }
 
   // --- O espelho ----------------------------------------------------------
@@ -1607,7 +1919,7 @@ export class CasaScene implements Scene {
     }
   }
 
-  /** O reflexo no espelho, a Lia arrumando a mala, o travesseiro. */
+  /** O reflexo no espelho, a Lia arrumando a mala, a foto que ela joga. */
   private desenharQuartoLia(w: CanvasRenderingContext2D): void {
     if (!this.depois) {
       // O reflexo: o mesmo Liam, menor, dentro do vidro.
@@ -1663,13 +1975,7 @@ export class CasaScene implements Scene {
         w.stroke()
       }
     }
-    const p = this.travesseiro
-    if (p) {
-      w.fillStyle = '#e0d4c4'
-      w.fillRect(Math.round(p.x) - 5, Math.round(p.y) - 3, 10, 5)
-      w.fillStyle = '#f0e6d8'
-      w.fillRect(Math.round(p.x) - 5, Math.round(p.y) - 3, 10, 1)
-    }
+    this.desenharRetratoLia(w)
   }
 
   /** O recado da mãe na secretária. É aqui que a demo termina. */
@@ -1781,7 +2087,9 @@ export class CasaScene implements Scene {
 
     const destino = this.comodos.get(p.para)
     if (!destino) return
-    sons.porta()
+    if (destino.id !== 'lia') this.pararFoneLia()
+    if (this.atual.id === 'cabana' || destino.id === 'cabana') sons.pisada(0.4)
+    else sons.porta()
     this.atual = destino
     this.visitados.add(destino.id)
     this.liam.x = Math.max(destino.limiteEsq, Math.min(destino.limiteDir, p.entraEm))
@@ -1892,6 +2200,15 @@ export class CasaScene implements Scene {
       quintoRetrato: this.quinto,
     }
 
+    if (this.armario) {
+      this.armario.draw(w)
+      ctx.display.applyGrain(0.06)
+      ctx.display.present({ rgbSplit: 0, wave: 0, shake: 0, time: this.t })
+      ctx.display.vignette(0.5)
+      this.desenharUiArmario(ctx)
+      this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+      return
+    }
     w.fillStyle = '#020306'
     w.fillRect(0, 0, WORLD_W, 216)
     w.save()
@@ -1924,6 +2241,21 @@ export class CasaScene implements Scene {
       zoom: z + susto * 0.12, alvoX: focoX, alvoY: focoY, time: this.t,
     })
     ctx.display.vignette(0.6 + susto * 0.3)
+    // A luz da cabana tomando a tela inteira, e se abrindo do outro lado.
+    if (this.brilhoCabana) {
+      const t = this.brilhoCabana.t
+      const k = t < 0.9 ? Math.pow(t / 0.9, 1.6) : Math.max(0, 1 - (t - 0.9) / 1.2)
+      const c0 = ctx.display.ctx
+      c0.save()
+      const gx = ctx.display.cssW / 2
+      const gy = ctx.display.cssH * 0.6
+      const g = c0.createRadialGradient(gx, gy, 0, gx, gy, Math.max(ctx.display.cssW, ctx.display.cssH) * (0.2 + k))
+      g.addColorStop(0, `rgba(255,236,196,${k})`)
+      g.addColorStop(1, `rgba(255,214,150,${k * 0.85})`)
+      c0.fillStyle = g
+      c0.fillRect(0, 0, ctx.display.cssW, ctx.display.cssH)
+      c0.restore()
+    }
     // A lembrança de um nó: a tela inteira na cor de quem ela é.
     if (this.lembrancaNo) {
       const k = Math.min(1, this.lembrancaNo.t / 0.8)
@@ -1957,7 +2289,6 @@ export class CasaScene implements Scene {
       return { x: ctx.display.toScreenX(f.x - cam), y: ctx.display.toScreenY(f.y - f.altura - 2) }
     })
     this.camada.draw(c, cssW, cssH)
-    this.drawEstrela(ctx)
     this.escolha.draw(c, cssW, cssH)
     if (susto > 0) this.drawPassos(c, cssW, cssH, susto)
     if (this.exclamacao > 0) this.desenharExclamacao(ctx, cam)
@@ -1974,6 +2305,31 @@ export class CasaScene implements Scene {
         c.fillRect(0, 0, cssW, cssH)
       }
     }
+  }
+
+  /** No armário: o que fazer, escrito pequeno, e o "sair" no canto. */
+  private desenharUiArmario(ctx: SceneCtx): void {
+    const a = this.armario
+    if (!a) return
+    const c = ctx.display.ctx
+    const { cssW, cssH } = ctx.display
+    const s = Math.max(12, Math.min(cssW / 70, 17))
+    const b = a.botaoSair
+    c.save()
+    c.textAlign = 'center'
+    c.font = `${s}px ${FONT_BODY}`
+    c.fillStyle = PAL.inkDim
+    c.fillText('sair', ctx.display.toScreenX(b.x + b.w / 2), ctx.display.toScreenY(b.y + b.h / 2) + s * 0.35)
+    c.globalAlpha = 0.7
+    c.fillText(ctx.input.touchMode ? 'arraste para abrir ou fechar a porta' : '← → abre e fecha a porta  ·  E sai', cssW / 2, cssH - s * 1.4)
+    const z = a.sussurro
+    if (z) {
+      c.globalAlpha = Math.min(1, z.t / 0.6, (4 - z.t) / 0.8)
+      c.font = `italic ${s * 1.6}px ${FONT_FIM}`
+      c.fillStyle = PAL.ink
+      c.fillText(z.texto, cssW / 2, cssH * 0.82)
+    }
+    c.restore()
   }
 
   /** O aviso dos passos: sem enfeite, só o que fazer e o tempo acabando. */
@@ -2093,31 +2449,6 @@ export class CasaScene implements Scene {
       `${objetivo}  ·  ${vistos} ${vistos === 1 ? 'vestígio' : 'vestígios'}  ·  ← → anda · E usa · C caderno`,
       cssW / 2, cssH - s * 2,
     )
-    c.restore()
-  }
-
-  /** Um brilho pequeno no canto quando um segredo é achado. Sem texto. */
-  private drawEstrela(ctx: SceneCtx): void {
-    if (this.estrela <= 0) return
-    const c = ctx.display.ctx
-    const { cssW } = ctx.display
-    const s = Math.max(12, Math.min(cssW / 70, 17))
-    const a = Math.min(1, this.estrela * 1.6)
-    // Abaixo do canto, que é do ícone de pausa e do nó do salvamento.
-    const x = cssW - s * 2.4
-    const y = s * 5.4
-    const r = s * (0.5 + (1 - this.estrela) * 0.6)
-    c.save()
-    c.globalAlpha = a
-    c.fillStyle = PAL.accent
-    c.beginPath()
-    for (let i = 0; i < 8; i++) {
-      const ang = (i / 8) * Math.PI * 2 - Math.PI / 2
-      const rr = i % 2 === 0 ? r : r * 0.32
-      c.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr)
-    }
-    c.closePath()
-    c.fill()
     c.restore()
   }
 }

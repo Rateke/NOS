@@ -59,9 +59,8 @@ export const MESA_ESTOURO: Line[] = [
 
 /** O que ele grita quando pega um prato. Uma por arremesso. */
 export const ARREMESSO_ADRIAN: string[] = [
-  'TÁ VENDO O QUE VOCÊ FAZ COMIGO?!',
-  'É ISSO QUE VOCÊ QUER?! É ISSO?!',
-  'QUEM PAGOU ESSA M**** TODA FUI EU!',
+  'O QUE FOI QUE VOCÊ DISSE?!',
+  'REPETE! REPETE SE TEM CORAGEM!',
 ]
 
 /** O prato acerta uma delas. Quem grita é a outra. */
@@ -133,6 +132,25 @@ export const GRITARIA_FIM = 6.7
 export const TEAR_CONTAR: Line[] = [
   { text: 'Eu me agarro às notas.' },
   { text: 'Enquanto eu conto as notas, eu não escuto lá em cima.' },
+]
+
+/** O que fazer no Tear, dito por ele mesmo — e escrito na tela enquanto dura. */
+export const TEAR_COMO: Line[] = [
+  { text: 'Seis fios. Cada um só passa se eu tocar a frase do pai no teclado.' },
+  { text: 'A bisavó escreveu as notas no caderno. Onde ela esqueceu, o fio lembra: é só encostar o ouvido.' },
+  { text: 'E se eu errar, ele chega mais perto.' },
+]
+
+/** Depois que a sombra engole a sala, o Tear recomeça. */
+export const TEAR_DE_NOVO: Line[] = [
+  { text: 'De novo. Do começo.' },
+  { text: 'Igual ele sempre diz.' },
+]
+
+/** A tela preta, quando a sombra dele engole tudo. */
+export const TEAR_ENGOLE: [string, string] = [
+  'Ele cresceu até não sobrar sala.',
+  'o Tear recomeça',
 ]
 
 /**

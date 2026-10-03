@@ -1,5 +1,5 @@
 import type { Input } from '../../engine/input'
-import { FONT_BODY, FONT_FIM } from '../systems/dialogue'
+import { FONT_BODY, FONT_FIM, FIO } from '../systems/dialogue'
 import { PAL } from '../../engine/constants'
 import { sons, audio } from '../../engine/audio'
 
@@ -7,9 +7,14 @@ import { sons, audio } from '../../engine/audio'
  * Respirar.
  *
  * O que a mãe ensinou: quatro pra dentro, quatro pra fora. Um anel claro
- * cresce e encolhe no ritmo certo; o círculo de dentro é o ar do Liam —
- * cresce enquanto o jogador segura (espaço, E, ou o dedo na tela) e
- * esvazia quando ele solta. Acompanhar o anel é conseguir respirar.
+ * cresce e encolhe no ritmo certo, contando de um a quatro; o círculo de
+ * dentro é o ar do Liam — cresce enquanto o jogador segura (espaço, E, ou o
+ * dedo na tela) e esvazia quando ele solta. Acompanhar o anel é conseguir
+ * respirar, e dá para ver: quando o ar acompanha, o escuro em volta abre e
+ * o coração desacelera; quando escapa, a tela fecha.
+ *
+ * A mãe ensina isso no corredor, antes de qualquer coisa dar errado, numa
+ * versão em que não dá para errar (`ensino`): ela conta junto.
  *
  * Não tem botão de pular: quem não segura nada também está respirando — mal.
  */
@@ -20,6 +25,8 @@ export interface OpcoesRespiracao {
   periodo: number
   /** Erro médio aceito para contar como conseguiu (0..1). */
   tolerancia?: number
+  /** A mãe ensinando: ela conta em voz alta e não existe errar. */
+  ensino?: boolean
   onFim: (conseguiu: boolean) => void
 }
 
@@ -38,6 +45,8 @@ export class Respiracao {
   private segurava = false
   private fechando = 0
   private resultado: boolean | null = null
+  /** 0..1: o quanto o ar está fora do ritmo agora. Fecha a tela em volta. */
+  private aperto = 0
   /** Para os testes: o último resultado. */
   ultimo: boolean | null = null
 
@@ -56,6 +65,11 @@ export class Respiracao {
     return (this.t % this.o.periodo) < this.o.periodo / 2
   }
 
+  /** Interrompe sem chamar o fim (a cena foi engolida por outra coisa). */
+  cancelar(): void {
+    this.o = null
+  }
+
   comecar(o: OpcoesRespiracao): void {
     this.o = o
     this.t = 0
@@ -66,6 +80,7 @@ export class Respiracao {
     this.segurava = false
     this.fechando = 0
     this.resultado = null
+    this.aperto = 0
   }
 
   update(dt: number, input: Input): void {
@@ -99,8 +114,10 @@ export class Respiracao {
       const aflito = this.erroMedio > 0.3 && this.medido > 1
       sons.respiro(segura, meio * 0.9, 0.9, aflito)
     }
+    // O escuro em volta segue o erro recente, não o da conta inteira.
+    this.aperto += (Math.min(1, Math.abs(this.ar - this.guia) * 2.2) - this.aperto) * Math.min(1, dt * 3)
     if (this.t >= o.ciclos * o.periodo) {
-      this.resultado = this.erroMedio <= (o.tolerancia ?? 0.2)
+      this.resultado = o.ensino ? true : this.erroMedio <= (o.tolerancia ?? 0.2)
       audio.heartbeat(this.resultado ? 0.08 : 0.22)
     }
   }
@@ -113,18 +130,24 @@ export class Respiracao {
     const cy = cssH * 0.42
     const base = Math.min(cssW, cssH) * 0.06
     const cresce = base * 1.5
+    const meio = o.periodo / 2
+    const naFase = this.t % o.periodo
+    const puxando = naFase < meio
+    // 1, 2, 3, 4 em cada metade: a conta que a mãe faz.
+    const conta = Math.min(4, Math.floor(((naFase % meio) / meio) * 4) + 1)
     c.save()
     c.globalAlpha = some
-    // O mundo some em volta: só o peito importa agora.
-    const v = c.createRadialGradient(cx, cy, base, cx, cy, Math.max(cssW, cssH) * 0.7)
-    v.addColorStop(0, 'rgba(2,3,8,0.35)')
-    v.addColorStop(1, 'rgba(2,3,8,0.85)')
+    // O mundo some em volta. Fora do ritmo, o escuro fecha; no ritmo, abre.
+    const fecha = 0.25 + this.aperto * 0.55
+    const v = c.createRadialGradient(cx, cy, base * (2.6 - this.aperto * 1.4), cx, cy, Math.max(cssW, cssH) * (0.75 - this.aperto * 0.25))
+    v.addColorStop(0, 'rgba(2,3,8,0.3)')
+    v.addColorStop(1, `rgba(2,3,8,${0.6 + fecha * 0.4})`)
     c.fillStyle = v
     c.fillRect(0, 0, cssW, cssH)
 
     // O anel do ritmo certo.
     const rg = base + this.guia * cresce
-    c.strokeStyle = 'rgba(232,236,248,0.7)'
+    c.strokeStyle = 'rgba(232,236,248,0.75)'
     c.lineWidth = Math.max(1.5, base * 0.05)
     c.beginPath()
     c.arc(cx, cy, rg, 0, Math.PI * 2)
@@ -143,12 +166,15 @@ export class Respiracao {
     c.lineWidth = Math.max(1, base * 0.03)
     c.stroke()
 
+    // A conta, grande, no meio do anel.
     c.textAlign = 'center'
     const s = Math.max(15, Math.min(cssW / 46, 26))
-    c.font = `italic 400 ${s * 1.2}px ${FONT_FIM}`
+    c.font = `500 ${s * 2.1}px ${FONT_FIM}`
     c.fillStyle = PAL.ink
-    c.globalAlpha = some * 0.85
-    c.fillText(this.puxando ? 'puxa...' : 'solta...', cx, cy + base + cresce + s * 1.8)
+    c.globalAlpha = some * 0.9
+    c.fillText(String(conta), cx, cy + s * 0.7)
+    c.font = `italic 400 ${s * 1.2}px ${FONT_FIM}`
+    c.fillText(puxando ? 'puxa o ar...' : 'solta...', cx, cy + base + cresce + s * 1.8)
     // Os ciclos que faltam, em pontinhos.
     const feitos = Math.floor(this.t / o.periodo)
     for (let i = 0; i < o.ciclos; i++) {
@@ -157,12 +183,21 @@ export class Respiracao {
       c.arc(cx + (i - (o.ciclos - 1) / 2) * s, cy + base + cresce + s * 2.9, s * 0.16, 0, Math.PI * 2)
       c.fill()
     }
-    c.font = `300 ${s * 0.72}px ${FONT_BODY}`
-    c.fillStyle = PAL.inkDim
-    c.globalAlpha = some * 0.7
+    // A mãe contando junto, quando é ela quem ensina.
+    if (o.ensino) {
+      const numeros = ['um...', 'dois...', 'três...', 'quatro...']
+      c.font = `italic 500 ${s * 1.1}px ${FONT_BODY}`
+      c.fillStyle = FIO.Evelyn ?? '#e2a95e'
+      c.globalAlpha = some * 0.9
+      c.fillText(`${numeros[conta - 1] ?? ''}`, cx, cy - base - cresce - s * 1.2)
+    }
+    // A instrução, sempre clara: o que apertar e quando.
+    c.font = `400 ${s * 0.8}px ${FONT_BODY}`
+    c.fillStyle = PAL.ink
+    c.globalAlpha = some * 0.82
     const dica = touch
-      ? 'segure o dedo na tela para puxar o ar  ·  solte para soltar'
-      : 'segure ESPAÇO para puxar o ar  ·  solte para soltar'
+      ? 'segure o dedo na tela enquanto o círculo cresce  ·  solte enquanto ele diminui'
+      : 'segure ESPAÇO enquanto o círculo cresce  ·  solte enquanto ele diminui'
     c.fillText(dica, cx, cssH - s * 2.2)
     c.restore()
   }

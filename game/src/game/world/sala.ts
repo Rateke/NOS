@@ -33,7 +33,7 @@ export const PIANO = { x0: 112, x1: 200, cx: 156 }
 /** Luminária em cima do piano: a luz do prólogo. */
 export const LUZ_PIANO = { x: 188, y: 78 }
 /** Abajur de pé ao lado do sofá: a luz da sala à noite. */
-export const ABAJUR = { x: 404, y: 60 }
+export const ABAJUR = { x: 404, y: 84 }
 
 export interface EstadoSala {
   k: number
@@ -548,15 +548,17 @@ function drawTapete(c: CanvasRenderingContext2D, k: number): void {
 function drawAbajur(c: CanvasRenderingContext2D, k: number): void {
   const { x } = ABAJUR
   const metal = tom([40, 46, 62], [84, 66, 52], k)
-  ret(c, x - 1, 76, 3, CHAO_Y - 76, rgb(metal))
+  // Abajur de pé: da altura de um adulto, abaixo do alto da porta.
+  const topo = ABAJUR.y - 2
+  ret(c, x - 1, topo + 16, 3, CHAO_Y - topo - 16, rgb(metal))
   ret(c, x - 9, CHAO_Y - 3, 19, 4, rgb(metal))
   const cupula = tom([62, 70, 92], [140, 108, 76], k)
-  for (let i = 0; i < 18; i++) {
-    const meio = 8 + Math.round(i * 0.5)
+  for (let i = 0; i < 16; i++) {
+    const meio = 7 + Math.round(i * 0.5)
     c.fillStyle = rgb(clarear(cupula, i < 3 ? 10 : 0))
-    c.fillRect(x - meio, 58 + i, meio * 2, 1)
+    c.fillRect(x - meio, topo + i, meio * 2, 1)
   }
-  ret(c, x - 16, 75, 32, 2, `rgba(255,236,196,${0.35 + k * 0.4})`)
+  ret(c, x - 15, topo + 15, 30, 2, `rgba(255,236,196,${0.35 + k * 0.4})`)
 }
 
 function drawEstante(c: CanvasRenderingContext2D, k: number): void {

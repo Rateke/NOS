@@ -10,7 +10,7 @@ import {
   TEAR_FIM, TEAR_PIANO, TEAR_ERRO, TEAR_CADERNO, TEAR_ENGOLIU, TEAR_GRITO,
 } from '../../content/demoScript'
 import {
-  TEAR_CONTAR, PRESSAO_ADRIAN, TEAR_LEI, ESCOLHA_ARMADILHA, ESCOLHA_GRITOS, ESCOLHA_ME_QUEIMA,
+  TEAR_CONTAR, TEAR_COMO, TEAR_DE_NOVO, TEAR_ENGOLE, PRESSAO_ADRIAN, TEAR_LEI, ESCOLHA_ARMADILHA, ESCOLHA_GRITOS, ESCOLHA_ME_QUEIMA,
   ESCOLHA_DEPOIS, DENTRO_2_ABRE, DENTRO_2_ESE, DENTRO_2, TEAR_VOLTA_DEPOIS,
 } from '../../content/noite'
 import type { PassoDentro, FiguraDentro } from '../../content/noite'
@@ -35,6 +35,7 @@ import {
 } from '../../world/camara'
 import type { Lembranca } from '../../world/lembrancas'
 import { criarLembrancas, tingir } from '../../world/lembrancas'
+import { SombraDoPai } from '../../ui/sombraPai'
 
 /** Carreiras já tecidas quando Liam chega: só a barra de baixo. */
 const TECIDO_INICIAL = 5
@@ -126,6 +127,17 @@ export class TearScene implements Scene {
   private tFogo = 0
   private depoisFalado = false
   private recusa = { mae: 0, lia: 0 }
+
+  // A sombra do pai: cresce a cada erro; cheia, engole a sala e o Tear recomeça.
+  private sombra = new SombraDoPai()
+  private fimDeJogo: { t: number } | null = null
+  /** As lembranças que já passaram: depois de recomeçar, não passam de novo. */
+  private lembrancasVistas = new Set<number>()
+  /** "Escuta o fio": a frase do fio aceso tocando sozinha, tecla por tecla. */
+  private escutando: { notas: readonly number[]; i: number; t: number } | null = null
+  /** Onde ficam os botões do caderno e do escutar, na tela (para o clique). */
+  private botoes: { id: 'caderno' | 'escutar'; x: number; y: number; w: number; h: number }[] = []
+
   private mae = new Figura({
     ...VISUAL.evelyn,
     x: 104, y: LIAM_CAMARA.y, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
@@ -231,11 +243,11 @@ export class TearScene implements Scene {
       this.dialogue.play(TEAR_CADERNO, () => {
         this.leitor.abrir(DOC_CADERNO_AMELIA, {
           onSegredo: (id) => {
-            if (this.jogo?.descobrir(id)) audio.segredo()
+            this.jogo?.descobrir(id)
           },
           onFechar: () => {
             this.jogo?.aprender('caderno-amelia')
-            this.dialogue.play([...TEAR_PIANO, ...TEAR_CONTAR], () => {
+            this.dialogue.play([...TEAR_PIANO, ...TEAR_CONTAR, ...TEAR_COMO], () => {
               this.fase = 'absorvendo'
             })
           },
@@ -246,6 +258,16 @@ export class TearScene implements Scene {
 
   update(dt: number, ctx: SceneCtx): void {
     this.t += dt
+    this.sombra.update(dt)
+    this.dialogue.graveAdrian = this.sombra.grave
+    if (this.fimDeJogo) {
+      this.recomecarDepoisDoFim(dt)
+      return
+    }
+    if (this.sombra.engoliu) {
+      this.engolido()
+      return
+    }
     this.dialogue.update(dt)
     this.ecos = this.ecos.filter((e) => (e.vida -= dt) > 0)
     this.baterCoracao()
@@ -331,7 +353,7 @@ export class TearScene implements Scene {
     for (const f of [this.liam, this.adrian, this.mae, this.irma]) f.update(dt)
     // O pai chega perto: no Tear, conforme aperta; na escolha, do lado dele.
     const perto = this.fase === 'lei' || this.fase === 'escolha' || this.fase === 'fogo'
-    const alvoAdrian = perto ? 152 : this.fase === 'absorvendo' ? 40 + this.pressao * 74 : 40
+    const alvoAdrian = perto ? 152 : this.fase === 'absorvendo' ? 40 + Math.max(this.pressao * 74, this.sombra.nivel * 96) : 40
     this.adrian.x += (alvoAdrian - this.adrian.x) * Math.min(1, dt * 1.5)
     this.adrian.olhar = 1
     this.elas += ((perto ? 1 : 0) - this.elas) * Math.min(1, dt * 1.2)
@@ -385,6 +407,30 @@ export class TearScene implements Scene {
       return
     }
 
+    // A frase do fio tocando sozinha: espera acabar.
+    if (this.escutando) {
+      this.escutar(dt)
+      ctx.input.consumeTap()
+      return
+    }
+    // Sem tocar direito, a sombra recua devagar.
+    this.sombra.recuar(dt * 0.012)
+    // O caderno da bisavó (C) e escutar o fio (R), pelo teclado ou pelo botão.
+    const tapBotao = ctx.input.peekTap()
+    const botao = tapBotao ? this.botoes.find((b) => tapBotao.x >= b.x && tapBotao.x <= b.x + b.w && tapBotao.y >= b.y && tapBotao.y <= b.y + b.h) : undefined
+    if (botao) ctx.input.consumeTap()
+    if (ctx.input.consumeKey('KeyC') || botao?.id === 'caderno') {
+      this.leitor.abrir(DOC_CADERNO_AMELIA, { onSegredo: (id) => this.jogo?.descobrir(id) })
+      this.leitor.irPara(DOC_CADERNO_AMELIA.paginas.findIndex((p) => p.musica))
+      return
+    }
+    if (ctx.input.consumeKey('KeyR') || botao?.id === 'escutar') {
+      this.escutando = { notas: this.fraseDoFio(this.sel), i: 0, t: 0.35 }
+      this.passo = 0
+      // Ele não gosta de esperar.
+      this.sombra.crescer(0.06)
+      return
+    }
     if (ctx.input.consumeKey('ArrowLeft')) this.mover(-1)
     if (ctx.input.consumeKey('ArrowRight')) this.mover(1)
 
@@ -407,6 +453,7 @@ export class TearScene implements Scene {
         const fala = PRESSAO_ADRIAN[i] ?? ''
         this.idxInsiste++
         this.pressao = Math.min(1, this.pressao + 0.17)
+        this.sombra.crescer(0.07)
         this.dizer(fala, 2.4)
         const gritou = fala === fala.toUpperCase()
         this.jolt = Math.max(this.jolt, gritou ? 1 : 0.4)
@@ -420,6 +467,7 @@ export class TearScene implements Scene {
     // Tocando, ele recua um pouco. Só um pouco.
     this.pressao = Math.max(0, this.pressao - 0.05)
     if (frase[this.passo] === tocada) {
+      this.sombra.recuar(0.05)
       this.passo++
       fio.puxado = this.passo / Math.max(1, frase.length)
       this.lancar()
@@ -434,9 +482,69 @@ export class TearScene implements Scene {
     this.tecidoAlvo = this.nivelTecido()
     this.jolt = 1
     audio.refuse()
+    // Cada erro: ele chega mais perto, e cresce.
+    this.sombra.crescer(0.28)
     const fala = TEAR_ERRO[Math.min(this.errosFio, TEAR_ERRO.length - 1)]
     this.errosFio++
     this.dizer(fala ?? '', 2.8)
+  }
+
+  /** O fio tocando a própria frase: cada nota acende a tecla dela. */
+  private escutar(dt: number): void {
+    const e = this.escutando
+    if (!e) return
+    e.t -= dt
+    if (e.t > 0) return
+    const n = e.notas[e.i]
+    if (n === undefined) {
+      this.escutando = null
+      return
+    }
+    this.piano.mostrar(n, 0.55)
+    e.i++
+    e.t = 0.62
+  }
+
+  /** A sombra encheu: engoliu a sala. */
+  private engolido(): void {
+    this.fimDeJogo = { t: 0 }
+    this.escutando = null
+    this.dialogue.play([])
+    audio.cutAll(0.4)
+    sons.zumbido(1, 4)
+    audio.heartbeat(0.4)
+    voz.dizer('Adrian', 'DE NOVO.', { grito: true, grave: 1, volume: 1.4 })
+  }
+
+  /** Depois do preto: o Tear volta para o começo. As lembranças vistas não voltam. */
+  private recomecarDepoisDoFim(dt: number): void {
+    const f = this.fimDeJogo
+    if (!f) return
+    f.t += dt
+    if (f.t < 4.4) return
+    this.fimDeJogo = null
+    this.sombra.zerar()
+    for (const fio of this.fios) {
+      fio.absorvido = false
+      fio.puxado = 0
+    }
+    this.tecido = TECIDO_INICIAL
+    this.tecidoAlvo = TECIDO_INICIAL
+    this.intensidade = 0
+    this.sel = 0
+    this.passo = 0
+    this.pressao = 0
+    this.idxInsiste = 0
+    this.errosFio = 0
+    this.ocioso = 0
+    this.brilhoCorte = 0
+    this.adrian.x = 40
+    musica.desafinado = -0.35
+    musica.abafado = 0.45
+    audio.startAmbient()
+    audio.setAmbient(0.5, 1)
+    audio.setArgument(0.32, 2)
+    this.dialogue.play(TEAR_DE_NOVO)
   }
 
   private nivelTecido(): number {
@@ -477,7 +585,16 @@ export class TearScene implements Scene {
     musica.abafado = 0.45 + this.intensidade * 0.45
     audio.setArgument(Math.max(0, 0.34 - this.intensidade * 0.3), 1.6)
     this.errosFio = 0
-    this.comecarLembranca(feitos - 1)
+    this.sombra.recuar(0.25)
+    const idx = feitos - 1
+    if (this.lembrancasVistas.has(idx)) {
+      // Já passou uma vez: o fio entra direto, sem lembrar de novo.
+      this.afinacaoAntes = { desafinado: musica.desafinado, abafado: musica.abafado }
+      this.terminarLembranca(idx)
+      return
+    }
+    this.lembrancasVistas.add(idx)
+    this.comecarLembranca(idx)
   }
 
   private comecarLembranca(idx: number): void {
@@ -528,7 +645,7 @@ export class TearScene implements Scene {
     this.falaAdrianAte = this.t + Math.max(dur, 1.4 + texto.length / 13)
     // Ele fala de trás, à esquerda de Liam.
     const gritou = texto === texto.toUpperCase()
-    voz.dizer('Adrian', texto, { grito: gritou, pan: -0.45 })
+    voz.dizer('Adrian', texto, { grito: gritou, pan: -0.45, grave: this.sombra.grave })
     if (gritou) sons.caos(0.65)
   }
 
@@ -920,13 +1037,30 @@ export class TearScene implements Scene {
 
     this.desenharEcos(ctx)
     if (this.fase === 'escolha') this.desenharEscolha(ctx)
-    if (this.fase === 'absorvendo' && !this.lembranca) {
+    // A sombra dele, saindo de onde ele está e tomando a sala.
+    if (this.fase === 'absorvendo' || this.fimDeJogo) {
+      const sx = ctx.display.toScreenX(this.adrian.x)
+      const sy = ctx.display.toScreenY(this.adrian.y)
+      const alt = sy - ctx.display.toScreenY(this.adrian.y - this.adrian.altura)
+      this.sombra.draw(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH, sx, sy, alt)
+    }
+    if (this.fase === 'absorvendo' && !this.lembranca && !this.fimDeJogo) {
+      const tocando = this.escutando
       this.piano.draw(ctx.display, { fantasma: true })
       const frase = this.fraseDoFio(this.sel)
       this.piano.drawDica(
         ctx.display,
-        `toque a melodia  ·  ${this.passo}/${frase.length}  ·  ← → escolhe o fio`,
+        tocando
+          ? 'escutando o fio...'
+          : ctx.input.touchMode
+            ? `toque a frase do pai  ·  ${this.passo}/${frase.length}`
+            : `toque a frase do pai  ·  ${this.passo}/${frase.length}  ·  ← → troca de fio`,
       )
+      this.desenharObjetivo(ctx)
+    }
+    if (this.fimDeJogo) {
+      this.sombra.drawFim(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH, this.fimDeJogo.t, TEAR_ENGOLE)
+      return
     }
     if (this.lembranca) this.desenharFalaLembranca(ctx, m)
     else this.desenharAdrian(ctx)
@@ -1219,6 +1353,52 @@ export class TearScene implements Scene {
    * Adrian, no Tear. Começa baixo, ao pé da escada; cada vez que Liam para,
    * ele chega mais perto e a letra cresce. Em maiúsculas, ele gritou.
    */
+  /**
+   * O que fazer, sempre na tela enquanto ele tece: o objetivo, quantos fios
+   * faltam, e os dois botões — o caderno da bisavó e escutar o fio.
+   */
+  private desenharObjetivo(ctx: SceneCtx): void {
+    const c = ctx.display.ctx
+    const { cssW } = ctx.display
+    const s = Math.max(12, Math.min(cssW / 64, 18))
+    const feitos = this.fios.filter((f) => f.absorvido).length
+    c.save()
+    c.textAlign = 'right'
+    c.font = `italic ${s * 1.05}px ${FONT_FIM}`
+    c.fillStyle = PAL.ink
+    c.globalAlpha = 0.85
+    const xd = cssW - s * 1.4
+    c.fillText('Tecer os seis fios: em cada um, a frase que o pai ensinou.', xd, s * 2.2)
+    c.font = `${s * 0.9}px ${FONT_BODY}`
+    c.fillStyle = PAL.inkDim
+    c.fillText(`fios tecidos: ${feitos} de ${this.fios.length}`, xd, s * 3.6)
+    // Os botões
+    this.botoes = []
+    const rotulos: ['caderno' | 'escutar', string][] = [
+      ['caderno', ctx.input.touchMode ? 'caderno da bisavó' : 'C  caderno da bisavó'],
+      ['escutar', ctx.input.touchMode ? 'escutar o fio' : 'R  escutar o fio'],
+    ]
+    c.font = `${s * 0.86}px ${FONT_BODY}`
+    let by = s * 4.6
+    for (const [id, texto] of rotulos) {
+      const w = c.measureText(texto).width + s * 1.4
+      const h = s * 1.7
+      const x = xd - w
+      this.botoes.push({ id, x, y: by, w, h })
+      c.globalAlpha = 0.8
+      c.fillStyle = 'rgba(10,8,14,0.55)'
+      c.fillRect(x, by, w, h)
+      c.strokeStyle = 'rgba(217,178,95,0.45)'
+      c.lineWidth = 1
+      c.strokeRect(x + 0.5, by + 0.5, w - 1, h - 1)
+      c.fillStyle = PAL.ink
+      c.textAlign = 'center'
+      c.fillText(texto, x + w / 2, by + h * 0.68)
+      by += h + s * 0.5
+    }
+    c.restore()
+  }
+
   private desenharAdrian(ctx: SceneCtx): void {
     if (this.t > this.falaAdrianAte || !this.falaAdrian) return
     const c = ctx.display.ctx

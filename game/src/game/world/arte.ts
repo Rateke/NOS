@@ -134,8 +134,10 @@ export interface OpcoesPorta {
 
 /** Porta com batente, almofadas, maçaneta e, se pedido, luz por baixo. */
 export function porta(c: CanvasRenderingContext2D, x: number, chao: number, o: OpcoesPorta = {}): void {
-  const larg = 30
-  const alt = o.alt ?? 64
+  // Uma porta de verdade: mais alta que qualquer móvel da casa e bem mais
+  // alta que as pessoas (2,10 m, na escala dos armários e do piano).
+  const larg = 42
+  const alt = o.alt ?? 100
   const y = chao - alt
   const cor = o.cor ?? [36, 44, 62]
   ret(c, x - larg / 2 - 4, y - 4, larg + 8, alt + 4, rgb(clarear(cor, -18)))

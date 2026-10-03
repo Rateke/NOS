@@ -41,7 +41,9 @@ continuar, pausar, sair), `test/celular.mjs` (em pé e deitado, só no
 toque), `test/som.mjs` (vozes audíveis, grito mais
 alto que fala, nada estoura na briga), `test/segunda.mjs` (o que muda
 quando o jogo lembra que você já terminou), `test/violoncelo.mjs` (os
-segredos do menu, a partitura até o fim e o quinto retrato) e
+segredos do menu, a partitura até o fim e o quinto retrato),
+`test/novidades.mjs` (a foto que a Lia joga, a cabana pela luz, a floresta
+pela fresta do armário, a sombra do pai que engole o Tear, o jornal) e
 `test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
@@ -118,6 +120,9 @@ os três caminhos são testados de ponta a ponta.
 | Examinar | clicar no objeto | E perto dele | tocar |
 | Tocar o piano ou o violino | clicar na tecla ou na nota | A S D F G H J K | tocar na tecla ou na nota |
 | Abrir um fio no Tear | tocar a melodia | tocar a melodia | tocar a melodia |
+| Rever o caderno da bisavó / escutar o fio, no Tear | clicar no botão | C / R | tocar no botão |
+| Abrir e fechar a porta do armário (depois do grito) | arrastar | ← → | arrastar |
+| Pegar a foto que a Lia joga | clicar onde correr | setas | tocar onde correr |
 | Examinar um vestígio | clicar nele | E perto dele | tocar nele |
 | Esconder o caderno da Lia (os passos) | clicar | espaço ou E | tocar |
 | Arrumar a coisa torta, no Dentro | clicar nela | E | tocar nela |
@@ -143,10 +148,18 @@ pular. É o único momento em que o jogo tira o controle de quem joga. Grito
 comprido espera o toque como o resto.
 
 **Respirar.** Às vezes o ar não entra. A tela some em volta, um anel claro
-cresce e encolhe no ritmo certo (quatro pra dentro, quatro pra fora) e o
-círculo de dentro é o ar do Liam: cresce enquanto você segura e esvazia
-quando solta. Acompanhar o anel é conseguir respirar. Não tem botão de
-pular — quem não segura nada também está respirando, mal.
+cresce e encolhe no ritmo certo (quatro pra dentro, quatro pra fora),
+contando de 1 a 4 no meio, e o círculo de dentro é o ar do Liam: cresce
+enquanto você segura e esvazia quando solta. Embaixo, sempre: *"segure
+ESPAÇO enquanto o círculo cresce · solte enquanto ele diminui"*. Quando o ar
+acompanha o anel, o escuro em volta abre; quando escapa, fecha. Não tem
+botão de pular — quem não segura nada também está respirando, mal. A
+primeira vez é com a mãe, no corredor, sem como errar.
+
+**Mecânica nova aparece antes de importar.** O jogo não pausa para explicar.
+Cada mecânica aparece primeiro num momento sem perigo: a marca vermelha no
+chão (a foto que a Lia joga, antes dos pratos da cozinha), a respiração (com
+a mãe, antes da crise), o tema (com o pai no prólogo, antes do Tear).
 
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
@@ -373,20 +386,38 @@ mesma interface.
    escura riscada de canetinha (*LIA*, *SAI*, *LIVRE*, *NÃO ENTRA*,
    *CANSEI*, símbolos, setas), uma bandeira listrada no lugar da cortina,
    um varal de polaroides com fita crepe, roupa e papel no chão e uma TV
-   velha chiando no canto. Ela
+   velha chiando no canto, o skate dela com a roda torta encostado na parede,
+   um calendário com os dias riscados até hoje (circulado: *"tia C., 23h"*)
+   e, na porta do armário, uma tira de fotos de cabine em que a quarta foto
+   foi cortada na tesoura — sobrou um pedacinho de manga roxa. Ela
    está arrumando a mala e xinga ele por entrar sem bater. Manda ele passar
    as coisas — a foto da família (*"Essa não. Ele tá nela."*), o fone, o
    desenho que ele fez com sete anos —, senta na beirada da cama, manda ele
-   sentar do lado, divide o fone (o fio liga as duas orelhas) e por um minuto a casa
-   não existe (a música dela toca, abafada, num lado só — uma peça própria,
+   sentar do lado, divide o fone (o fio liga as duas orelhas) e por meio minuto a casa
+   não existe (a música dela toca, abafada, num lado só, sem pressa — ela
+   batuca o ritmo no joelho, encosta a cabeça no ombro dele; uma peça própria,
    piano lento em sol maior com eco de quarto; quem quiser outra música no
    fone arrasta um arquivo com *lia* ou *fone* no nome, ver *Trilha
    própria*), até o pai gritar da
    cozinha. Então ela chama ele para ir junto, hoje, para a tia Catarina. A
    resposta dele, **na primeira vez, sai com a voz do pai** (*"Não posso
-   deixar o pai sozinho."*); ela joga o travesseiro (*"VOCÊ É IGUALZINHO A
-   ELE, SABIA?"*), manda ele sair — e, quando ele vira, enfia um bilhete no
-   bolso do moletom dele.
+   deixar o pai sozinho."*); ela grita *"VOCÊ É IGUALZINHO A ELE, SABIA?"*,
+   pega a foto da família — a que tem o pai — e ergue para jogar. **É aqui
+   que o jogo ensina a mecânica dos pratos, sem perigo:** o braço sobe, uma
+   marca vermelha pulsa no chão onde a foto vai bater, e há dois segundos.
+   Quem corre até a marca pega a foto no peito (*"Por que você protege ele?!
+   Ele nem tá aqui!"*); quem não corre vê o vidro estourar bem em cima do
+   rosto do pai (*"Eu podia ter pegado."*). Nada pausa para explicar. Ela
+   manda ele sair — e, quando ele vira, enfia um bilhete no bolso do moletom
+   dele.
+
+   **A mãe ensina a respirar.** No corredor, antes da pergunta da mochila,
+   Evelyn repara que ele está respirando curto e faz o exercício junto
+   (*"Quatro pra dentro, quatro pra fora. Eu conto."*): o anel cresce e
+   encolhe contando de um a quatro, ela conta em voz alta, e não dá para
+   errar. É a mesma respiração que ele vai precisar sozinho, na crise da casa
+   e na cozinha — e lá, quando o ar acompanha o anel, o escuro em volta abre
+   e o coração desacelera; quando escapa, a tela fecha.
 
    **Os dois sustos.** O espelho do quarto da Lia: quando Liam passa, o
    reflexo atrasa — uma vez só. Quem estranha e volta para olhar, parado na
@@ -439,13 +470,17 @@ mesma interface.
    marca de caneta numa folha arrancada do diário, que só aparece para quem
    espera na página: *"não me deixem cair"*.
 
-   A demo tem **catorze segredos**, e nada no jogo avisa que existem — só o
-   fecho conta quantos você achou. (Spoiler, para quem for testar: olhar e
-   ler de novo o que já foi visto; bater mais de uma vez; esperar no menu;
-   contar os pratos; abaixar o rádio da cozinha; ler o jornal até o fim;
-   esperar na última página do caderno da bisavó e na folha em branco do
-   diário; prestar atenção no que a voz diz dentro da cabana; e tocar até o
-   fim a partitura que aparece embaixo do violoncelo, depois do grito.)
+   A demo tem **onze segredos**, e nada no jogo avisa que existem — sem som,
+   sem estrela, sem aviso; só o fecho conta quantos você achou. Olhar de novo
+   um objeto não conta como segredo: segredo é o que pede paciência, atenção
+   ou fazer o que o jogo não pede. (Spoiler, para quem for testar: esperar
+   no menu até a porta do fim abrir; reparar no vulto embaixo do poste e ir
+   até a janela; tocar o tema ao contrário no piano da sala; bater três vezes
+   na porta que não abre; reparar que a mesa da cozinha tem cinco pratos;
+   abaixar o rádio da cozinha; esperar na última página, em branco, do
+   caderno da bisavó e na folha arrancada do diário; e, depois do grito,
+   escutar a lata dentro da cabana, ficar olhando pela fresta do armário até
+   ver a Lia, e tocar a partitura roxa no violoncelo até o fim.)
 
 3. **A Mesa.** Começa no meio: um prato estoura na parede antes de qualquer
    palavra, e a primeira fala já é gritada e xingada (*"VOCÊ NÃO VAI LEVAR
@@ -464,9 +499,12 @@ mesma interface.
    gancho) e os cinco pratos. Nada disso muda o que vai acontecer; muda o que
    ele sabe quando acontecer.
 
-   **Os pratos.** Três vezes o pai levanta um prato e mira na mãe ou na Lia:
-   o braço sobe, uma marca vermelha aparece no chão aos pés dela, e há um
-   segundo e meio. Quem corre até lá leva o prato no lugar dela — a tela
+   **Os pratos.** Dois pratos, um em cada uma, e só depois de ela dizer o que
+   ele não quer ouvir: a mãe (*"Chega, Adrian. Eu vou embora hoje. E as
+   crianças vão comigo."*) e, mais tarde, a Lia (*"Ninguém nesta casa aguenta
+   mais você. NINGUÉM!"*). *"O QUE FOI QUE VOCÊ DISSE?!"* — o braço sobe, a
+   mesma marca vermelha que apareceu no quarto da Lia pulsa no chão aos pés
+   de quem falou, e há um segundo e meio. Quem corre até lá leva o prato no lugar dela — a tela
    estoura em branco, e Liam pensa *"Fico no meio. Aí eles param."* (não
    param). Quem não chega vê o prato quebrar nela. O E não funciona enquanto
    o prato está no ar.
@@ -487,7 +525,25 @@ mesma interface.
    uma relíquia pendurada. Adrian desce atrás e fica ao pé da escada:
    `Você lembra da música?` E não fica no pé da escada: a cada fio ele chega
    mais perto e aperta mais (*"De novo."* ... *"TOCA, LIAM! TOCA, P\*\*\*\*!"*),
-   enquanto Liam se agarra às notas para não ouvir. Cada nota certa passa a
+   enquanto Liam se agarra às notas para não ouvir.
+
+   **O que fazer fica sempre na tela:** *"Tecer os seis fios: em cada um, a
+   frase que o pai ensinou"*, quantos fios faltam, e dois botões — **C**,
+   o caderno da bisavó, que abre direto na página da *música do tear* (as
+   três frases em nomes de nota, ré, lá, si♭..., do jeito que o teclado
+   mostra, com uma nota apagada na segunda e outra na terceira: *"Onde
+   falta, eu já não lembro. O fio lembra"*), e **R**, escutar o fio: a frase
+   do fio aceso toca sozinha, acendendo as teclas uma a uma, para quem
+   esqueceu. Escutar custa: ele não gosta de esperar.
+
+   **A sombra do pai.** Cada nota errada faz Adrian chegar mais perto e
+   crescer: o corpo vira uma sombra preta que vai tomando a sala, com dois
+   olhos dourados acesos e uma brasa vermelha por trás, e a voz dele engrossa
+   junto. Tocar certo faz ela recuar. Se ela enche, engole a tela inteira —
+   preto, os olhos, *"DE NOVO."*, *"Ele cresceu até não sobrar sala."* — e
+   o Tear recomeça do primeiro fio (as lembranças que já passaram não voltam).
+   A mesma sombra aparece no prólogo, no violino: três erros seguidos e a
+   frase recomeça. Cada nota certa passa a
    lançadeira e bate o pente, e a tapeçaria da família cresce de baixo para cima — uma casa, cinco
    figuras de mãos dadas. Cada fio completo prende mais um fio no peito de
    Liam e abre uma **lembrança que não é dele**, indo de geração em geração,
@@ -573,6 +629,31 @@ mesma interface.
    fresca; e, na segunda partida, embaixo de um dos rabiscos, um recado
    pequeno: *"não é culpa sua, L."*
 
+   **A cabana, por dentro.** No quarto dele a cabana de cobertor desabou —
+   mas a lanterna continua acesa por baixo do pano. Quem encosta a mão na luz
+   vê a tela clarear inteira, e do outro lado está dentro dela: maior por
+   dentro do que por fora, o cobertor de retalhos fazendo teto, o varal de
+   luzinhas, as almofadas, desenhos de giz de cera presos com alfinete (cinco
+   bonecos de palito; o quinto, roxo, segurando a mão dele), uma caixinha de
+   música que toca o tema ao contrário, subindo, e duas latas ligadas por um
+   barbante que some no escuro. Na lata, longe, a voz da Lia: *"Eu tô aqui
+   fora. Eu não vou embora. Então você também não vai."* É o único lugar da
+   casa em que nada está fora do lugar.
+
+   **O armário.** Dá para entrar no armário dele, puxar a porta e decidir
+   quanto ela fica aberta (← →, ou arrastando). Pela fresta, em vez do
+   quarto, tem uma floresta à noite — lua, troncos, névoa, vaga-lumes, o
+   vento e uma coruja. Aberta demais, é só o quarto de novo: a floresta só
+   existe pelo pouco que se vê. Quem deixa a fresta pequena e fica parado
+   olhando vê, entre as árvores, uma figura de rabo de cavalo. A música dela
+   vem de longe por um instante. *"...Lia?"*
+
+   **O quarto dela, depois.** O fone que ela deixou na cama: pegando, a
+   música dela toca no quarto vazio enquanto ele estiver lá. Uma caixa de
+   sapato puxada de baixo da cama, com todos os desenhos que ele deu para
+   ela, até os feios. E a foto da família como ficou: estourada no chão, se
+   ele não pegou; virada para baixo embaixo do travesseiro, se pegou.
+
    **O violoncelo.** O do bisavô ficou torto no gancho do quarto de Liam.
    Agora dá para tirar da parede, sentar na cama e tocar (A S D F G H J K,
    ou tocando nas notas do braço). Embaixo dele, no chão, uma partitura a
@@ -652,6 +733,12 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | Texturas comuns (papel de parede, lambri, assoalho, portas, quadros) | `src/game/world/arte.ts` |
 | Lista dos segredos | `src/game/content/segredos.ts` |
 | **Diários, cartas, jornal, caderno** (o texto das páginas) | `src/game/content/documentos.ts` |
+| A diagramação do jornal (cabeçalho, colunas, fotos em retícula, classificados, tirinha) | `src/game/systems/jornal.ts` |
+| A cabana por dentro (depois do grito) | `src/game/world/cabanaDentro.ts`; a entrada pela luz em `scenes/demo/casa.ts` (`entrarNaCabana`) |
+| O armário e a floresta pela fresta | `src/game/world/armarioFloresta.ts`; o som em `src/engine/audio.ts` (`floresta`) |
+| A sombra do pai (Tear e prólogo) | `src/game/ui/sombraPai.ts`; a voz engrossando em `src/engine/voz.ts` (`grave`) |
+| A foto que a Lia joga (a marca vermelha, antes dos pratos) | `src/game/scenes/demo/casa.ts` (`cutRetratoLia`, `RETRATO_*`) |
+| Os pratos da cozinha (quem fala, quando o braço sobe) | `src/game/scenes/demo/mesa.ts` (`PROVOCACOES`) |
 | Leitor de páginas (papel, letras de cada pessoa) | `src/game/systems/leitor.ts` |
 | O fecho (partículas, acorde final, contagem de segredos) | `src/game/scenes/demo/fim.ts` |
 | Créditos, colapso e pós-créditos | `src/game/scenes/demo/fim.ts` (`COLAPSO`, `ECOS`) |
@@ -697,9 +784,11 @@ src/
     scenes/    título → abertura → quarto → cartão de capítulo
 ```
 
-O mundo é desenhado em 384x216 e escalado por um número inteiro, para os
-pixels ficarem nítidos; o texto é desenhado por cima em resolução de tela,
-para continuar legível. Móveis e Liam são ordenados por profundidade, então
+O mundo é desenhado em 384x216 e escalado para preencher a janela inteira
+(o lado que limitar; o pixel fracionário quase não aparece a partir de 3x);
+o texto é desenhado por cima em resolução de tela, para continuar legível.
+A escala da casa é a de uma porta de 2,10 m (100 px): móveis abaixo do alto
+das portas, marcas de altura na altura das crianças. Móveis e Liam são ordenados por profundidade, então
 ele passa atrás da escrivaninha e na frente da cama.
 
 **Referências visuais:** navegação e câmera do OMORI; paleta, queda de luz e
@@ -715,7 +804,7 @@ trecho durante a produção. Os ids são os pontos de salvamento (`abertura`,
 `prologo`, `casa`, `mesa`, `tear`, `grito`, `depois`, `fim`), mais `hospital`
 (= `abertura`) e `quarto` (a fatia antiga). Entrar assim também grava o jogo,
 e o primeiro clique ou tecla liga o som (que normalmente nasce no menu).
-`?segredos=melodia,nome` começa com esses segredos achados (para
+`?segredos=melodia,floresta` começa com esses segredos achados (para
 conferir o fecho). Nenhum deles tem efeito no jogo normal.
 
 ## Limites conhecidos

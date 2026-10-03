@@ -43,6 +43,19 @@ export const LIA_FONE_PAZ: Line[] = [
   { text: 'Por um minuto a casa não existe.' },
 ]
 
+/**
+ * Durante a música, de vez em quando, uma coisa pequena — e muito silêncio
+ * entre elas. `em` é quanto tempo depois de a música começar.
+ */
+export const LIA_FONE_MOMENTOS: { em: number; linhas: Line[] }[] = [
+  { em: 9, linhas: [{ text: 'Ela batuca o ritmo no joelho, sem perceber.' }] },
+  { em: 17, linhas: [{ text: 'A gente tinha uma música assim quando era pequeno. Eu não lembro qual.' }] },
+  { em: 25, linhas: [{ text: 'Ela encosta a cabeça no meu ombro. Só um pouco.' }] },
+]
+
+/** Quanto tempo a música dela toca até o pai gritar (segundos). */
+export const LIA_FONE_DURACAO = 33
+
 export const LIA_FONE_CORTE: Line[] = [
   { speaker: 'Adrian', text: 'LIA! LIAM! PRA COZINHA, AGORA!', style: 'speech', grito: true, onde: 'da cozinha' },
   { text: 'Ela puxa o fone da minha orelha. Fica olhando pra porta.' },
@@ -77,6 +90,21 @@ export const LIA_CONVITE_RESPOSTAS: Line[][] = [
 export const LIA_RAIVA: Line[] = [
   { speaker: 'Lia', text: '...', style: 'speech' },
   { speaker: 'Lia', text: 'VOCÊ É IGUALZINHO A ELE, SABIA?', style: 'speech', grito: true },
+  { text: 'Ela pega a foto da família de cima da cama. A que tem ele.' },
+]
+
+/** Liam entrou na frente e pegou a foto no ar. */
+export const LIA_RETRATO_PEGO: Line[] = [
+  { text: 'Eu entro na frente sem pensar. O canto do porta-retrato bate no meu peito.' },
+  { speaker: 'Lia', text: 'Por que você protege ele?! Ele nem tá aqui!', style: 'speech' },
+  { speaker: 'Lia', text: 'Você sempre entra na frente. Sempre. Até de foto.', style: 'speech' },
+]
+
+/** A foto estourou no chão. */
+export const LIA_RETRATO_QUEBROU: Line[] = [
+  { text: 'O vidro estoura no chão. Rachou bem em cima do rosto dele.' },
+  { text: 'Eu podia ter pegado. Eu estava perto.' },
+  { speaker: 'Lia', text: '...Pronto.', style: 'speech' },
 ]
 
 export const LIA_SAI: Line[] = [

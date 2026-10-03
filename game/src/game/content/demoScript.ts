@@ -470,6 +470,19 @@ export const EVELYN_PERGUNTA: Line[] = [
 
 export const EVELYN_OPCOES = ['Arrumo.', 'Pra onde a gente vai?', 'Mãe, eu tô com medo.']
 
+/**
+ * Antes da pergunta, ela repara que ele está respirando curto e faz o
+ * exercício junto — o mesmo que ele vai precisar sozinho, mais tarde.
+ */
+export const EVELYN_RESPIRA_ABRE: Line[] = [
+  { speaker: 'Evelyn', text: 'Ei. Olha pra mim. Você tá respirando curto de novo.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Faz comigo, igual quando você era pequeno. Quatro pra dentro, quatro pra fora. Eu conto.', style: 'speech' },
+]
+
+export const EVELYN_RESPIRA_FECHA: Line[] = [
+  { speaker: 'Evelyn', text: 'Isso. Quando o peito apertar, faz assim. Ninguém precisa ver.', style: 'speech' },
+]
+
 /** O que sai antes de ele conseguir escolher: a frase do pai, na boca dele. */
 export const LIAM_ECO: Line[] = [
   { speaker: 'Liam', text: 'Você tá cansada, mãe. Quando você tá cansada, você vê coisa onde não tem.', style: 'speech', fio: 'Adrian' },

@@ -3,7 +3,9 @@ import { Dialogue } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
 import { audio } from '../../../engine/audio'
 import { musica, TEMA, ESCALA } from '../../../engine/musica'
-import { Figura, VISUAL } from '../../world/figura'
+import { Figura, VISUAL, ALTURA } from '../../world/figura'
+import { SombraDoPai } from '../../ui/sombraPai'
+import { voz } from '../../../engine/voz'
 import { Particulas } from '../../world/particulas'
 import { drawSalaFundo, drawSalaFrente, drawLuzSala, LUZ_PIANO, BANCO_Y, PIANO, PASSO_Y } from '../../world/sala'
 import {
@@ -68,6 +70,9 @@ export class PrologoScene implements Scene {
   private gritos = 0
   /** Liam respirando com o arco na corda (exposto para os testes). */
   respiracao = new Respiracao()
+  /** A sombra do pai: cresce a cada erro; cheia, engole a sala e a frase recomeça. */
+  private sombra = new SombraDoPai()
+  private fimSombra: number | null = null
   /** O arco: onde está na corda (-1..1) e para onde vai. */
   private arcada = 0
   private arcoDir = 1
@@ -84,7 +89,7 @@ export class PrologoScene implements Scene {
   })
   private liam = new Figura({
     ...VISUAL.liam,
-    x: PIANO.x1 + 12, y: PASSO_Y, altura: 31,
+    x: PIANO.x1 + 12, y: PASSO_Y, altura: ALTURA.liam,
     cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.4)' },
   })
   private po = new Particulas()
@@ -124,6 +129,26 @@ export class PrologoScene implements Scene {
 
   update(dt: number, ctx: SceneCtx): void {
     this.t += dt
+    this.sombra.update(dt)
+    this.dialogue.graveAdrian = this.sombra.grave
+    // A sombra dele encheu: a sala some, e a frase recomeça.
+    if (this.fimSombra !== null) {
+      this.fimSombra += dt
+      if (this.fimSombra > 3.4) {
+        this.fimSombra = null
+        this.sombra.zerar()
+        this.dialogue.play([{ text: 'De novo. Do começo.' }], () => this.repetir())
+      }
+      return
+    }
+    if (this.sombra.engoliu) {
+      this.fimSombra = 0
+      this.respiracao.cancelar()
+      this.dialogue.play([])
+      audio.heartbeat(0.4)
+      voz.dizer('Adrian', 'DE NOVO.', { grito: true, grave: 1, volume: 1.3 })
+      return
+    }
     this.etiquetas.update(dt)
     this.camada.update(dt)
     // Os dois são apresentados pelas etiquetas, na letra do Adrian.
@@ -174,6 +199,7 @@ export class PrologoScene implements Scene {
     this.puxarArco()
 
     if (this.fraseAtual[this.passo] === tocada) {
+      this.sombra.recuar(0.04)
       // Ele toca junto: uma nota do acorde da frase, embaixo do violino.
       const acorde = ACOMPANHA[this.frase] ?? []
       const f = acorde[this.passo % acorde.length]
@@ -190,6 +216,8 @@ export class PrologoScene implements Scene {
 
     this.erros++
     this.passo = 0
+    // Cada erro: ele cresce. Três seguidos, e a sombra dele toma a sala.
+    this.sombra.crescer(0.36)
     if (this.deNovo) {
       this.gritar()
       return
@@ -247,6 +275,8 @@ export class PrologoScene implements Scene {
   }
 
   private acertou(): void {
+    // A frase inteira, junto com ele: a sombra volta a ser só um homem ao piano.
+    this.sombra.recuar(0.45)
     const fala = this.frase === 0 && memoria.terminou ? DE_NOVO_ACERTOU : PROLOGO_ACERTOU_FRASE[this.frase]
     this.frase++
     if (this.frase < TEMA.length) {
@@ -392,6 +422,17 @@ export class PrologoScene implements Scene {
       time: this.t,
     })
     ctx.display.vignette(0.62 + (1 - this.calor) * 0.26)
+    {
+      const c0 = ctx.display.ctx
+      const sx = ctx.display.toScreenX(this.adrian.x)
+      const sy = ctx.display.toScreenY(this.adrian.y)
+      const alt = sy - ctx.display.toScreenY(this.adrian.y - this.adrian.altura)
+      this.sombra.draw(c0, ctx.display.cssW, ctx.display.cssH, sx, sy, alt)
+      if (this.fimSombra !== null) {
+        this.sombra.drawFim(c0, ctx.display.cssW, ctx.display.cssH, this.fimSombra, ['Ele cresceu até não sobrar sala.', 'a frase recomeça'])
+        return
+      }
+    }
 
     const mostrandoPiano = this.fase !== 'entrada' && this.fase !== 'saida'
     if (mostrandoPiano) {

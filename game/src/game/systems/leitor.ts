@@ -2,6 +2,7 @@ import type { Input } from '../../engine/input'
 import { audio } from '../../engine/audio'
 import { PAL } from '../../engine/constants'
 import { FONT_BODY, FONT_TITLE, FONT_FIM } from './dialogue'
+import { desenharJornal, type TipoFoto } from './jornal'
 
 /**
  * Leitor de documentos: diários, cadernos, cartas, jornal, bilhetes.
@@ -39,6 +40,12 @@ export interface Bloco {
   circulado?: boolean
   /** Espaço extra antes do bloco. */
   respiro?: number
+  /** Jornal: foto em retícula no lugar do texto (o texto é ignorado). */
+  foto?: TipoFoto
+  /** Jornal: legenda da foto. */
+  legenda?: string
+  /** Jornal: quadro na coluna lateral ("TÍTULO: texto"). */
+  caixa?: boolean
 }
 
 export interface Pagina {
@@ -55,6 +62,10 @@ export interface Pagina {
   planta?: boolean
   /** Palavras cruzadas: '.' vazio, '_' casa em branco, MAIÚSCULA tinta, minúscula lápis. */
   cruzadas?: string[]
+  /** Jornal: o caderno desta página (tarja preta no alto). Sem ele, é a capa. */
+  secao?: string
+  /** A página da música do tear, no caderno da bisavó (para abrir direto nela). */
+  musica?: boolean
 }
 
 export type TipoDocumento = 'diario' | 'caderno' | 'carta' | 'jornal' | 'livro' | 'bilhete'
@@ -97,7 +108,7 @@ const PAPEL: Record<TipoDocumento, { cor: string; borda: string; proporcao: numb
   diario: { cor: '#ebe4d0', borda: '#c8bca0', proporcao: 0.72, escala: 1 },
   caderno: { cor: '#d8c8a2', borda: '#9a8458', proporcao: 0.72, escala: 1 },
   carta: { cor: '#f1eee6', borda: '#cfcabe', proporcao: 0.72, escala: 1 },
-  jornal: { cor: '#dcd8cc', borda: '#b4b0a4', proporcao: 0.76, escala: 1 },
+  jornal: { cor: '#dcd6c4', borda: '#b4b0a4', proporcao: 0.74, escala: 1.1 },
   livro: { cor: '#efe6cf', borda: '#cbbd98', proporcao: 0.72, escala: 1 },
   bilhete: { cor: '#f2eee2', borda: '#cdc6b2', proporcao: 0.9, escala: 0.62 },
 }
@@ -136,6 +147,14 @@ export class Leitor {
     this.abrindo = 0
     this.opcoes = opcoes
     audio.folha()
+    this.aoMostrar()
+  }
+
+  /** Vai direto para uma página (o caderno da bisavó, aberto na música). */
+  irPara(i: number): void {
+    if (!this.doc || i < 0 || i >= this.doc.paginas.length) return
+    this.pagina = i
+    this.tPagina = 0
     this.aoMostrar()
   }
 
@@ -221,7 +240,7 @@ export class Leitor {
     c.fillRect(0, 0, cssW, cssH)
 
     // Tamanho da folha: cabe na tela, de pé, também no celular.
-    let h = Math.min(cssH * 0.8, 700) * papel.escala
+    let h = Math.min(cssH * (doc.tipo === 'jornal' ? 0.86 : 0.8), 700) * papel.escala
     let w = h * papel.proporcao
     if (w > cssW * 0.92) {
       w = cssW * 0.92
@@ -237,7 +256,14 @@ export class Leitor {
     c.fillStyle = 'rgba(0,0,0,0.5)'
     c.fillRect(x + 6, y + 8, w, h)
     this.desenharPapel(c, doc.tipo, pag, x, y, w, h)
-    this.desenharTexto(c, pag, x, y, w, h)
+    if (doc.tipo === 'jornal') {
+      // O jornal tem diagramação própria; as cruzadas entram embaixo da tarja.
+      const grade = pag.cruzadas
+      desenharJornal(c, pag, this.pagina, x, y, w, h,
+        grade ? (gx, gy, gw) => this.desenharCruzadas(c, grade, gx, gy, gw, w / 26) : undefined)
+    } else {
+      this.desenharTexto(c, pag, x, y, w, h)
+    }
     c.restore()
 
     // Título do documento, página e dica — fora da folha
@@ -248,7 +274,8 @@ export class Leitor {
     c.letterSpacing = '0.24em'
     c.fillStyle = PAL.inkDim
     c.globalAlpha = 0.8 * this.abrindo
-    c.fillText(doc.titulo.toUpperCase(), cssW / 2, Math.max(s * 1.6, y - s * 0.9))
+    // O jornal já traz o nome no alto da folha.
+    if (doc.tipo !== 'jornal') c.fillText(doc.titulo.toUpperCase(), cssW / 2, Math.max(s * 1.6, y - s * 0.9))
     c.letterSpacing = '0.1em'
     const total = doc.paginas.length
     const rodape = total > 1
@@ -313,9 +340,6 @@ export class Leitor {
         c.arc(mx, my, s * (0.5 + (i % 3) * 0.4), 0, Math.PI * 2)
         c.fill()
       }
-    } else if (tipo === 'jornal') {
-      c.fillStyle = 'rgba(0,0,0,0.06)'
-      c.fillRect(x + w / 2, y + s * 5, 1, h - s * 6)
     }
 
     if (pag.dobras) {

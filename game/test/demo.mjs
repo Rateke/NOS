@@ -193,6 +193,7 @@ async function usar() {
 }
 
 const segredos = () => page.evaluate(() => [...(window.__nos?.state?.segredos ?? [])])
+const viu = (id) => page.evaluate((id) => !!window.__nos?.scene?.achados?.has(id), id)
 const tecla = async (codigos) => {
   for (const k of codigos) {
     await page.keyboard.press(k)
@@ -220,7 +221,8 @@ esperar('a porta da sala leva ao corredor', await comodo(), 'corredor')
 
 // As marcas de altura, vistas duas vezes, mostram o que a lixa não pegou.
 await andarAte(306); await usar(); await usar()
-esperar('olhar de novo as marcas acha um nome', (await segredos()).includes('nome'), true)
+esperar('olhar de novo as marcas mostra o que a lixa não pegou', await viu('marcas+'), true)
+esperar('olhar de novo não é segredo', (await segredos()).includes('nome'), false)
 esperar('na primeira vez, a frase do pai sai da boca do Liam',
   await page.evaluate(() => window.__nos.scene.falouPeloPai), true)
 
@@ -250,9 +252,9 @@ if (OUT) await page.screenshot({ path: `${OUT}/c1-quarto.png` })
 await andarAte(214); await usar()
 esperar('a caixa debaixo da cama foi aberta', (await estado()).achados >= 1, true)
 await andarAte(342); await usar(); await usar()
-esperar('o diário tem um bilhete escondido', (await segredos()).includes('bilhete'), true)
+esperar('o diário tem um bilhete escondido', await viu('diario+'), true)
 await andarAte(58); await usar(); await usar()
-esperar('a cabana guarda uma voz', (await segredos()).includes('cabana'), true)
+esperar('a cabana guarda uma voz', await viu('cabana+'), true)
 await andarAte(-100, 6000)
 esperar('a parede esquerda do quarto segura Liam', (await estado()).x >= 20, true)
 
@@ -270,7 +272,7 @@ esperar('o corredor se alongou enquanto Liam andava', (await estado()).larg, 118
 if (OUT) await page.screenshot({ path: `${OUT}/c2-corredor.png` })
 
 await andarAte(1180 - 112); await usar()
-esperar('o último retrato não tem ninguém', (await segredos()).includes('ninguem'), true)
+esperar('o último retrato não tem ninguém', await viu('ninguem'), true)
 
 // A porta do fim não abre. Nunca abriu. Mas quem insiste ouve alguém.
 await andarAte(1180 - 46)

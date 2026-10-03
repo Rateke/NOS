@@ -235,7 +235,7 @@ export class TitleScene implements Scene {
       this.bateu = true
       audio.bater(3, 0)
       this.achouPorta = true
-      if (ctx.state.descobrir('porta-menu')) window.setTimeout(() => audio.segredo(), 1400)
+      ctx.state.descobrir('porta-menu')
     }
 
     if (this.aviso) this.aviso.t += dt

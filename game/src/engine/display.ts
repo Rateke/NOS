@@ -152,13 +152,12 @@ export class Display {
     this.canvas.height = Math.round(this.cssH * dpr)
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    // Escala inteira sempre que couber; abaixo disso, aceita fracionária para
-    // não deixar tarja enorme em janelas pequenas. Em tela de celular
-    // (deitado, a altura fica perto de 400px) a inteira seria 1x e o cenário
-    // ocuparia menos da metade da tela: lá ele preenche a altura inteira.
+    // O cenário preenche a janela inteira (o lado que limitar). Escala
+    // inteira deixava tarja grossa em quase toda tela — numa janela de
+    // 1440x800 o jogo ficava com 1152x648 — e quem jogou reclamou que não
+    // enxergava. O pixel fracionário quase não aparece a partir de 3x.
     const raw = Math.min(this.cssW / WORLD_W, this.cssH / WORLD_H)
-    const celular = Math.min(this.cssW, this.cssH) < 540
-    this.scale = raw >= 1 && !celular ? Math.floor(raw) : raw
+    this.scale = raw
     this.offsetX = Math.floor((this.cssW - WORLD_W * this.scale) / 2)
     this.offsetY = Math.floor((this.cssH - WORLD_H * this.scale) / 2)
   }

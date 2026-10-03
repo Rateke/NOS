@@ -89,7 +89,9 @@ esperar('Liam senta com o violoncelo', await s(() => window.__nos.scene.tocandoC
 const TECLA = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK']
 // A mesma de src/game/content/violoncelo.ts.
 const PARTITURA = [0, 1, 3, 2, 4, 5, 7, 4, 5, 7]
+// Uma tecla por quadro: um intervalo curto entre elas, como uma pessoa toca.
 await page.keyboard.press(TECLA[PARTITURA[0]])
+await page.waitForTimeout(120)
 await page.keyboard.press(TECLA[PARTITURA[1]])
 await page.waitForTimeout(200)
 esperar('duas notas certas andam a partitura', await s(() => window.__nos.scene.partituraIdx), 2)

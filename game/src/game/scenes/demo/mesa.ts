@@ -4,7 +4,7 @@ import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
 import { voz } from '../../../engine/voz'
 import { clima } from '../../../engine/clima'
-import { Figura, VISUAL } from '../../world/figura'
+import { Figura, VISUAL, ALTURA } from '../../world/figura'
 import { Particulas } from '../../world/particulas'
 import { Leitor } from '../../systems/leitor'
 import {
@@ -36,8 +36,16 @@ type Fase = 'estouro' | 'abertura' | 'confronto' | 'preso' | 'gritaria' | 'fundo
 /** Onde fica o quinto prato, na mesa da frente. */
 const PRATOS_X = 232
 
-/** Quando, depois de começar a andar, cada prato voa (segundos). */
-const ARREMESSOS_EM = [2.0, 7.2, 12.4]
+/**
+ * Um prato em cada uma, e só depois de ela dizer o que ele não quer ouvir.
+ * `em` é quando ela fala (segundos depois de Liam começar a andar); o braço
+ * dele sobe `DEPOIS_DA_FALA` segundos depois.
+ */
+const PROVOCACOES: { em: number; alvo: 'Evelyn' | 'Lia'; fala: string }[] = [
+  { em: 2.2, alvo: 'Evelyn', fala: 'Chega, Adrian. Eu vou embora hoje. E as crianças vão comigo.' },
+  { em: 10.5, alvo: 'Lia', fala: 'Ninguém nesta casa aguenta mais você. NINGUÉM!' },
+]
+const DEPOIS_DA_FALA = 1.6
 /** O braço levantado antes de soltar: o tempo que o jogador tem. */
 const AVISO_PRATO = 1.55
 const VOO_PRATO = 0.5
@@ -99,9 +107,10 @@ interface Grito {
  * a tela treme junto com cada grito.
  *
  * Liam pode andar entre a mãe e o pai, e é puxado pelos dois — **não existe
- * ponto neutro**. De tempos em tempos o pai pega um prato: o braço sobe, uma
- * marca vermelha aparece no chão aos pés da mãe ou da Lia, e o jogador tem
- * um segundo e meio. Correr e entrar na frente é levar o prato. Não correr
+ * ponto neutro**. Duas vezes, logo depois de uma delas dizer o que ele não
+ * quer ouvir, o pai pega um prato: o braço sobe, uma marca vermelha aparece
+ * no chão aos pés de quem falou, e o jogador tem um segundo e meio — o
+ * mesmo aviso que ele já viu no quarto da Lia, com a foto. Correr e entrar na frente é levar o prato. Não correr
  * é ver o prato estourar nos pés dela. As duas coisas são ruins — e a sombra
  * vai lembrar qual ele escolheu.
  *
@@ -129,6 +138,8 @@ export class MesaScene implements Scene {
   private tPreso = 0
   private arremesso: Arremesso | null = null
   private proxArremesso = 0
+  /** Ela acabou de falar; o braço dele ainda não subiu. */
+  private provocacao: { idx: number; t: number } | null = null
   private cacos: Caco[] = []
   /** Quantos pratos Liam levou, e quantos estouraram perto delas. */
   pratosNoLiam = 0
@@ -150,26 +161,26 @@ export class MesaScene implements Scene {
 
   private liam = new Figura({
     ...VISUAL.liam,
-    x: 232, y: CHAO, altura: 31,
+    x: 232, y: CHAO, altura: ALTURA.liam,
     cor: { roupa: '#252a3a', cabelo: '#12151f', pele: '#6d5a52', sombra: 'rgba(0,0,0,0.5)' },
   })
   // Evelyn: uniforme do trabalho, cabelo comprido solto. O casaco está na
   // cadeira — pronto para sair.
   private evelyn = new Figura({
     ...VISUAL.evelyn,
-    x: 132, y: CHAO, altura: 38, cabelo: 'longo', gola: '#a8b4bc',
+    x: 132, y: CHAO, altura: ALTURA.evelyn, cabelo: 'longo', gola: '#a8b4bc',
     cor: { roupa: '#3e5664', cabelo: '#2a1a16', pele: '#7a5a4e', sombra: 'rgba(0,0,0,0.5)' },
   })
   // Adrian: o mais alto, barba, camisa escura de gola clara. Calmo.
   private adrian = new Figura({
     ...VISUAL.adrian,
-    x: 292, y: CHAO, altura: 42, barba: true, gola: '#d4ccc0',
+    x: 292, y: CHAO, altura: ALTURA.adrian, barba: true, gola: '#d4ccc0',
     cor: { roupa: '#2e2430', cabelo: '#16100f', pele: '#7a584c', sombra: 'rgba(0,0,0,0.5)' },
   })
   // Lia: quatorze anos, rabo de cavalo, moletom vinho e a mochila nas costas.
   private lia = new Figura({
     ...VISUAL.lia,
-    x: 92, y: CHAO, altura: 32, cabelo: 'rabo', mochila: '#2e3e56',
+    x: 92, y: CHAO, altura: ALTURA.lia, cabelo: 'rabo', mochila: '#2e3e56',
     cor: { roupa: '#6a2c38', cabelo: '#1e1214', pele: '#7a6052', sombra: 'rgba(0,0,0,0.5)' },
   })
 
@@ -346,15 +357,25 @@ export class MesaScene implements Scene {
     }
 
     this.tPreso += dt
-    if (!this.arremesso && this.proxArremesso < ARREMESSOS_EM.length && this.tPreso >= (ARREMESSOS_EM[this.proxArremesso] ?? 99)) {
-      this.armar()
+    const prox = PROVOCACOES[this.proxArremesso]
+    if (!this.arremesso && !this.provocacao && prox && this.tPreso >= prox.em) {
+      this.provocacao = { idx: this.proxArremesso, t: 0 }
+      this.puxaoAte = 0
+      this.chamar(prox.alvo, [prox.fala])
+    }
+    if (this.provocacao) {
+      this.provocacao.t += dt
+      if (this.provocacao.t >= DEPOIS_DA_FALA) {
+        this.provocacao = null
+        this.armar()
+      }
     }
     if (this.arremesso) {
       this.arremessar(dt, ctx)
       return
     }
     // Depois do primeiro prato, o ar falta.
-    if (!this.respirou && this.proxArremesso >= 1 && this.tPreso > (ARREMESSOS_EM[0] ?? 2) + 3.2) {
+    if (!this.respirou && this.proxArremesso >= 1 && !this.provocacao && this.tPreso > (PROVOCACOES[0]?.em ?? 2) + DEPOIS_DA_FALA + AVISO_PRATO + VOO_PRATO + 3) {
       this.faltaAr()
       return
     }
@@ -582,7 +603,7 @@ export class MesaScene implements Scene {
   private armar(): void {
     const idx = this.proxArremesso
     this.proxArremesso++
-    const alvo: 'Evelyn' | 'Lia' = idx === 1 ? 'Lia' : 'Evelyn'
+    const alvo: 'Evelyn' | 'Lia' = PROVOCACOES[idx]?.alvo ?? 'Evelyn'
     const f = alvo === 'Lia' ? this.lia : this.evelyn
     this.arremesso = { fase: 'aviso', t: 0, alvo, alvoX: f.x + 10, idx }
     this.destino = null
@@ -748,7 +769,7 @@ export class MesaScene implements Scene {
     if (v.id === 'fogao') this.panoTirado = true
     audio.interact()
     if (v.aprende) this.jogo?.aprender(v.aprende)
-    if (v.segredo && this.jogo?.descobrir(v.segredo)) window.setTimeout(() => audio.segredo(), 400)
+    if (v.segredo) this.jogo?.descobrir(v.segredo)
     const doc = v.documento
     if (doc) {
       const depois = v.depois
@@ -778,7 +799,7 @@ export class MesaScene implements Scene {
     this.pratosVistos = true
     audio.interact()
     this.dialogue.play(MESA_PRATOS, () => {
-      if (ctx.state.descobrir('pratos')) audio.segredo()
+      ctx.state.descobrir('pratos')
     })
   }
 

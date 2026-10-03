@@ -210,7 +210,12 @@ esperar('a porta da sala leva ao corredor', await irEUsar(484, emComodo('corredo
 // O caderno da Lia, lido no corredor. Quem só clica para ler e não esconde
 // a tempo é pego: o pai aparece na porta e rasga a página.
 const cutscene = () => page.evaluate(() => window.__nos?.scene?.cutsceneAtual ?? null)
-const lendoCaderno = () => page.evaluate(() => !!window.__nos?.scene?.lendo || !!window.__nos?.scene?.dialogue?.active)
+// Só vale o caderno de verdade: a mãe no corredor (e a respiração com ela)
+// também põe fala na tela, e isso não é ter pegado o caderno.
+const lendoCaderno = () => page.evaluate(() => {
+  const c = window.__nos?.scene
+  return !!c?.achados?.has('caderno-lia') || c?.cutsceneAtual === 'passos'
+})
 esperar('clicar no caderno da Lia pega o caderno', await irEUsar(176, lendoCaderno), true)
 for (let i = 0; i < 80; i++) {
   if ((await cutscene()) === 'passos') break
@@ -264,7 +269,7 @@ for (const [alvo, id] of [[262, 'telefone'], [200, 'fogao'], [158, 'bilhete'], [
 esperar('os quatro vestígios foram encontrados', (await estado()).achados, 4)
 if (OUT) await page.screenshot({ path: `${OUT}/d-achados.png` })
 esperar('a tensão vira gritaria', await esperarFase('gritaria', 60000), true)
-esperar('os três pratos voaram', await page.evaluate(() => window.__nos.scene.pratosNoLiam + window.__nos.scene.pratosNelas), 3)
+esperar('os dois pratos voaram, um em cada uma', await page.evaluate(() => window.__nos.scene.pratosNoLiam + window.__nos.scene.pratosNelas), 2)
 
 // A câmara: o mesmo tema abre os fios
 esperar('a Mesa empurra Liam para o porão', await esperarCena('demo-tear'), true)
