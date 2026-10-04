@@ -91,9 +91,15 @@ export const MESA_RESPIROU: Line[] = [
 ]
 
 /** Não conseguiu. */
-export const MESA_SEM_AR: Line[] = [
-  { text: 'Puxo e não vem. Puxo e não vem.' },
-  { text: 'A cozinha fica pequena. A luz fica longe.' },
+/** Não respirou: a tela fecha inteira. É o único game over fora do Tear. */
+export const MESA_SEM_AR: [string, string] = [
+  'O ar não voltou.',
+  'de novo: quatro pra dentro, quatro pra fora',
+]
+
+/** Depois do preto, de volta ao ar. */
+export const MESA_DE_NOVO_AR: Line[] = [
+  { text: 'De novo. Quatro pra dentro. Quatro pra fora.' },
 ]
 
 /** O primeiro prato que ele leva: a mão no rosto, o sangue, e ele fica. */

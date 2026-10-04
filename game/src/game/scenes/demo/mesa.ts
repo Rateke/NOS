@@ -1,5 +1,5 @@
 import type { Scene, SceneCtx } from '../types'
-import { Dialogue, FONT_BODY } from '../../systems/dialogue'
+import { Dialogue, FONT_BODY, FONT_FIM } from '../../systems/dialogue'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
 import { voz } from '../../../engine/voz'
@@ -12,7 +12,7 @@ import {
   MESA_VESTIGIOS, MESA_PRATOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
 } from '../../content/demoScript'
 import {
-  MESA_FALTA_AR, MESA_RESPIROU, MESA_SEM_AR,
+  MESA_FALTA_AR, MESA_RESPIROU, MESA_SEM_AR, MESA_DE_NOVO_AR,
   MESA_ESTOURO, ARREMESSO_ADRIAN, PRATO_NELAS, PRATO_NO_LIAM, PRATO_PENSAMENTO, GRITARIA, GRITARIA_FIM,
 } from '../../content/noite'
 import { TearScene } from './tear'
@@ -151,6 +151,11 @@ export class MesaScene implements Scene {
   /** Entre os pratos, ele tenta respirar. Dando certo ou não, piora. */
   respiracao = new Respiracao()
   private respirou = false
+  /**
+   * O ar não voltou: a tela fecha inteira e a respiração recomeça. É o
+   * momento em que respirar decide — o único game over fora do Tear.
+   */
+  private semAr: number | null = null
   /** 0..1: o ar que faltou. Fecha a tela e não volta inteiro. */
   private sufoco = 0
   private feridas: Ferida[] = []
@@ -267,6 +272,15 @@ export class MesaScene implements Scene {
       }
     }
 
+    if (this.semAr !== null) {
+      this.semAr += dt
+      if (this.semAr > 4.2) {
+        this.semAr = null
+        this.sufoco = 0.6
+        this.dialogue.play(MESA_DE_NOVO_AR, () => this.respirar())
+      }
+      return
+    }
     this.sufoco = Math.max(this.respirou ? 0.35 : 0, this.sufoco - dt * 0.08)
     this.sangrar(dt)
     if (this.respiracao.ativa) {
@@ -471,25 +485,33 @@ export class MesaScene implements Scene {
     this.respirou = true
     this.destino = null
     this.liam.andando = 0
-    this.dialogue.play(MESA_FALTA_AR, () => {
-      this.respiracao.comecar({
-        ciclos: 2, periodo: 3.4, tolerancia: 0.22,
-        onFim: (ok) => {
-          // Piora: a tela fecha e não abre mais inteira; a briga anda um pouco.
-          this.tensao = Math.min(0.97, this.tensao + 0.08)
+    this.dialogue.play(MESA_FALTA_AR, () => this.respirar())
+  }
+
+  /**
+   * Respirar no ritmo. Aqui decide: conseguindo, a cena segue (e o pai ouve
+   * o ar entrando); não conseguindo, a tela fecha inteira e começa de novo.
+   */
+  private respirar(): void {
+    this.respiracao.comecar({
+      ciclos: 2, periodo: 3.4, tolerancia: 0.22,
+      onFim: (ok) => {
+        if (!ok) {
+          this.jogo?.aprender('sem-ar')
+          this.semAr = 0
           this.sufoco = 1
-          if (ok) {
-            // Ele conseguiu. O pai ouviu o ar entrando.
-            this.jogo?.aprender('respirou')
-            this.jolt = 1
-            this.dialogue.play(MESA_RESPIROU, undefined, 1.2)
-          } else {
-            this.jogo?.aprender('sem-ar')
-            audio.heartbeat(0.3)
-            this.dialogue.play(MESA_SEM_AR)
-          }
-        },
-      })
+          audio.heartbeat(0.4)
+          sons.zumbido(0.9, 3)
+          return
+        }
+        // Piora mesmo assim: a tela fecha um pouco e não abre mais inteira.
+        this.tensao = Math.min(0.97, this.tensao + 0.08)
+        this.sufoco = 1
+        // Ele conseguiu. O pai ouviu o ar entrando.
+        this.jogo?.aprender('respirou')
+        this.jolt = 1
+        this.dialogue.play(MESA_RESPIROU, undefined, 1.2)
+      },
     })
   }
 
@@ -901,6 +923,31 @@ export class MesaScene implements Scene {
     this.respiracao.draw(c, ctx.display.cssW, ctx.display.cssH, ctx.input.touchMode)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
     this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
+    if (this.semAr !== null) this.desenharSemAr(c, ctx.display.cssW, ctx.display.cssH, this.semAr)
+  }
+
+  /** O ar que não voltou: a tela fecha das bordas para o meio, e o preto. */
+  private desenharSemAr(c: CanvasRenderingContext2D, W: number, H: number, t: number): void {
+    const fecha = Math.min(1, t / 1.4)
+    c.save()
+    const g = c.createRadialGradient(W / 2, H / 2, Math.max(1, (1 - fecha) * Math.max(W, H) * 0.5), W / 2, H / 2, Math.max(W, H) * 0.75)
+    g.addColorStop(0, `rgba(0,0,0,${fecha})`)
+    g.addColorStop(1, 'rgba(0,0,0,1)')
+    c.fillStyle = g
+    c.fillRect(0, 0, W, H)
+    if (fecha >= 1) {
+      c.fillStyle = '#000'
+      c.fillRect(0, 0, W, H)
+    }
+    const s = Math.max(16, Math.min(W / 34, 30))
+    c.textAlign = 'center'
+    c.font = `italic 500 ${s * 1.4}px ${FONT_FIM}`
+    c.fillStyle = `rgba(232,220,200,${Math.min(1, Math.max(0, (t - 1.4) / 0.8))})`
+    c.fillText(MESA_SEM_AR[0], W / 2, H * 0.5)
+    c.font = `400 ${s * 0.8}px ${FONT_BODY}`
+    c.fillStyle = `rgba(200,190,180,${Math.min(0.8, Math.max(0, (t - 2.4) / 0.8))})`
+    c.fillText(MESA_SEM_AR[1], W / 2, H * 0.5 + s * 1.8)
+    c.restore()
   }
 
   /**

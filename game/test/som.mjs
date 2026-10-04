@@ -107,11 +107,33 @@ await page.evaluate(() => {
     window.__picos.push(p)
   }, 40)
 })
+/** Na cozinha a respiração decide (sem ar, a tela fecha e recomeça): respira no ritmo. */
+async function respirarBem() {
+  let segura = false
+  for (let i = 0; i < 600; i++) {
+    const r = await page.evaluate(() => {
+      const x = window.__nos?.scene?.respiracao
+      return x?.ativa ? { puxando: x.puxando } : null
+    })
+    if (!r) break
+    if (r.puxando !== segura) {
+      if (r.puxando) await page.keyboard.down('Space')
+      else await page.keyboard.up('Space')
+      segura = r.puxando
+    }
+    await page.waitForTimeout(30)
+  }
+  if (segura) await page.keyboard.up('Space')
+}
 const fases = new Set()
 for (let i = 0; i < 260; i++) {
   const f = await page.evaluate(() => window.__nos.scene.fase)
   fases.add(f)
   if (f === 'fuga') break
+  if (await page.evaluate(() => !!window.__nos.scene.respiracao?.ativa)) {
+    await respirarBem()
+    continue
+  }
   await page.keyboard.press('Space')
   await page.waitForTimeout(250)
 }

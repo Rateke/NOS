@@ -68,14 +68,9 @@ export const PROLOGO_GRITO: Line[][] = [
 ]
 
 /** O arco treme na corda enquanto ele tenta respirar. */
-export const PROLOGO_RESPIRA: Line[] = [
+export const PROLOGO_ARCO: Line[] = [
   { text: 'O arco treme em cima da corda. Se eu tirar, ele percebe.' },
-]
-export const PROLOGO_RESPIROU: Line[] = [
-  { text: 'O arco para de tremer. Quase.' },
-]
-export const PROLOGO_NAO_RESPIROU: Line[] = [
-  { text: 'O arco não para. Ele ouve. Ele sempre ouve.' },
+  { text: 'Ele ouve. Ele sempre ouve.' },
 ]
 
 /** O elogio e a função instalada na mesma frase. */

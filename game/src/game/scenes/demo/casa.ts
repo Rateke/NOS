@@ -44,7 +44,7 @@ import {
 } from '../../content/violoncelo'
 import { FONT_FIM } from '../../systems/dialogue'
 import { desenharSusto, DURACAO_SUSTO } from '../../ui/rostoSusto'
-import { CRISE_ABRE, CRISE_PASSOU, CRISE_NAO_PASSOU } from '../../content/crise'
+import { CRISE_ABRE, CRISE_PASSOU } from '../../content/crise'
 import {
   DE_NOVO_CASA, DE_NOVO_JANELA, VULTO_SUMIU, NINGUEM_VEIO, CHEIRO_QUEIMADO,
 } from '../../content/deNovo'
@@ -1440,20 +1440,12 @@ export class CasaScene implements Scene {
     this.liam.tremor = 1.2
     sons.zumbido(0.8, 4)
     clima.set({ coracao: 0.7, cordas: 0.25, aperto: 0.6 }, 2)
-    this.dialogue.play(CRISE_ABRE, () => {
-      this.respiracao.comecar({
-        ciclos: 3, periodo: 4.4, tolerancia: 0.22,
-        onFim: (ok) => {
-          this.liam.curvatura = ok ? 0 : 0.3
-          this.liam.tremor = ok ? 0 : 0.5
-          clima.set({ coracao: ok ? 0.06 : 0.3, cordas: 0, aperto: 0 }, ok ? 3 : 6)
-          this.jogo?.aprender(ok ? 'crise-respirou' : 'crise')
-          this.dialogue.play(ok ? CRISE_PASSOU : CRISE_NAO_PASSOU, () => {
-            this.liam.curvatura = 0
-            this.liam.tremor = 0
-          })
-        },
-      })
+    // Só acontece: a respiração que custa caro é a da cozinha.
+    this.dialogue.play([...CRISE_ABRE, ...CRISE_PASSOU], () => {
+      this.jogo?.aprender('crise')
+      this.liam.curvatura = 0
+      this.liam.tremor = 0
+      clima.set({ coracao: 0.06, cordas: 0, aperto: 0 }, 4)
     })
   }
 

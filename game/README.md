@@ -43,7 +43,8 @@ alto que fala, nada estoura na briga), `test/segunda.mjs` (o que muda
 quando o jogo lembra que você já terminou), `test/violoncelo.mjs` (os
 segredos do menu, a partitura até o fim e o quinto retrato),
 `test/novidades.mjs` (a foto que a Lia joga, a cabana pela luz, a floresta
-pela fresta do armário, a sombra do pai que engole o Tear, o jornal) e
+pela fresta do armário, a sombra do pai que engole o Tear, a cozinha que
+fecha a tela sem ar, o jornal) e
 `test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
@@ -126,7 +127,7 @@ os três caminhos são testados de ponta a ponta.
 | Examinar um vestígio | clicar nele | E perto dele | tocar nele |
 | Esconder o caderno da Lia (os passos) | clicar | espaço ou E | tocar |
 | Arrumar a coisa torta, no Dentro | clicar nela | E | tocar nela |
-| Respirar, numa crise | segurar o botão | segurar espaço | segurar o dedo |
+| Respirar (com a mãe; na cozinha, valendo) | segurar o botão | segurar espaço | segurar o dedo |
 | Entrar na frente de um prato | clicar onde correr | setas | tocar onde correr |
 | Escolher quem salvar, no Tear | clicar na metade dela | ← ou → | tocar na metade dela |
 | Pausar | ícone no canto de cima | Esc ou P | ícone no canto de cima |
@@ -159,7 +160,14 @@ primeira vez é com a mãe, no corredor, sem como errar.
 **Mecânica nova aparece antes de importar.** O jogo não pausa para explicar.
 Cada mecânica aparece primeiro num momento sem perigo: a marca vermelha no
 chão (a foto que a Lia joga, antes dos pratos da cozinha), a respiração (com
-a mãe, antes da crise), o tema (com o pai no prólogo, antes do Tear).
+a mãe, antes da cozinha), o tema (com o pai no prólogo, antes do Tear).
+
+**Game over só onde decide.** As mecânicas que podem dar game over aparecem
+só nos momentos definitivos: a sombra do pai, só no Tear (errar demais e
+ela engole a sala); a respiração valendo, só na cozinha (o ar não volta e a
+tela fecha). Fora daí elas aparecem como apresentação, sem perigo (a mãe
+ensinando), ou nem aparecem (a crise da casa só acontece; o prólogo é
+lembrança).
 
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
@@ -333,9 +341,9 @@ mesma interface.
    ele bate as duas mãos no grave do piano, vira para você e fala baixo
    (*"Não. Para. Você não tá escutando. Do começo."*). **Depois de zerar a
    demo, o erro vira grito** (*"ERROU?! DE NOVO?! Agora vê se não erra. Você
-   já passou por aqui. Já sabe como as coisas funcionam."*), e Liam tem de
-   respirar no ritmo com o arco tremendo em cima da corda antes de tentar de
-   novo. No fim, toque à vontade. E aí vem o elogio, com a função dentro
+   já passou por aqui. Já sabe como as coisas funcionam."*), e Liam tenta de
+   novo com o arco tremendo em cima da corda. O prólogo é lembrança: errar
+   aqui não tem game over. No fim, toque à vontade. E aí vem o elogio, com a função dentro
    dele: `Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`
    Liam toca os três: o piano (que o pai ensinou), o violino (que o pai quis)
    e o violoncelo do bisavô, pendurado na parede do quarto dele — *"é o único
@@ -415,9 +423,9 @@ mesma interface.
    Evelyn repara que ele está respirando curto e faz o exercício junto
    (*"Quatro pra dentro, quatro pra fora. Eu conto."*): o anel cresce e
    encolhe contando de um a quatro, ela conta em voz alta, e não dá para
-   errar. É a mesma respiração que ele vai precisar sozinho, na crise da casa
-   e na cozinha — e lá, quando o ar acompanha o anel, o escuro em volta abre
-   e o coração desacelera; quando escapa, a tela fecha.
+   errar. É a mesma respiração que ele vai precisar sozinho na cozinha —
+   e lá, quando o ar acompanha o anel, o escuro em volta abre e o coração
+   desacelera; quando escapa, a tela fecha.
 
    **Os dois sustos.** O espelho do quarto da Lia: quando Liam passa, o
    reflexo atrasa — uma vez só. Quem estranha e volta para olhar, parado na
@@ -441,8 +449,8 @@ mesma interface.
 
    **A crise.** Cada coisa que ele olha tem outra escondida embaixo, e o
    coração vai subindo junto. Na sétima, o peito fecha: o zumbido, as mãos
-   formigando e a respiração (ver Controles). Conseguindo ou não, passa — de
-   jeitos diferentes.
+   formigando, *"Quatro pra dentro, quatro pra fora"*. Aqui a crise só
+   acontece, não se joga — e passa.
 
    **Ninguém veio.** Quem fica dois minutos sem mexer em nada vê Liam sentar
    no chão, esperando alguém vir procurar.
@@ -510,9 +518,10 @@ mesma interface.
    o prato está no ar.
 
    **O ar.** Depois do primeiro prato, o ar para de entrar e vem a
-   respiração. Dá para conseguir — e o pai ouve: *"TÁ RESPIRANDO ASSIM POR
-   QUÊ?! OLHA PRA MIM!"*. Não conseguindo, a cozinha fica pequena. Nos dois
-   casos piora: a tela fecha mais e não volta inteira.
+   respiração — e aqui ela decide. Conseguindo, a cena segue, e o pai ouve:
+   *"TÁ RESPIRANDO ASSIM POR QUÊ?! OLHA PRA MIM!"* (a tela fecha um pouco e
+   não volta inteira). Não conseguindo, a tela fecha das bordas para o meio
+   até o preto — *"O ar não voltou."* — e a respiração recomeça.
 
    **O fundo do poço é em voz.** Quando a tensão enche, o pai vira para Liam.
    Ele sobe a voz; Liam sobe a dele pedindo para parar; as falas entram no
@@ -542,8 +551,7 @@ mesma interface.
    junto. Tocar certo faz ela recuar. Se ela enche, engole a tela inteira —
    preto, os olhos, *"DE NOVO."*, *"Ele cresceu até não sobrar sala."* — e
    o Tear recomeça do primeiro fio (as lembranças que já passaram não voltam).
-   A mesma sombra aparece no prólogo, no violino: três erros seguidos e a
-   frase recomeça. Cada nota certa passa a
+   A sombra só existe aqui. Cada nota certa passa a
    lançadeira e bate o pente, e a tapeçaria da família cresce de baixo para cima — uma casa, cinco
    figuras de mãos dadas. Cada fio completo prende mais um fio no peito de
    Liam e abre uma **lembrança que não é dele**, indo de geração em geração,
@@ -717,7 +725,7 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | Ordem das cenas | `src/game/scenes/` |
 | **O tema musical** | `src/engine/musica.ts` (`TEMA`, em graus da `ESCALA` de ré menor harmônico) |
 | O violino do Liam (som e braço na tela) | `src/game/systems/piano.ts` (`instrumento: 'violino'`), `src/engine/musica.ts` (`arco`) |
-| O prólogo: acompanhamento do pai, bronca, grito e respiração | `src/game/scenes/demo/prologo.ts` (`ACOMPANHA`, `baterNoPiano`, `gritar`); falas em `content/demoScript.ts` (`PROLOGO_*`) |
+| O prólogo: acompanhamento do pai, bronca e grito | `src/game/scenes/demo/prologo.ts` (`ACOMPANHA`, `baterNoPiano`, `gritar`); falas em `content/demoScript.ts` (`PROLOGO_*`) |
 | Volume geral, graves, limitador | `src/engine/audio.ts` (`init`) |
 | Timbre do piano e reverberação | `src/engine/musica.ts` |
 | Vestígios da cozinha | `src/game/content/demoScript.ts` (`MESA_VESTIGIOS`) |
@@ -736,7 +744,7 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | A diagramação do jornal (cabeçalho, colunas, fotos em retícula, classificados, tirinha) | `src/game/systems/jornal.ts` |
 | A cabana por dentro (depois do grito) | `src/game/world/cabanaDentro.ts`; a entrada pela luz em `scenes/demo/casa.ts` (`entrarNaCabana`) |
 | O armário e a floresta pela fresta | `src/game/world/armarioFloresta.ts`; o som em `src/engine/audio.ts` (`floresta`) |
-| A sombra do pai (Tear e prólogo) | `src/game/ui/sombraPai.ts`; a voz engrossando em `src/engine/voz.ts` (`grave`) |
+| A sombra do pai (só no Tear) | `src/game/ui/sombraPai.ts`; a voz engrossando em `src/engine/voz.ts` (`grave`) |
 | A foto que a Lia joga (a marca vermelha, antes dos pratos) | `src/game/scenes/demo/casa.ts` (`cutRetratoLia`, `RETRATO_*`) |
 | Os pratos da cozinha (quem fala, quando o braço sobe) | `src/game/scenes/demo/mesa.ts` (`PROVOCACOES`) |
 | Leitor de páginas (papel, letras de cada pessoa) | `src/game/systems/leitor.ts` |
@@ -749,7 +757,7 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | O violoncelo, a partitura e o quinto retrato | `src/game/content/violoncelo.ts` (`PARTITURA`); a cena em `src/game/scenes/demo/casa.ts` (`aoCello`) |
 | A mensagem escondida (acróstico, cruzadas, marca do diário) | `src/game/content/documentos.ts`; o Morse em `src/engine/audio.ts` (`morse`); o poste em `src/game/world/sala.ts` (`posteAceso`) |
 | Os sustos (silêncio, rosto, estouro) | `src/game/scenes/demo/casa.ts` (`iniciarSusto`), `src/engine/audio.ts` (`susto`) |
-| A respiração (ritmo, tolerância, desenho) | `src/game/ui/respiracao.ts`; a crise da casa em `content/crise.ts`, a da cozinha em `content/noite.ts` |
+| A respiração (ritmo, tolerância, desenho) | `src/game/ui/respiracao.ts`; a aula da mãe em `content/demoScript.ts` (`EVELYN_RESPIRA_*`); a da cozinha, que dá game over, em `scenes/demo/mesa.ts` (`respirar`, `semAr`) e `content/noite.ts` |
 | **A segunda partida**, o vulto, o cheiro, "Ninguém veio", a pressa | `src/game/content/deNovo.ts`; o que o jogo lembra em `src/game/systems/memoria.ts` |
 | Quem passa as falas sem ler | `src/game/systems/dialogue.ts` (`leitorApressado`) |
 | A rua pela janela da sala (poste, cone de luz, vulto) | `src/game/world/sala.ts` (`drawRua`, `luzDaRua`) |
