@@ -20,6 +20,8 @@ export const SEGREDOS = [
   'lata',         // depois do grito, entrar pela luz da cabana e escutar a lata
   'floresta',     // pela fresta do armário, ficar olhando até ver a Lia no mato
   'partitura',    // depois do grito, tocar a partitura roxa no violoncelo até o fim
+  'gaiola',       // dentro da cabeça, atravessar a porta sem pegar nada
+  'relogio',      // acertar o relógio do corredor na hora em que o fogo começou
 ] as const
 
 export type Segredo = (typeof SEGREDOS)[number]

@@ -1,7 +1,8 @@
 // O quarto de costura da mãe: a porta nova na sala, a caixa trancada com
-// quatro carretéis, as dicas a cada erro, o recado que aponta a cozinha (sem
-// trancar o resto da casa) e a porta trancada depois do grito. E as dicas
-// do Tear depois que a sombra engole a sala.
+// quatro carretéis, o quarto que ajuda quem demora muito (a foto cai, o chá
+// derrama, os carretéis rolam), o recado que aponta a cozinha (sem trancar o
+// resto da casa) e a porta trancada depois do grito. E as dicas do Tear
+// depois que a sombra engole a sala.
 //
 // Uso: com `npx vite preview --port 4173` no ar, `node test/costura.mjs`.
 import { chromium } from 'playwright'
@@ -81,7 +82,7 @@ await examinar('c-foto')
 esperar('a foto diz a ordem', await s(() => window.__nos.scene.dialogue.active), true)
 await passarFalas()
 
-// 3. A caixa: os carretéis, os erros e as dicas que chegam mais perto.
+// 3. A caixa: os carretéis, os erros, e só a tranca responde.
 await ir('costura', 244)
 await examinar('c-caixa')
 await passarFalas()
@@ -96,7 +97,7 @@ for (let i = 0; i < 3; i++) {
   await tecla('Enter')
   await page.waitForTimeout(150)
 }
-esperar('a quarta dica já é a resposta', await s(() => window.__nos.scene.caixa.falhas), 4)
+esperar('cada erro só conta quantos encaixam', await s(() => window.__nos.scene.caixa.falhas), 4)
 // O mouse também gira: um clique no primeiro carretel troca a cor dele.
 const antes = await s(() => window.__nos.scene.caixa.aneis[0])
 const z = await s(() => window.__nos.scene.caixa.zonas.carreteis[0])
@@ -110,6 +111,20 @@ esperar('Esc larga a caixa', await s(() => window.__nos.scene.caixa.ativa), fals
 await examinar('c-caixa')
 await passarFalas()
 esperar('voltando, os carretéis estão como ficaram', await s(() => window.__nos.scene.caixa.aneis[0]), (antes + 1) % 5)
+await page.waitForTimeout(400)
+// Quem demora muito de verdade vê o quarto ajudar — nunca antes disso.
+await tecla('Escape')
+await page.waitForTimeout(200)
+esperar('sem demora, o quarto não mexe', await s(() => window.__nos.scene.pistasCostura), 0)
+for (const [tempo, n] of [[151, 1], [271, 2], [391, 3]]) {
+  await s((tempo) => { window.__nos.scene.tempoCaixa = tempo }, tempo)
+  await ate(() => s(() => window.__nos.scene.dialogue.active), 3000)
+  esperar(`depois de ${tempo}s, a pista ${n} do quarto`, await s(() => window.__nos.scene.pistasCostura), n)
+  if (OUT) await page.screenshot({ path: `${OUT}/costura-pista-${n}.png` })
+  await passarFalas()
+}
+await examinar('c-caixa')
+await passarFalas()
 await page.waitForTimeout(400)
 // Azul, âmbar, cinza, rosa: ele, ela, eu, a Lia.
 await s(() => { window.__nos.scene.caixa.aneis = [4, 4, 4, 4]; window.__nos.scene.caixa.sel = 0 })

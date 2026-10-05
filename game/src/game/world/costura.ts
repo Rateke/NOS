@@ -1,8 +1,9 @@
 import { WORLD_H } from '../../engine/constants'
 import type { Comodo, VestigioCasa } from './casa'
 import type { RGB } from './arte'
-import { rgb, clarear, ret, papelDeParede, lambri, assoalho, porta, quadro, cantos } from './arte'
-import { sanca, rodape, sombraDeContato, interruptor } from './detalhes'
+import { rgb, clarear, ret, papelDeParede, lambri, assoalho, quadro, cantos } from './arte'
+import { portaCosturaDentro } from './portas'
+import { sanca, rodape, sombraDeContato, interruptor, marcaDeQuadro } from './detalhes'
 import { CORES_LINHA, CAIXA_COSTURA } from '../content/costura'
 import { SALA_COSTURA } from './sala'
 
@@ -107,6 +108,7 @@ export function comodoCostura(): Comodo {
     vestigios: VESTIGIOS,
 
     desenharFundo(c, e) {
+      const pistas = e.pistasCostura ?? 0
       papelDeParede(c, 0, COSTURA_W, 0, 102, PAREDE, 2)
       sanca(c, 0, COSTURA_W, PAREDE)
       ret(c, 0, 101, COSTURA_W, 3, rgb(clarear(PAREDE, 10)))
@@ -114,7 +116,7 @@ export function comodoCostura(): Comodo {
       assoalho(c, 0, COSTURA_W, CHAO, WORLD_H, [44, 33, 32])
       rodape(c, 0, COSTURA_W, CHAO, [54, 38, 34])
       cantos(c, COSTURA_W, CHAO, WORLD_H, PAREDE)
-      porta(c, X.porta, CHAO, { cor: [58, 44, 42] })
+      portaCosturaDentro(c, X.porta, CHAO)
       interruptor(c, 72, 100, 0.4)
 
       // O avental no gancho
@@ -129,13 +131,33 @@ export function comodoCostura(): Comodo {
       c.fill()
       ret(c, X.avental - 6, 70, 12, 9, '#5e4e44')            // bolso
       ret(c, X.avental + 2, 69, 1, 4, '#d8d8e0')             // alfinete
-      for (let x = X.avental - 9; x < X.avental + 9; x += 2) ret(c, x, 95, 1, 1, CORES_LINHA[1].cor)
+      for (let x = X.avental - 9; x < X.avental + 9; x += 2) ret(c, x, 95, 1, pistas >= 2 ? 2 : 1, CORES_LINHA[1].cor)
 
-      // A prateleira de carretéis, em cima do manequim e do cesto
-      ret(c, 112, 46, 78, 3, '#5a4030')
-      ret(c, 112, 49, 78, 1, 'rgba(0,0,0,0.4)')
+      // A prateleira de carretéis, em cima do manequim e do cesto. Na última
+      // pista ela cede do lado esquerdo, e quatro carretéis vão para o chão.
       const enfeite = ['#5f86c4', '#c84a4a', '#e2a95e', '#3a7a5a', '#9a9ca6', '#d8708a', '#e8e0cc', '#2a2a34', '#c8a85a']
-      enfeite.forEach((cor, i) => carretel(c, 118 + i * 8, 46, cor))
+      const caiu = new Set(pistas >= 3 ? [0, 2, 4, 5] : [])
+      if (pistas >= 3) {
+        c.save()
+        c.translate(190, 46)
+        c.rotate(-0.06)
+        ret(c, -78, 0, 78, 3, '#5a4030')
+        enfeite.forEach((cor, i) => { if (!caiu.has(i)) carretel(c, -72 + i * 8, 0, cor) })
+        c.restore()
+      } else {
+        ret(c, 112, 46, 78, 3, '#5a4030')
+        ret(c, 112, 49, 78, 1, 'rgba(0,0,0,0.4)')
+        enfeite.forEach((cor, i) => carretel(c, 118 + i * 8, 46, cor))
+      }
+      // A xícara de chá esquecida na ponta da prateleira; na segunda pista, tombada.
+      if (pistas >= 2) {
+        ret(c, 183, 44, 6, 2, '#d8d0c0')
+        ret(c, 182, 45, 1, 2, '#d8d0c0')
+        ret(c, 186, 46, 1, 30, 'rgba(150,100,60,0.5)')
+      } else {
+        ret(c, 183, 40, 5, 6, '#d8d0c0')
+        ret(c, 188, 41, 2, 3, '#d8d0c0')
+      }
 
       // O manequim com o paletó dele
       ret(c, X.manequim - 1, 118, 2, CHAO - 118, '#3a2a22')
@@ -153,6 +175,7 @@ export function comodoCostura(): Comodo {
       ret(c, X.manequim - 14, 76, 4, 30, '#2a3040')          // manga com alfinetes
       for (let y = 96; y < 106; y += 3) ret(c, X.manequim - 14, y, 1, 1, '#d8d8e0')
       ret(c, X.manequim + 4, 76, 2, 2, CORES_LINHA[0].cor)   // o ponto azul
+      if (pistas >= 2) ret(c, X.manequim + 3, 75, 4, 4, 'rgba(95,134,196,0.45)')
       ret(c, X.manequim - 4, 64, 8, 4, '#4a3a30')            // pescoço do manequim
 
       // O cesto de remendar: uniforme cinza e a jaqueta da Lia por cima
@@ -163,9 +186,39 @@ export function comodoCostura(): Comodo {
       ret(c, X.cesto - 10, CHAO - 23, 2, 1, CORES_LINHA[2].cor)
       ret(c, X.cesto - 1, CHAO - 25, 13, 8, '#6a2c38')       // jaqueta
       ret(c, X.cesto + 8, CHAO - 23, 2, 2, CORES_LINHA[3].cor)
+      if (pistas >= 2) {
+        // O pano molhado: manchas escuras, e os pontos de linha vivos
+        ret(c, X.cesto - 11, CHAO - 23, 8, 5, 'rgba(40,24,16,0.35)')
+        ret(c, X.cesto + 1, CHAO - 24, 8, 5, 'rgba(40,24,16,0.35)')
+        ret(c, X.cesto - 10, CHAO - 23, 3, 2, CORES_LINHA[2].cor)
+        ret(c, X.cesto + 7, CHAO - 23, 3, 3, CORES_LINHA[3].cor)
+        c.fillStyle = 'rgba(120,80,48,0.35)'
+        c.beginPath()
+        c.ellipse(X.cesto + 6, CHAO + 3, 14, 2.5, 0, 0, Math.PI * 2)
+        c.fill()
+      }
 
       // A foto grande da família, na ordem de sempre — e o espaço na ponta.
-      quadro(c, X.foto - 22, 30, 44, 30, { figuras: 4, vazios: [4], moldura: [96, 70, 52] })
+      // Na primeira pista ela escorrega do prego e fica de pé no chão, trincada.
+      if (pistas >= 1) {
+        marcaDeQuadro(c, X.foto - 22, 30, 44, 30)
+        c.save()
+        c.translate(X.foto + 2, CHAO - 2)
+        c.rotate(-0.12)
+        quadro(c, -22, -30, 44, 30, { figuras: 4, vazios: [4], moldura: [96, 70, 52] })
+        c.strokeStyle = 'rgba(230,236,250,0.7)'
+        c.lineWidth = 0.6
+        c.beginPath()
+        c.moveTo(-10, -26)
+        c.lineTo(-2, -14)
+        c.lineTo(-6, -4)
+        c.moveTo(-2, -14)
+        c.lineTo(8, -18)
+        c.stroke()
+        c.restore()
+      } else {
+        quadro(c, X.foto - 22, 30, 44, 30, { figuras: 4, vazios: [4], moldura: [96, 70, 52] })
+      }
 
       // A mesinha com a caixa de costura
       sombraDeContato(c, X.caixa - 14, CHAO, 28)
@@ -182,6 +235,10 @@ export function comodoCostura(): Comodo {
         ret(c, X.caixa - 10, 112, 20, 3, '#6a3e26')
       }
       ;[0, 1, 2, 3].forEach((i) => carretel(c, X.caixa - 7 + i * 5, 121, CORES_LINHA[i]?.cor ?? '#888', 3))
+      // Os quatro que rolaram da prateleira, em fila na frente da caixa
+      if (pistas >= 3) {
+        ;[0, 1, 2, 3].forEach((i) => carretel(c, X.caixa - 12 + i * 8, CHAO + 6, CORES_LINHA[i]?.cor ?? '#888'))
+      }
 
       // A máquina de costura e a luminária dela
       sombraDeContato(c, X.maquina - 22, CHAO, 44)

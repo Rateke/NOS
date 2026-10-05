@@ -1,6 +1,7 @@
 import type { Scene, SceneCtx } from '../types'
-import { Dialogue } from '../../systems/dialogue'
+import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { Piano } from '../../systems/piano'
+import { PAL } from '../../../engine/constants'
 import { audio } from '../../../engine/audio'
 import { musica, TEMA, ESCALA } from '../../../engine/musica'
 import { Figura, VISUAL, ALTURA } from '../../world/figura'
@@ -352,6 +353,25 @@ export class PrologoScene implements Scene {
     w.stroke()
   }
 
+  /**
+   * No momento livre a cena só segue quando ele para de tocar. Quem não
+   * sabe disso pode tocar para sempre: um aviso pequeno, no pé da tela, que
+   * acende devagar enquanto as mãos ficam paradas.
+   */
+  private desenharAvisoParar(ctx: SceneCtx): void {
+    const c = ctx.display.ctx
+    const { cssW, cssH } = ctx.display
+    const s = Math.max(11, Math.min(cssW / 90, 14))
+    const parado = Math.max(0, Math.min(1, 1 - (this.livreAte - this.t) / 5))
+    c.save()
+    c.textAlign = 'center'
+    c.font = `italic ${s}px ${FONT_BODY}`
+    c.globalAlpha = 0.45 + parado * 0.4
+    c.fillStyle = PAL.inkDim
+    c.fillText('pare de tocar para avançar', cssW / 2, cssH - s * 0.7)
+    c.restore()
+  }
+
   render(ctx: SceneCtx): void {
     const w = ctx.display.beginWorld()
     const estado = {
@@ -395,7 +415,10 @@ export class PrologoScene implements Scene {
           ctx.display,
           `responda no violino  ·  ${this.passo}/${this.fraseAtual.length}  ·  ${ctx.input.touchMode ? 'toque nas notas' : 'clique ou A S D F G H J K'}`,
         )
-      } else if (this.fase === 'livre') this.piano.drawDica(ctx.display, PROLOGO_LIVRE)
+      } else if (this.fase === 'livre') {
+        this.piano.drawDica(ctx.display, PROLOGO_LIVRE)
+        if (!this.dialogue.active) this.desenharAvisoParar(ctx)
+      }
     }
 
     const c = ctx.display.ctx

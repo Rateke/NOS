@@ -1,7 +1,7 @@
 import type { Input } from '../../engine/input'
 import { FONT_FIM, FONT_BODY } from '../systems/dialogue'
 import { PAL } from '../../engine/constants'
-import { CORES_LINHA, SEGREDO_CAIXA, TAMPA_BORDADO, DICAS_CAIXA, encaixam } from '../content/costura'
+import { CORES_LINHA, SEGREDO_CAIXA, TAMPA_BORDADO, encaixam } from '../content/costura'
 
 /**
  * A caixa de costura da mãe, vista de cima, tomando a tela.
@@ -11,10 +11,10 @@ import { CORES_LINHA, SEGREDO_CAIXA, TAMPA_BORDADO, DICAS_CAIXA, encaixam } from
  * Com o mouse ou o dedo: tocar num carretel troca a cor dele; "abrir" e
  * "deixar" ficam embaixo.
  *
- * A cada tentativa errada a tampa treme, Liam conta quantos carretéis
- * encaixam e pensa uma dica — cada vez mais perto da resposta. Quem errar
- * quatro vezes recebe a resposta inteira: a caixa é para guiar, não para
- * prender ninguém.
+ * A cada tentativa errada a tampa treme e Liam sente quantos carretéis
+ * encaixam — é a única resposta da própria tranca. Dica, aqui, não é texto:
+ * quem demora muito de verdade vê o quarto ajudar (a cena da casa cuida
+ * disso; ver `pistasCostura`).
  *
  * A caixa guarda o estado entre uma visita e outra: quem larga e volta
  * encontra os carretéis do jeito que deixou.
@@ -34,7 +34,7 @@ export class CaixaCostura {
   private t = 0
   private tremor = 0
   private abrindo = 0
-  private recado: { texto: string; dica: string | null; t: number } | null = null
+  private recado: { texto: string; t: number } | null = null
   private zonas: { carreteis: Caixa[]; abrir: Caixa; deixar: Caixa } = {
     carreteis: [], abrir: { x: 0, y: 0, w: 0, h: 0 }, deixar: { x: 0, y: 0, w: 0, h: 0 },
   }
@@ -121,8 +121,7 @@ export class CaixaCostura {
     }
     this.falhas++
     this.tremor = 1
-    const dica = DICAS_CAIXA[Math.min(this.falhas, DICAS_CAIXA.length) - 1] ?? null
-    this.recado = { texto: encaixam(certos), dica, t: 0 }
+    this.recado = { texto: encaixam(certos), t: 0 }
     return 'errou'
   }
 
@@ -222,15 +221,10 @@ export class CaixaCostura {
       c.font = `italic ${s * 1.05}px ${FONT_BODY}`
       c.fillStyle = `rgba(232,220,200,${fade})`
       c.fillText(r.texto, cssW / 2, y - s * 1.6)
-      if (r.dica) {
-        c.font = `italic ${s * 0.95}px ${FONT_BODY}`
-        c.fillStyle = `rgba(226,169,94,${Math.min(1, Math.max(0, (r.t - 0.5) / 0.5))})`
-        quebrar(c, r.dica, cssW / 2, y + h + s * 2.1, Math.min(cssW - s * 2, w * 1.05), s * 1.3)
-      }
     }
 
     // Os botões, e o que dá para fazer
-    const by = Math.min(cssH - s * 2.6, y + h + s * (this.recado?.dica ? 4.6 : 1.6))
+    const by = Math.min(cssH - s * 2.6, y + h + s * 1.6)
     c.font = `${s}px ${FONT_BODY}`
     const bw = s * 7
     const abrir = { x: cssW / 2 + s * 0.5, y: by, w: bw, h: s * 1.9 }
@@ -256,22 +250,4 @@ export class CaixaCostura {
     this.zonas = { carreteis, abrir, deixar }
     c.restore()
   }
-}
-
-/** Escreve centrado, quebrando em linhas que caibam em `larg`. */
-function quebrar(c: CanvasRenderingContext2D, texto: string, x: number, y: number, larg: number, entre: number): void {
-  const palavras = texto.split(' ')
-  let linha = ''
-  let yy = y
-  for (const p of palavras) {
-    const teste = linha ? `${linha} ${p}` : p
-    if (c.measureText(teste).width > larg && linha) {
-      c.fillText(linha, x, yy)
-      linha = p
-      yy += entre
-    } else {
-      linha = teste
-    }
-  }
-  if (linha) c.fillText(linha, x, yy)
 }

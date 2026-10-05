@@ -7,10 +7,10 @@ import {
 import type { RGB } from './arte'
 import { VIOLONCELO_PEGAR, QUINTO_RETRATO_VAZIO } from '../content/violoncelo'
 import {
-  rgb, clarear, ret, sorteio, papelDeParede, lambri, assoalho, porta, quadro, cantos,
+  rgb, clarear, ret, sorteio, papelDeParede, lambri, assoalho, quadro, cantos,
 } from './arte'
 import {
-  sanca, rodape, interruptor, calendario, sapatos, desenhoNaPorta, cestoRoupa, criadoMudo,
+  sanca, rodape, interruptor, calendario, sapatos, cestoRoupa, criadoMudo,
   pilhaLivros, mochilaEscola, marcaDeQuadro, sombraDeContato, luarNoChao,
 } from './detalhes'
 import {
@@ -18,6 +18,10 @@ import {
   SALA_W, SALA_PORTA, SALA_COSTURA, CHAO_Y as SALA_CHAO, PASSO_Y as SALA_PASSO, ABAJUR, PIANO,
 } from './sala'
 import { COSTURA_TRANCADA } from '../content/costura'
+import { RELOGIO_OLHAR } from '../content/relogio'
+import {
+  portaLiam, portaLiamDentro, portaLia, portaLiaDentro, portaCozinha, portaDeVidro, portaDoFim,
+} from './portas'
 
 /**
  * A casa explorável.
@@ -59,7 +63,7 @@ export interface VestigioCasa {
   naParede?: boolean
   /** Em vez de só ler: sentar ao piano, entrar na cabana, ouvir o recado. */
   acao?: 'piano' | 'cabana' | 'secretaria' | 'conversaLia' | 'no' | 'violoncelo'
-    | 'foneLia' | 'entrarCabana' | 'armarioFloresta' | 'caixinha' | 'lata' | 'deitar' | 'costura'
+    | 'foneLia' | 'entrarCabana' | 'armarioFloresta' | 'caixinha' | 'lata' | 'deitar' | 'costura' | 'relogio'
   /** O que Liam fica sabendo ao olhar (vira linha no caderno). */
   aprende?: string
   /** Só existe quando o corredor já esticou até este comprimento. */
@@ -94,6 +98,10 @@ export interface EstadoComodo {
   quintoRetrato?: number
   /** A caixa de costura da mãe já foi aberta. */
   caixaAberta?: boolean
+  /** Quantas pistas o quarto de costura já deu (a foto caiu, o chá, os carretéis). */
+  pistasCostura?: number
+  /** O relógio do corredor acertado nas dez e quarenta: a portinha do pêndulo aberta. */
+  relogioAberto?: boolean
 }
 
 export interface Comodo {
@@ -507,6 +515,10 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
         ],
       },
       {
+        id: 'relogio', x: 366, rotulo: 'Olhar', naParede: true, acao: 'relogio',
+        linhas: RELOGIO_OLHAR,
+      },
+      {
         id: 'ninguem', x: ultimoRetrato, rotulo: 'Olhar', naParede: true,
         minLargura: CORREDOR_MAX,
         linhas: [
@@ -540,10 +552,10 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
 
       aparador(c, 72)
       if (depois) secretaria(c, 72)
-      porta(c, 42, CHAO, { luz: true, cor: [40, 42, 56] })
-      porta(c, 150, CHAO, { cor: [34, 42, 60] })
-      // O desenho colado na porta do quarto dele
-      desenhoNaPorta(c, 146, 104)
+      // A porta de vidro da sala, com a luz do abajur do outro lado.
+      portaDeVidro(c, 42, CHAO, [40, 42, 56], '236,190,130', depois ? 0.2 : 0.6)
+      // O quarto dele: a plaquinha, o desenho e a partitura, tudo reto.
+      portaLiam(c, 150, CHAO)
       // Dois pregos sem quadro entre as portas
       marcaDeQuadro(c, 112, 30, 16, 20)
       marcaDeQuadro(c, 246, 34, 14, 18)
@@ -566,7 +578,8 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
       cabideiro(c, 232)
       if (depois) ret(c, 224, CHAO + 6, 18, 4, '#5a4a2e')
 
-      porta(c, 268, CHAO, { luz: !depois, cor: [38, 42, 58] })
+      // A cozinha: o vidro fosco e as sombras dos dois do outro lado.
+      portaCozinha(c, 268, CHAO, t, !depois)
       // A briga na cozinha escapa por baixo da porta, em pulsos.
       if (!depois) {
         const briga = 0.18 + Math.max(0, Math.sin(t * 2.3)) * 0.22
@@ -575,14 +588,9 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
 
       rouparia(c, 326, e.vistos.has('marcas+'))
       cestoRoupa(c, 352, CHAO + 2)
-      relogio(c, 366, 34, t, e.hora)
-      // A porta da Lia: adesivos, e a placa que ela mesma fez.
-      porta(c, LIA_PORTA, CHAO, { cor: [52, 34, 44], luz: !depois })
-      ret(c, LIA_PORTA - 9, 104, 18, 7, '#d8ccb4')
-      ret(c, LIA_PORTA - 7, 106, 14, 1, '#7a2a36')
-      ret(c, LIA_PORTA - 5, 108, 10, 1, '#7a2a36')
-      ret(c, LIA_PORTA - 10, 120, 4, 4, '#c85a6a')
-      ret(c, LIA_PORTA + 6, 128, 3, 3, '#e0c060')
+      relogio(c, 366, 34, t, e.hora, e.relogioAberto === true)
+      // A porta da Lia: adesivos, o amassado, e a placa que ela mesma fez.
+      portaLia(c, LIA_PORTA, CHAO, !depois)
 
       // Retratos do fundo: a família vai sumindo de um quadro para o outro.
       for (let i = 0; ; i++) {
@@ -599,7 +607,7 @@ export function comodoCorredor(largura: number, depois = false): Comodo {
       }
       if (esticado) retratoVazio(c, ultimoRetrato - 14, 30)
 
-      portaDoFim(c, portaFim, e.sinal, t)
+      portaDoFim(c, portaFim, CHAO, e.sinal, t)
     },
 
     atmosfera(c, e) {
@@ -789,7 +797,9 @@ function rouparia(c: CanvasRenderingContext2D, x: number, deNovo: boolean): void
 }
 
 /** Relógio do corredor. Anda para trás — ninguém nunca comenta. */
-function relogio(c: CanvasRenderingContext2D, x: number, y: number, t: number, hora?: { h: number; m: number; parado: boolean }): void {
+function relogio(
+  c: CanvasRenderingContext2D, x: number, y: number, t: number, hora?: { h: number; m: number; parado: boolean }, aberto = false,
+): void {
   ret(c, x - 8, y - 8, 17, 17, '#3a3230')
   ret(c, x - 7, y - 7, 15, 15, '#a8a292')
   ret(c, x - 6, y - 6, 13, 13, '#c2bba8')
@@ -814,9 +824,14 @@ function relogio(c: CanvasRenderingContext2D, x: number, y: number, t: number, h
   }
   // Pêndulo (parado, quando o relógio parou)
   const p = hora?.parado ? 0 : Math.sin(t * 2.2) * 2
-  ret(c, x - 3, y + 9, 7, 10, '#2e2826')
+  ret(c, x - 3, y + 9, 7, 10, aberto ? '#120e0c' : '#2e2826')
   ret(c, x + Math.round(p), y + 10, 1, 6, '#8a7a52')
   ret(c, x + Math.round(p) - 1, y + 15, 3, 3, '#b8964e')
+  // Acertado nas dez e quarenta, a portinha do pêndulo fica aberta, de lado.
+  if (aberto) {
+    ret(c, x + 4, y + 9, 2, 10, '#3a3230')
+    ret(c, x + 5, y + 13, 1, 1, '#b8964e')
+  }
 }
 
 /**
@@ -896,30 +911,6 @@ function retratoVazio(c: CanvasRenderingContext2D, x: number, y: number): void {
   // Vidro: o reflexo em diagonal
   for (let i = 0; i < 7; i++) ret(c, x + 14 + i, y + i, 2, 1, 'rgba(255,255,255,0.1)')
   ret(c, x + 1, y + 1, 6, 1, 'rgba(255,255,255,0.18)')
-}
-
-/** A porta que não deveria existir. Mais velha, mais clara, com um desenho. */
-function portaDoFim(c: CanvasRenderingContext2D, x: number, sinal: number, t: number): void {
-  porta(c, x, CHAO, { cor: [58, 56, 66], alt: 108 })
-  // Luz fria por baixo, que respira. Quando alguém está do outro lado, sobe.
-  const a = 0.1 + Math.sin(t * 0.8) * 0.04 + sinal * 0.5
-  ret(c, x - 15, CHAO - 2, 30, 2, `rgba(196,208,255,${a})`)
-  // Um desenho de criança colado na altura dos olhos de Liam.
-  ret(c, x - 6, CHAO - 44, 12, 14, 'rgba(210,202,182,0.78)')
-  ret(c, x - 6, CHAO - 44, 12, 1, 'rgba(240,232,200,0.5)')
-  ret(c, x - 4, CHAO - 38, 8, 6, 'rgba(160,60,60,0.55)')
-  c.fillStyle = 'rgba(160,60,60,0.55)'
-  c.beginPath()
-  c.moveTo(x - 5, CHAO - 38)
-  c.lineTo(x, CHAO - 42)
-  c.lineTo(x + 5, CHAO - 38)
-  c.fill()
-  ret(c, x - 3, CHAO - 33, 1, 3, 'rgba(40,40,60,0.8)')
-  ret(c, x + 2, CHAO - 33, 1, 2, 'rgba(40,40,60,0.8)')
-  ret(c, x - 2, CHAO - 32, 4, 1, 'rgba(40,40,60,0.8)')
-  // Fita crepe nos cantos
-  ret(c, x - 7, CHAO - 45, 3, 2, 'rgba(220,200,140,0.6)')
-  ret(c, x + 4, CHAO - 45, 3, 2, 'rgba(220,200,140,0.6)')
 }
 
 // --- Quarto de Liam ---------------------------------------------------------
@@ -1057,7 +1048,7 @@ export function comodoQuarto(depois = false): Comodo {
       mochilaEscola(c, 160, CHAO)
       cama(c, 196)
       pilhaLivros(c, 106, CHAO + 2)
-      porta(c, 300, CHAO, { cor: [36, 44, 64], luz: true })
+      portaLiamDentro(c, 300, CHAO, true)
       interruptor(c, 322, 92, 0)
       janelaQuarto(c, 326, 26, t)
       escrivaninha(c, 324, t)
@@ -1713,7 +1704,7 @@ export function comodoLia(depois = false, temBilhete = false, retrato: 'pegou' |
       sanca(c, 0, LIA_W, PAREDE_LIA)
       rodape(c, 0, LIA_W, CHAO, LAMBRI_LIA)
       cantos(c, LIA_W, CHAO, WORLD_H, PAREDE_LIA)
-      porta(c, 44, CHAO, { cor: [52, 34, 44], luz: true })
+      portaLiaDentro(c, 44, CHAO, true)
       rabiscosLia(c, depois)
       varalDeLuzes(c, t, depois)
       posteres(c, 66)

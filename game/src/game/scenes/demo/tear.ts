@@ -16,6 +16,7 @@ import {
 import type { PassoDentro, FiguraDentro } from '../../content/noite'
 import type { Line } from '../../world/types'
 import { Montagem, Conversa } from '../../world/dentro'
+import { Gaiola } from '../../world/gaiola'
 import { memoria } from '../../systems/memoria'
 import {
   SOMBRA_APRESSADO, DE_NOVO_DENTRO, DE_NOVO_ESCOLHA, DE_NOVO_IGUAL, DE_NOVO_DIFERENTE,
@@ -94,6 +95,8 @@ export class TearScene implements Scene {
   private proxBatida = 0
   private tPico = 0
   private montagem: Montagem | null = null
+  /** O primeiro quarto de dentro da cabeça: a gaiola (exposto para os testes). */
+  gaiola: Gaiola | null = null
   /** 0..1: quanto do grito Liam já deixou sair. */
   private nivel = 0
   private segurava = false
@@ -292,6 +295,16 @@ export class TearScene implements Scene {
       return
     }
 
+    if (this.fase === 'dentro' && this.gaiola) {
+      this.gaiola.update(dt, ctx.input, ctx.display)
+      if (this.gaiola.done) {
+        // Do outro lado da porta sem fechadura, a toalha xadrez e os recortes.
+        this.gaiola = null
+        this.montagem = new Montagem()
+        this.montagem.comecar(ctx.state, cobrarPressa() ? SOMBRA_APRESSADO : [])
+      }
+      return
+    }
     if (this.fase === 'dentro' && this.montagem) {
       this.montagem.update(dt, ctx.input, ctx.display)
       if (this.montagem.done) this.lei()
@@ -616,6 +629,8 @@ export class TearScene implements Scene {
     this.afinacaoAntes = { desafinado: musica.desafinado, abafado: musica.abafado }
     musica.desafinado = 0
     musica.abafado = 0.2
+    // A última traz a própria música (a caixinha): o Tear não toca por cima.
+    if (this.lembrancas[idx]?.musicaPropria) return
     const frase = TEMA[idx % TEMA.length] ?? []
     musica.tocarFrase(frase.slice(0, 4), 0.7, 0.32)
   }
@@ -626,8 +641,9 @@ export class TearScene implements Scene {
     const mem = this.lembrancas[l.idx]
     l.t += dt
     mem?.atualizar(dt, l.t)
-    // Quem já viu pode apressar, mas nunca pular o começo.
-    const pular = l.t > 1.6 && (ctx.input.consumeConfirm() || ctx.input.consumeTap() !== null)
+    // Quem já viu pode apressar, mas nunca pular o começo. A do corte, nem isso.
+    const quer = ctx.input.consumeConfirm() || ctx.input.consumeTap() !== null
+    const pular = !mem?.semPular && l.t > 1.6 && quer
     if (!mem || l.t >= mem.dur || pular) this.terminarLembranca(l.idx)
   }
 
@@ -681,7 +697,9 @@ export class TearScene implements Scene {
       // arrumada aperta um pouco mais as cordas por baixo dela.
       const m = this.montagem
       const n = m?.arrumados ?? 0
-      if (m && m.faseAtual !== 'cortes') clima.set({ caixinha: 0, violino: 0, cordas: 0.3, aperto: 0.55, coracao: 0.35, pulso: 0 }, 1.2)
+      // Na gaiola, quase nada: um violino longe e o silêncio do quarto.
+      if (this.gaiola) clima.set({ caixinha: 0, violino: 0.2, cordas: 0.06, aperto: 0.05, pulso: 0, coracao: 0 }, 1.5)
+      else if (m && m.faseAtual !== 'cortes') clima.set({ caixinha: 0, violino: 0, cordas: 0.3, aperto: 0.55, coracao: 0.35, pulso: 0 }, 1.2)
       else clima.set({ caixinha: 0.3, violino: 0.5, cordas: 0.08 + n * 0.04, aperto: n * 0.06, pulso: 0, coracao: 0 }, 1)
     } else if (f === 'lei') {
       // Ele fala baixo. Só as cordas graves e um relógio.
@@ -713,9 +731,10 @@ export class TearScene implements Scene {
     // Quando ele termina de dizer que não quer, corta seco para dentro.
     if (this.tPico > 2.6 && !this.dialogue.active && this.fase === 'pico') {
       this.fase = 'dentro'
-      this.montagem = new Montagem()
-      // Quem vem passando tudo sem ler ouve a sombra antes do primeiro recorte.
-      this.montagem.comecar(ctx.state, cobrarPressa() ? SOMBRA_APRESSADO : [])
+      // Primeiro, a gaiola. Depois dela, a montagem (e quem vem passando tudo
+      // sem ler ouve a sombra antes do primeiro recorte).
+      this.gaiola = new Gaiola()
+      this.gaiola.comecar(ctx.state)
     }
   }
 
@@ -994,6 +1013,14 @@ export class TearScene implements Scene {
 
   render(ctx: SceneCtx): void {
     const w = ctx.display.beginWorld()
+    if (this.fase === 'dentro' && this.gaiola) {
+      this.gaiola.render(w)
+      ctx.display.applyGrain(0.07)
+      ctx.display.present({ rgbSplit: 0, wave: 0, shake: 0, zoom: 1, alvoX: WORLD_W / 2, alvoY: WORLD_H / 2, time: this.t })
+      ctx.display.vignette(0.75)
+      this.gaiola.renderUI(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH, ctx.display)
+      return
+    }
     if (this.fase === 'dentro' && this.montagem) {
       this.montagem.render(w)
       ctx.display.applyGrain(0.07)
@@ -1208,11 +1235,13 @@ export class TearScene implements Scene {
     mem.desenhar(c, l.t)
     tingir(c, mem.tom, l.t)
     mem.sobre?.(c, l.t)
-    // A câmera vai chegando na ação enquanto a lembrança passa.
+    // A câmera vai chegando na ação enquanto a lembrança passa — ou, na
+    // lembrança dirigida, vai de plano em plano.
     const p = Math.min(1, l.t / mem.dur)
     const suave = p * p * (3 - 2 * p)
-    const z = 1 + ((mem.zoom ?? 1.15) - 1) * suave
-    const f = mem.foco?.(l.t) ?? { x: WORLD_W / 2, y: WORLD_H / 2 }
+    const cam = mem.camera?.(l.t)
+    const z = cam ? cam.z : 1 + ((mem.zoom ?? 1.15) - 1) * suave
+    const f = cam ?? mem.foco?.(l.t) ?? { x: WORLD_W / 2, y: WORLD_H / 2 }
     const sw = WORLD_W / z
     const sh = WORLD_H / z
     const sx = Math.max(0, Math.min(WORLD_W - sw, f.x - sw / 2))
@@ -1250,15 +1279,27 @@ export class TearScene implements Scene {
     c.save()
     c.textAlign = 'center'
     let y = cssH * 0.14
+    let yBaixo = cssH * 0.8
     for (const f of mem.falas) {
-      const a = Math.max(0, Math.min(1, (l.t - f.de) / 0.6)) * alfa
+      const entra = Math.max(0, Math.min(1, (l.t - f.de) / 0.6))
+      const sai = f.ate === undefined ? 1 : Math.max(0, Math.min(1, (f.ate - l.t) / 0.6))
+      const a = entra * sai * alfa
       if (a <= 0) continue
       c.globalAlpha = a
-      c.font = `italic 500 ${s}px ${FONT_FIM}`
       c.shadowColor = 'rgba(0,0,0,0.9)'
+      if (f.baixo) {
+        // Narração: menor, no pé do quadro, como legenda de filme antigo.
+        c.font = `italic 400 ${s * 0.62}px ${FONT_BODY}`
+        c.shadowBlur = s * 0.3
+        c.fillStyle = '#d8d0c0'
+        c.fillText(f.texto, cssW / 2, yBaixo + (1 - entra) * 4)
+        yBaixo += s * 0.85
+        continue
+      }
+      c.font = `italic 500 ${s}px ${FONT_FIM}`
       c.shadowBlur = s * 0.5
       c.fillStyle = '#f2ead8'
-      c.fillText(f.texto, cssW / 2, y + (1 - a) * 6)
+      c.fillText(f.texto, cssW / 2, y + (1 - entra) * 6)
       y += s * 1.25
     }
     if (mem.dono) {

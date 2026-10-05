@@ -39,14 +39,27 @@ export const CAIXA_DE_NOVO: Line[] = [
 ]
 
 /**
- * O que Liam pensa a cada vez que a tampa não abre. Cada erro chega um
- * pouco mais perto da resposta; o último já é a resposta.
+ * Dicas do quarto, para quem está preso na caixa há muito tempo. Nenhuma é
+ * escrita como dica: é o quarto que se mexe. Primeiro a foto cai e mostra o
+ * verso; depois o chá derrama e as linhas ficam vivas no pano molhado; por
+ * último a prateleira cede e quatro carretéis rolam em fila até a caixa.
  */
-export const DICAS_CAIXA: string[] = [
-  'Não abre. A tampa fala da foto — tem uma foto da gente na parede daqui.',
-  'Cada carretel é uma pessoa. Ela marca a roupa de cada um com uma cor: o avental, o paletó, o cesto.',
-  'Na foto é sempre igual: ele, ela, eu, a Lia. Da esquerda pra direita.',
-  'Azul, âmbar, cinza, rosa. Ele, ela, eu, a Lia.',
+export const PISTAS_COSTURA: Line[][] = [
+  [
+    { text: 'Um estalo atrás de mim. A foto da parede escorregou do prego e caiu de pé no chão.' },
+    { text: 'O vidro trincou. Eu viro pra ver se rasgou.' },
+    { text: 'Atrás, a lápis, na letra dela: "nós quatro, do jeito de sempre — Adrian, Evelyn, Liam, Lia."' },
+  ],
+  [
+    { text: 'A xícara de chá que ela esqueceu na prateleira tomba sozinha.' },
+    { text: 'O chá pinga no cesto. No pano molhado, os pontos de linha ficam vivos: cinza no meu uniforme, rosa na jaqueta da Lia.' },
+    { text: 'E aí eu vejo o resto: a barra âmbar do avental dela, o ponto azul no paletó dele. Cada um tem a sua cor.' },
+  ],
+  [
+    { text: 'A prateleira de carretéis cede de um lado.' },
+    { text: 'Quatro rolam pelo chão e param em fila na frente da caixa: azul, âmbar, cinza, rosa.' },
+    { text: 'O lilás fica lá em cima, sozinho.' },
+  ],
 ]
 
 /** Quantos carretéis já estão certos, depois de uma tentativa. */
@@ -110,7 +123,7 @@ export const COSTURA_TRANCADA: Line[] = [
  */
 export const LEMBRETE_RECADO: Line[][] = [
   [{ text: 'A luz da costura continua acesa, do lado da sala. O recado dela deve estar lá.' }],
-  [{ text: 'A caixa de costura. "Do jeito que a gente sai na foto." A foto está lá mesmo, na parede.' }],
+  [{ text: 'A caixa de costura dela, do lado da sala. O recado deve estar lá dentro.' }],
 ]
 export const LEMBRETE_COZINHA: Line[][] = [
   [{ text: 'Ela pediu pra eu ir pra cozinha. A porta é no corredor.' }],

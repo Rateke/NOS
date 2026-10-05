@@ -1,4 +1,6 @@
 import { WORLD_W, WORLD_H } from '../../engine/constants'
+import { audio, sons } from '../../engine/audio'
+import { ESCALA, TEMA } from '../../engine/musica'
 import { Figura, VISUAL } from './figura'
 import type { CorFigura } from './figura'
 import { ret, sorteio, papelDeParede, assoalho, quadro, porta } from './arte'
@@ -20,6 +22,10 @@ export interface Fala {
   texto: string
   /** Segundos desde o começo da lembrança. */
   de: number
+  /** Some neste instante (sem isto, fica até a lembrança acabar). */
+  ate?: number
+  /** Narração: pequena, no pé do quadro, em vez de no alto. */
+  baixo?: boolean
 }
 
 export interface Lembranca {
@@ -39,6 +45,12 @@ export interface Lembranca {
    */
   foco?(t: number): { x: number; y: number }
   zoom?: number
+  /** Câmera dirigida plano a plano: substitui `foco` e `zoom`. */
+  camera?(t: number): { x: number; y: number; z: number }
+  /** Não dá para apressar: é para ver inteira. */
+  semPular?: boolean
+  /** A lembrança cuida da própria música: o Tear não toca a frase por cima. */
+  musicaPropria?: boolean
 }
 
 const PELE = '#7a5a4e'
@@ -524,135 +536,493 @@ function amelia(): Lembranca {
 }
 
 /**
- * 6. A figura preta. O quarto de Liam, pequeno, dormindo. Alguém na porta,
- * contra a luz do corredor, com um fio saindo do peito até ele. Ela corta.
+ * 6. A figura preta. A lembrança que importa, e a única que não é curta.
+ *
+ * O quarto de Liam quando ele era pequeno, de noite. A porta abre devagar e
+ * alguém entra contra a luz do corredor — lá fora, as sombras dos pais
+ * discutindo. Ela atravessa o quarto, ajoelha do lado da cama e o fio lilás
+ * aparece entre os dois, batendo junto com o coração dele. Ela pega a
+ * tesoura. A câmera fecha no fio. Ela corta. A ponta dela vira faísca e
+ * sobe; a dele volta para o peito e apaga. Ela vai embora se desfazendo, e
+ * a quinta pessoa some do desenho na parede. A porta fecha. De manhã,
+ * alguém põe cinco pratos na mesa.
+ *
+ * Não dá para pular na primeira vez. É a cena mais importante da demo.
  */
+
+/** Quando cada coisa acontece, em segundos. */
+const F = {
+  porta: 3.0,
+  entra: 4.4,
+  anda: 7.4,
+  ajoelha: 10.2,
+  fio: 10.6,
+  mao: 12.0,
+  tesoura: 14.6,
+  corte: 18.0,
+  levanta: 20.4,
+  sai: 21.4,
+  fecha: 24.2,
+  fim: 30,
+}
+const PORTA_X = 274
+/** Onde ela ajoelha: do lado da cabeceira, perto do rosto dele. */
+const CAMA_X = 176
+const PEITO_LIAM = { x: 138, y: 145 }
+const PEITO_ELA = { x: 173, y: 156 }
+/** A mão no cabelo dele, e depois com a tesoura no meio do fio. */
+const MAO_CABELO = { x: 152, y: 136 }
+const MAO_CORTE = { x: 158, y: 150 }
+
+/**
+ * Ela ajoelhada, de perfil para a esquerda: cabeça, o cabelo comprido
+ * caindo nas costas, o tronco inclinado para ele, os joelhos no chão e o
+ * braço indo até `mao`. `k` vai de 0 (em pé) a 1 (ajoelhada).
+ */
+function ajoelhada(c: CanvasRenderingContext2D, bx: number, k: number, mao: { x: number; y: number } | null): void {
+  const chao = 172
+  const H = 40 * (1 - 0.34 * k)
+  const topo = chao - H
+  const inclina = 3 * k
+  const cx = bx - inclina
+  c.fillStyle = '#020203'
+  // Cabeça
+  c.beginPath()
+  c.arc(cx, topo + 4.5, 4.3, 0, Math.PI * 2)
+  c.fill()
+  // O cabelo comprido, caindo pelas costas
+  c.beginPath()
+  c.moveTo(cx - 1, topo + 0.5)
+  c.quadraticCurveTo(cx + 6, topo + 2, cx + 6, topo + 16)
+  c.lineTo(cx + 2, topo + 17)
+  c.lineTo(cx + 1, topo + 7)
+  c.fill()
+  // Pescoço, e o tronco: ombros, cintura, inclinado para ele
+  c.fillRect(Math.round(cx - 1), Math.round(topo + 8), 2, 3)
+  const ombro = topo + 10.5
+  const quadril = topo + 10.5 + 13 * (1 - 0.15 * k)
+  c.beginPath()
+  c.moveTo(cx - 4, ombro)
+  c.lineTo(cx + 4, ombro)
+  c.lineTo(bx + 4, quadril)
+  c.lineTo(bx - 4, quadril)
+  c.closePath()
+  c.fill()
+  // Pernas: em pé, retas; ajoelhada, a coxa para a frente e a canela para trás.
+  if (k < 0.5) {
+    c.fillRect(Math.round(bx - 3), Math.round(quadril), 3, Math.round(chao - quadril))
+    c.fillRect(Math.round(bx + 1), Math.round(quadril), 3, Math.round(chao - quadril))
+  } else {
+    c.beginPath()
+    c.moveTo(bx - 4, quadril - 1)
+    c.lineTo(bx + 4, quadril - 1)
+    c.lineTo(bx - 2, chao - 3)
+    c.lineTo(bx - 9, chao - 3)
+    c.closePath()
+    c.fill()
+    c.fillRect(Math.round(bx - 9), chao - 3, 18, 3)
+  }
+  // O braço até onde a mão estiver
+  const sx = cx - 2
+  const sy = ombro + 1
+  const hx = mao ? mao.x : bx - 2
+  const hy = mao ? mao.y : quadril - 2
+  c.strokeStyle = '#020203'
+  c.lineWidth = 2.2
+  c.lineCap = 'round'
+  c.beginPath()
+  c.moveTo(sx, sy)
+  c.quadraticCurveTo((sx + hx) / 2 + 1, Math.max(sy, hy) + 2, hx, hy)
+  c.stroke()
+  c.lineCap = 'butt'
+}
+
+/** Suave entre 0 e 1. */
+function suave(a: number, b: number, t: number): number {
+  const p = Math.max(0, Math.min(1, (t - a) / (b - a)))
+  return p * p * (3 - 2 * p)
+}
+
 function figuraPreta(): Lembranca {
-  const ela = new Figura({ x: 272, y: 172, altura: 40, cabelo: 'longo', cor: cor('#000', '#000') })
+  const ela = new Figura({ x: PORTA_X, y: 172, altura: 40, cabelo: 'longo', cor: cor('#000', '#000') })
   ela.silhueta = true
   ela.olhar = -1
-  const CORTE = 3.1
+  const menino = new Figura({ ...VISUAL.liam, x: 132, y: 150, altura: 18, cor: cor('#2a3044', '#12151f') })
+  // As faíscas da ponta dela, subindo depois do corte
+  const faiscas: { x: number; y: number; vx: number; vy: number; vida: number }[] = []
+  // O pó dela, quando vai embora
+  const po: { x: number; y: number; vx: number; vy: number; vida: number }[] = []
+  let antes = 0
+  const passou = (t: number, em: number) => antes < em && t >= em
+  const melodia = [...(TEMA[0] ?? []), ...(TEMA[1] ?? [])].map((g) => ESCALA[g] ?? 220)
+
   return {
     falas: [
-      { texto: 'Se eu ficar, é você que carrega.', de: 0.6 },
-      { texto: 'Então eu corto.', de: CORTE - 0.4 },
+      { texto: 'Eles brigam de novo. E você ouve tudo, até dormindo.', de: 6.2, ate: 10.2 },
+      { texto: 'Se eu ficar, é você que carrega.', de: 10.8, ate: 14.2 },
+      { texto: 'Você não vai lembrar de mim. É melhor assim.', de: 14.4, ate: 17.4 },
+      { texto: 'Então eu corto.', de: 17.5, ate: 20.6 },
+      { texto: 'Na manhã seguinte, alguém pôs cinco pratos na mesa.', de: 25.0, baixo: true },
+      { texto: 'Ninguém soube dizer por quê.', de: 26.8, baixo: true },
     ],
     dono: '',
     tom: '#303848',
-    dur: 7,
-    zoom: 1.22,
-    foco: (t) => ({ x: t < 3.1 ? 220 : 204, y: 132 }),
+    dur: F.fim,
+    semPular: true,
+    musicaPropria: true,
+    camera(t) {
+      // Plano aberto → segue ela até a cama → fecha no fio → abre de novo.
+      const aberto = { x: 210, y: 118, z: 1.0 }
+      const cama = { x: 196, y: 132, z: 1.45 }
+      const fio = { x: 156, y: 146, z: 2.6 }
+      const fimP = { x: 214, y: 120, z: 1.1 }
+      const mistura = (a: typeof aberto, b: typeof aberto, k: number) => ({
+        x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k,
+      })
+      if (t < F.anda) return mistura(aberto, { x: 236, y: 124, z: 1.18 }, suave(F.porta, F.anda, t))
+      if (t < F.tesoura) return mistura({ x: 236, y: 124, z: 1.18 }, cama, suave(F.anda, F.ajoelha + 0.6, t))
+      if (t < F.corte + 0.6) return mistura(cama, fio, suave(F.tesoura, F.corte - 0.6, t))
+      if (t < F.sai) return mistura(fio, cama, suave(F.corte + 0.8, F.levanta + 0.4, t))
+      return mistura(cama, fimP, suave(F.sai, F.fecha + 1, t))
+    },
     atualizar(dt, t) {
       ela.update(dt)
-      ela.braco = t > 1.8 ? Math.min(0.9, (t - 1.8) * 1.2) : 0
+      menino.update(dt)
+      // Os sons, cada um no seu instante.
+      if (passou(t, 0.2)) sons.caixinha(melodia, 0.62)
+      if (passou(t, F.porta)) sons.porta()
+      if (passou(t, F.fio)) audio.heartbeat(0.12)
+      if (t > F.fio && t < F.corte && Math.floor(t * 0.9) !== Math.floor(antes * 0.9)) audio.heartbeat(0.08 + suave(F.tesoura, F.corte, t) * 0.1)
+      if (passou(t, F.tesoura)) audio.interact()
+      if (passou(t, F.corte)) {
+        sons.estalo()
+        audio.reveal()
+        for (let i = 0; i < 26; i++) {
+          faiscas.push({ x: MAO_CORTE.x + 2, y: MAO_CORTE.y + 1, vx: (Math.random() - 0.3) * 14, vy: -8 - Math.random() * 22, vida: 1.6 + Math.random() * 1.6 })
+        }
+      }
+      if (passou(t, F.fecha)) sons.porta()
+      antes = t
+
+      // Ela: aparece na porta, anda até a cama, ajoelha, levanta, vai embora.
+      ela.costas = false
+      if (t < F.anda) {
+        ela.x = PORTA_X
+        ela.andando = 0
+        ela.olhar = -1
+      } else if (t < F.ajoelha) {
+        const p = suave(F.anda, F.ajoelha, t)
+        ela.x = PORTA_X + (CAMA_X - PORTA_X) * p
+        ela.andando = 0.6
+        ela.olhar = -1
+      } else if (t < F.levanta) {
+        ela.x = CAMA_X
+        ela.andando = 0
+      } else {
+        const p = suave(F.sai, F.fecha - 0.4, t)
+        ela.x = CAMA_X + (PORTA_X + 8 - CAMA_X) * p
+        ela.andando = t > F.sai && t < F.fecha - 0.4 ? 0.5 : 0
+        ela.olhar = t > F.sai ? 1 : -1
+        // Na porta, ela olha para trás uma vez.
+        if (t > F.fecha - 1.4 && t < F.fecha - 0.4) ela.olhar = -1
+      }
+      // A mão no cabelo dele; depois a tesoura.
+      ela.braco = t > F.mao && t < F.tesoura ? 0.85 : t >= F.tesoura && t < F.corte + 0.6 ? 0.7 : 0
+      // Ele se mexe quando ela encosta, e não acorda.
+      menino.tremor = t > F.mao + 0.4 && t < F.mao + 1.2 ? 0.6 : 0
+
+      for (const f of faiscas) {
+        f.x += f.vx * dt
+        f.y += f.vy * dt
+        f.vy -= 4 * dt
+        f.vida -= dt
+      }
+      // O pó dela, enquanto vai embora
+      if (t > F.sai && t < F.fecha && Math.random() < dt * 40) {
+        po.push({
+          x: ela.x + (Math.random() - 0.5) * 8, y: 172 - Math.random() * 40,
+          vx: 4 + Math.random() * 8, vy: -4 - Math.random() * 8, vida: 1.4 + Math.random(),
+        })
+      }
+      for (const p of po) {
+        p.x += p.vx * dt
+        p.y += p.vy * dt
+        p.vida -= dt
+      }
     },
     desenhar(c, t) {
       comodo(c, [26, 30, 44], 172)
-      // Desenhos de criança presos na parede, e uma prateleira com o coelho
-      for (const [dx, dy] of [[108, 52], [128, 46], [150, 56]] as const) {
-        ret(c, dx, dy, 14, 12, '#c8c4b8')
+      // Rodapé e um friso de estrelinhas pintadas a esponja
+      ret(c, 0, 168, WORLD_W, 4, '#1c2030')
+      for (let x = 6; x < WORLD_W; x += 18) ret(c, x, 100 + ((x / 18) % 2) * 3, 1, 1, 'rgba(230,226,170,0.35)')
+      // A janela com a lua e a chuva escorrendo
+      ret(c, 34, 36, 46, 42, '#0a1020')
+      ret(c, 60, 44, 9, 9, '#c8ccd8')
+      ret(c, 63, 44, 6, 6, '#0a1020')
+      ret(c, 56, 36, 2, 42, '#1a1e2a')
+      ret(c, 34, 56, 46, 2, '#1a1e2a')
+      ret(c, 30, 78, 54, 3, '#2a2e3e')
+      const chuva = sorteio(5)
+      for (let i = 0; i < 12; i++) {
+        const gx = 35 + Math.floor(chuva() * 44)
+        const gy = 37 + ((chuva() * 40 + t * (8 + chuva() * 10)) % 40)
+        ret(c, gx, Math.round(gy), 1, 2, 'rgba(170,190,230,0.45)')
+      }
+      // Os desenhos dele na parede. No do meio, a família de palito: cinco.
+      for (const [dx, dy] of [[100, 50], [150, 56]] as const) {
+        ret(c, dx, dy, 15, 12, '#c8c4b8')
         ret(c, dx + 3, dy + 5, 5, 5, '#4a6a9a')
         ret(c, dx + 2, dy + 4, 7, 1, '#9a4a4a')
-        ret(c, dx + 9, dy + 7, 3, 3, '#4a8a4a')
+        ret(c, dx + 10, dy + 7, 3, 3, '#4a8a4a')
       }
-      ret(c, 186, 92, 40, 3, '#3a2e2a')
+      ret(c, 120, 42, 24, 16, '#d4d0c4')
+      ret(c, 121, 42, 3, 1, 'rgba(230,220,180,0.7)')
+      ret(c, 140, 42, 3, 1, 'rgba(230,220,180,0.7)')
+      const somindo = 1 - suave(F.sai, F.fecha, t)
+      const bonecos = ['#2a2a40', '#c87a4a', '#2a2a40', '#c8505a', '#8a5ac8']
+      bonecos.forEach((cr, i) => {
+        c.save()
+        if (i === 4) c.globalAlpha = somindo
+        ret(c, 124 + i * 4, 48, 1, 7, cr)
+        ret(c, 123 + i * 4, 46, 3, 2, cr)
+        c.restore()
+      })
+      // A mão do quinto bonequinho segurando a do menor
+      if (somindo > 0.05) ret(c, 137, 50, 3, 1, `rgba(138,90,200,${somindo})`)
+      // Prateleira: o coelho, um porta-retrato com cinco
+      ret(c, 186, 92, 44, 3, '#3a2e2a')
       ret(c, 194, 82, 8, 10, '#a89494')
       ret(c, 195, 76, 2, 6, '#a89494')
       ret(c, 199, 77, 2, 5, '#a89494')
       ret(c, 196, 85, 1, 1, '#141014')
       ret(c, 199, 85, 1, 1, '#141014')
-      ret(c, 210, 86, 6, 6, '#6a4a3a')
-      // Cômoda baixa e uma luz de tomada em forma de estrela
+      quadro(c, 208, 80, 16, 12, { figuras: somindo > 0.5 ? 5 : 4, ...(somindo > 0.5 ? {} : { vazios: [4] }) })
+      // Cômoda baixa e a luz de tomada em forma de estrela
       ret(c, 186, 130, 46, 42, '#2a2a3a')
       for (const yy of [136, 148, 160]) {
         ret(c, 190, yy, 38, 9, '#323246')
         ret(c, 207, yy + 4, 4, 1, '#8a8aa0')
       }
-      ret(c, 236, 152, 4, 4, 'rgba(255,230,150,0.7)')
-      ret(c, 237, 151, 2, 6, 'rgba(255,230,150,0.5)')
-      // Brinquedos no chão: blocos, um carrinho
-      ret(c, 166, 178, 6, 6, '#7a4a4a')
-      ret(c, 172, 180, 6, 4, '#4a6a7a')
-      ret(c, 168, 174, 5, 4, '#8a7a4a')
+      ret(c, 238, 152, 4, 4, 'rgba(255,230,150,0.8)')
+      ret(c, 239, 151, 2, 6, 'rgba(255,230,150,0.6)')
+      const estrela = c.createRadialGradient(240, 154, 1, 240, 154, 26)
+      estrela.addColorStop(0, 'rgba(255,230,150,0.22)')
+      estrela.addColorStop(1, 'rgba(255,230,150,0)')
+      c.fillStyle = estrela
+      c.fillRect(214, 128, 52, 52)
+      // Brinquedos no chão
+      ret(c, 160, 178, 6, 6, '#7a4a4a')
+      ret(c, 166, 180, 6, 4, '#4a6a7a')
+      ret(c, 162, 174, 5, 4, '#8a7a4a')
       ret(c, 46, 180, 14, 5, '#5a5a7a')
       ret(c, 48, 177, 8, 3, '#5a5a7a')
       ret(c, 48, 185, 3, 2, '#141414')
       ret(c, 56, 185, 3, 2, '#141414')
-      // Janela com lua
-      ret(c, 40, 40, 40, 36, '#0a1020')
-      ret(c, 64, 46, 8, 8, '#c8ccd8')
-      ret(c, 59, 40, 2, 36, '#1a1e2a')
+
+      // A porta: fechada com a luz por baixo, abre, fecha de novo.
+      const abre = suave(F.porta, F.entra + 0.6, t) * (1 - suave(F.fecha, F.fecha + 1.6, t))
+      const vaoW = 44
+      // O vão de luz: o corredor e, nele, as sombras dos pais.
+      const luzW = Math.round(vaoW * abre)
+      if (luzW > 0) {
+        ret(c, PORTA_X - 22, 88, luzW, 84, '#d8c8a0')
+        // As sombras discutindo na parede do corredor
+        const briga = t > F.entra && t < F.corte
+        if (briga) {
+          c.save()
+          c.beginPath()
+          c.rect(PORTA_X - 22, 88, luzW, 84)
+          c.clip()
+          const a1 = PORTA_X - 14 + Math.sin(t * 1.1) * 3
+          const a2 = PORTA_X + 6 + Math.sin(t * 0.8 + 1) * 4
+          c.fillStyle = 'rgba(70,58,44,0.5)'
+          c.fillRect(Math.round(a1), 104, 6, 46)
+          c.fillRect(Math.round(a1) + 1, 98, 4, 6)
+          c.fillStyle = 'rgba(60,48,36,0.6)'
+          c.fillRect(Math.round(a2), 100, 8, 52)
+          c.fillRect(Math.round(a2) + 2, 93, 5, 7)
+          if (Math.sin(t * 2.2) > 0.6) c.fillRect(Math.round(a2) - 5, 100, 6, 2)
+          c.restore()
+        }
+        const luz = c.createRadialGradient(PORTA_X, 140, 4, PORTA_X, 140, 130)
+        luz.addColorStop(0, `rgba(255,230,180,${0.32 * abre})`)
+        luz.addColorStop(1, 'rgba(255,230,180,0)')
+        c.fillStyle = luz
+        c.fillRect(120, 30, 264, 186)
+        // A luz no chão, um triângulo que abre e fecha junto com a porta
+        c.fillStyle = `rgba(255,230,180,${0.14 * abre})`
+        c.beginPath()
+        c.moveTo(PORTA_X - 22, 172)
+        c.lineTo(PORTA_X - 22 + luzW, 172)
+        c.lineTo(PORTA_X - 60 + luzW * 0.4, 216)
+        c.lineTo(PORTA_X - 120 - abre * 40, 216)
+        c.fill()
+      }
+      // A folha da porta, abrindo para dentro (encurta), e o batente
+      const folhaW = Math.max(4, Math.round(vaoW * (1 - abre)))
+      ret(c, PORTA_X - 22 + luzW, 88, folhaW, 84, '#2a2a36')
+      ret(c, PORTA_X - 22 + luzW, 88, 1, 84, '#3a3a4a')
+      if (abre < 0.1) ret(c, PORTA_X - 22, 171, vaoW, 1, 'rgba(255,230,170,0.75)')
+      ret(c, PORTA_X - 26, 84, 4, 88, '#14161e')
+      ret(c, PORTA_X + 22, 84, 4, 88, '#14161e')
+      ret(c, PORTA_X - 26, 84, 52, 4, '#14161e')
+
       // A cama e o menino dormindo, encolhido
-      ret(c, 70, 146, 90, 26, '#2a3048')
-      ret(c, 70, 142, 90, 6, '#3a4260')
-      ret(c, 142, 136, 16, 7, '#c8c0b0')
-      ret(c, 132, 137, 10, 7, '#6d5a52')
-      ret(c, 132, 136, 10, 3, '#12151f')
+      ret(c, 70, 146, 96, 26, '#2a3048')
+      ret(c, 70, 142, 96, 6, '#3a4260')
+      ret(c, 66, 128, 4, 44, '#22283c')
+      ret(c, 166, 136, 4, 36, '#22283c')
+      // O travesseiro, e a cabeça dele em cima, de lado, com a luz da porta no rosto
+      ret(c, 142, 135, 21, 9, '#d8d0c0')
+      ret(c, 142, 135, 21, 1, '#ece6da')
+      const mexe = menino.tremor > 0 ? Math.round(Math.sin(t * 24)) : 0
+      ret(c, 147 + mexe, 135, 9, 7, '#8a6e62')
+      ret(c, 146 + mexe, 133, 11, 3, '#12151f')
+      ret(c, 146 + mexe, 135, 2, 4, '#12151f')
+      ret(c, 149 + mexe, 139, 2, 1, '#3a2a28')
+      ret(c, 152 + mexe, 140, 2, 1, '#5a4040')
+      // O cobertor, encolhido por cima dele
       c.fillStyle = '#3a4260'
       c.beginPath()
-      c.ellipse(112, 142, 26, 7, 0, Math.PI, 0)
+      c.ellipse(118, 143, 30, 8, 0, Math.PI, 0)
       c.fill()
-      // A porta aberta, a luz do corredor atrás dela
-      const sai = t > CORTE + 1.2 ? Math.min(1, (t - CORTE - 1.2) / 1.4) : 0
-      ret(c, 252, 88, 44, 84, '#d8c8a0')
-      const luz = c.createRadialGradient(274, 140, 4, 274, 140, 110)
-      luz.addColorStop(0, 'rgba(255,230,180,0.3)')
-      luz.addColorStop(1, 'rgba(255,230,180,0)')
-      c.fillStyle = luz
-      c.fillRect(150, 40, 234, 176)
-      ret(c, 248, 84, 4, 88, '#14161e')
-      ret(c, 296, 84, 4, 88, '#14161e')
-      ret(c, 248, 84, 52, 4, '#14161e')
-      // Luz da porta no chão
-      c.fillStyle = 'rgba(255,230,180,0.12)'
-      c.beginPath()
-      c.moveTo(252, 172)
-      c.lineTo(296, 172)
-      c.lineTo(230, 216)
-      c.lineTo(170, 216)
-      c.fill()
-      c.save()
-      c.globalAlpha = 1 - sai
-      ela.x = 272 + sai * 10
-      ela.draw(c, 400, 'rgba(0,0,0,0)')
-      c.restore()
+      ret(c, 140, 140, 10, 6, '#3a4260')
+      // Um ursinho caído da cama
+      ret(c, 84, 166, 6, 6, '#7a5a44')
+      ret(c, 85, 164, 4, 3, '#7a5a44')
+
+      // Ela, contra a luz. Ajoelhada do lado dele; indo embora, se desfaz.
+      if (t > F.entra) {
+        c.save()
+        const entra = suave(F.entra, F.entra + 1.2, t)
+        const desfaz = 1 - suave(F.sai, F.fecha - 0.2, t)
+        c.globalAlpha = entra * desfaz
+        const desce = suave(F.ajoelha, F.ajoelha + 0.7, t) * (1 - suave(F.levanta, F.levanta + 0.7, t))
+        if (desce > 0.02) {
+          const mao = t > F.mao && t < F.tesoura - 0.3
+            ? MAO_CABELO
+            : t >= F.tesoura - 0.3 && t < F.corte + 0.5 ? MAO_CORTE : null
+          ajoelhada(c, ela.x, desce, desce > 0.6 ? mao : null)
+        } else {
+          ela.y = 172
+          ela.draw(c, 400, 'rgba(0,0,0,0)')
+        }
+        c.restore()
+      }
+      for (const p of po) {
+        if (p.vida <= 0) continue
+        ret(c, Math.round(p.x), Math.round(p.y), 1, 1, `rgba(8,8,12,${Math.min(0.9, p.vida)})`)
+      }
     },
     sobre(c, t) {
-      // O fio: do peito dela ao peito dele. É a única cor da lembrança.
-      const cortado = t >= CORTE
-      const pulso = 0.6 + Math.sin(t * 4) * 0.3
-      const x0 = 270
-      const y0 = 146
-      const x1 = 136
-      const y1 = 142
+      // Os outros fios dele, finos e cinzentos, saindo pela porta: o pai, a mãe, a Lia.
+      const abre = suave(F.porta, F.entra + 0.6, t) * (1 - suave(F.fecha, F.fecha + 1.6, t))
+      const aparece = suave(F.fio, F.fio + 1.2, t)
       c.save()
-      c.strokeStyle = `rgba(200,170,255,${cortado ? Math.max(0, 1 - (t - CORTE) * 0.8) : pulso})`
       c.lineWidth = 1
-      c.beginPath()
-      if (!cortado) {
-        c.moveTo(x0, y0)
-        c.quadraticCurveTo(200, 128, x1, y1)
-      } else {
-        // As duas pontas caem, cada uma para o seu lado
-        const q = Math.min(1, (t - CORTE) * 1.4)
-        c.moveTo(x0, y0)
-        c.quadraticCurveTo(x0 - 20, y0 + 10 + q * 16, x0 - 30, y0 + q * 24)
-        c.moveTo(x1, y1)
-        c.quadraticCurveTo(x1 + 30, y1 + 4 + q * 20, x1 + 44, y1 + q * 28)
+      if (aparece > 0) {
+        ;['rgba(147,166,198,', 'rgba(226,169,94,', 'rgba(208,110,128,'].forEach((cr, i) => {
+          c.strokeStyle = `${cr}${(0.22 * aparece * Math.max(0.3, abre)).toFixed(3)})`
+          c.beginPath()
+          c.moveTo(PEITO_LIAM.x, PEITO_LIAM.y)
+          c.quadraticCurveTo(200, 120 + i * 8, PORTA_X - 4 + i * 6, 120 + i * 10)
+          c.stroke()
+        })
       }
-      c.stroke()
-      // Tesoura na mão dela, e o estalo do corte
-      if (t > 1.8 && t < CORTE + 1.2) {
-        ret(c, 258, 134, 2, 1, '#e8e8f0')
-        ret(c, 260, 133, 1, 1, '#e8e8f0')
-        ret(c, 260, 135, 1, 1, '#e8e8f0')
+      // O fio dela: do peito dela ao peito dele, batendo junto com o coração.
+      const corte = t >= F.corte
+      const ex = PEITO_ELA.x
+      const ey = PEITO_ELA.y
+      if (aparece > 0 && !corte) {
+        const bate = 0.55 + Math.pow(Math.max(0, Math.sin(t * Math.PI * 1.8)), 6) * 0.45
+        const g = c.createLinearGradient(PEITO_LIAM.x, 0, ex, 0)
+        g.addColorStop(0, `rgba(200,170,255,${aparece * bate})`)
+        g.addColorStop(1, `rgba(220,190,255,${aparece * bate})`)
+        c.strokeStyle = g
+        c.shadowColor = 'rgba(180,150,240,0.9)'
+        c.shadowBlur = 4 + bate * 4
+        c.beginPath()
+        c.moveTo(ex, ey)
+        // Esticado quando a tesoura chega: a curva endireita e passa entre as lâminas.
+        const estica = suave(F.tesoura, F.corte - 0.4, t)
+        c.quadraticCurveTo((ex + PEITO_LIAM.x) / 2, (ey + PEITO_LIAM.y) / 2 - 7 + estica * 7, PEITO_LIAM.x, PEITO_LIAM.y)
+        c.stroke()
+        c.shadowBlur = 0
       }
-      if (cortado && t < CORTE + 0.25) {
-        c.fillStyle = `rgba(255,255,255,${1 - (t - CORTE) * 4})`
+      if (corte) {
+        const q = Math.min(1, (t - F.corte) * 0.9)
+        const some = Math.max(0, 1 - (t - F.corte) * 0.5)
+        const meio = (ex + PEITO_LIAM.x) / 2
+        // A ponta dele volta para o peito e apaga.
+        c.strokeStyle = `rgba(200,170,255,${some})`
+        c.beginPath()
+        c.moveTo(PEITO_LIAM.x, PEITO_LIAM.y)
+        c.quadraticCurveTo(PEITO_LIAM.x + 8, PEITO_LIAM.y + 2 + q * 6, meio - 2 - q * (meio - PEITO_LIAM.x - 4), PEITO_LIAM.y + q * 10)
+        c.stroke()
+        const brilho = c.createRadialGradient(PEITO_LIAM.x, PEITO_LIAM.y, 0, PEITO_LIAM.x, PEITO_LIAM.y, 10)
+        brilho.addColorStop(0, `rgba(210,180,255,${0.6 * some})`)
+        brilho.addColorStop(1, 'rgba(210,180,255,0)')
+        c.fillStyle = brilho
+        c.fillRect(PEITO_LIAM.x - 10, PEITO_LIAM.y - 10, 20, 20)
+        // A ponta dela cai, e vira faísca.
+        c.strokeStyle = `rgba(200,170,255,${Math.max(0, 1 - q * 1.4)})`
+        c.beginPath()
+        c.moveTo(ex, ey)
+        c.quadraticCurveTo(ex - 4, ey + 6 + q * 10, ex - 8, ey + q * 16)
+        c.stroke()
+      }
+      for (const f of faiscasDe(t)) ret(c, Math.round(f.x), Math.round(f.y), 1, 1, f.cor)
+      // A tesoura: duas lâminas que abrem devagar e fecham de uma vez.
+      if (t > F.tesoura && t < F.corte + 0.5) {
+        const mx = MAO_CORTE.x
+        const my = MAO_CORTE.y
+        const abreT = t < F.corte - 0.15 ? suave(F.tesoura + 0.8, F.corte - 0.6, t) : 0
+        const ang = 0.08 + abreT * 0.42
+        c.save()
+        c.translate(mx, my)
+        c.strokeStyle = '#e8e8f0'
+        c.lineWidth = 1
+        for (const s of [-1, 1]) {
+          c.save()
+          c.rotate(s * ang)
+          c.beginPath()
+          c.moveTo(0, 0)
+          c.lineTo(-11, 0)
+          c.stroke()
+          c.beginPath()
+          c.arc(4, 0, 2.2, 0, Math.PI * 2)
+          c.stroke()
+          c.restore()
+        }
+        // O brilho na lâmina
+        if (t < F.tesoura + 0.6) {
+          c.fillStyle = `rgba(255,255,255,${1 - (t - F.tesoura) / 0.6})`
+          c.fillRect(-8, -1, 2, 2)
+        }
+        c.restore()
+      }
+      // O estalo do corte: branco, e depois o quarto mais escuro que antes.
+      if (corte && t < F.corte + 0.3) {
+        c.fillStyle = `rgba(255,255,255,${1 - (t - F.corte) / 0.3})`
         c.fillRect(0, 0, WORLD_W, WORLD_H)
+      }
+      // A porta fechada de novo: só a estrela da tomada, e depois nem ela.
+      const escurece = suave(F.fecha + 1.2, F.fim - 2, t)
+      if (escurece > 0) {
+        c.fillStyle = `rgba(2,2,6,${escurece * 0.82})`
+        c.fillRect(0, 0, WORLD_W, WORLD_H)
+        ret(c, 238, 152, 4, 4, `rgba(255,230,150,${0.8 * (1 - escurece * 0.6)})`)
       }
       c.restore()
     },
+  }
+
+  /** As faíscas da ponta dela, subindo e apagando. */
+  function faiscasDe(t: number): { x: number; y: number; cor: string }[] {
+    if (t < F.corte) return []
+    return faiscas.filter((f) => f.vida > 0).map((f) => ({
+      x: f.x, y: f.y, cor: `rgba(${200 + Math.floor(Math.random() * 40)},170,255,${Math.min(1, f.vida)})`,
+    }))
   }
 }
 

@@ -1,12 +1,13 @@
 import { WORLD_H } from '../../engine/constants'
 import type { RGB } from './arte'
 import {
-  mix, rgb, clarear, ret, papelDeParede, lambri, assoalho, porta, quadro, cantos,
+  mix, rgb, clarear, ret, papelDeParede, lambri, assoalho, quadro, cantos,
 } from './arte'
 import {
   sanca, rodape, lustre, radiador, violeta, plantaAlta, cestoTrico, chinelos, quadroMar,
   relogioParado, interruptor, marcaDeQuadro, sombraDeContato, luarNoChao,
 } from './detalhes'
+import { portaDeVidro, portaCostura } from './portas'
 
 /**
  * A sala.
@@ -111,9 +112,10 @@ export function drawSalaFundo(c: CanvasRenderingContext2D, e: EstadoSala): void 
   drawSofa(c, k)
   drawAbajur(c, k)
   drawEstante(c, k)
-  porta(c, SALA_PORTA, CHAO_Y, { cor: tom([34, 42, 58], [62, 44, 40], k), luz: true })
-  // A costura: a luz da máquina dela escapando por baixo da porta.
-  porta(c, SALA_COSTURA, CHAO_Y, { cor: tom([40, 38, 52], [70, 50, 44], k), luz: true })
+  // A porta de vidro para o corredor, com a luz das arandelas do outro lado.
+  portaDeVidro(c, SALA_PORTA, CHAO_Y, tom([34, 42, 58], [62, 44, 40], k), '236,196,132', 0.45)
+  // A costura: a porta que ela pintou, e a luz da máquina escapando por baixo.
+  portaCostura(c, SALA_COSTURA, CHAO_Y, k)
   interruptor(c, 506, 100, k)
   cestoTrico(c, 222, CHAO_Y + 8, k)
   chinelos(c, 300, CHAO_Y + 4, rgb(tom([58, 54, 70], [110, 70, 60], k)))

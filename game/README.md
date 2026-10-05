@@ -44,8 +44,10 @@ quando o jogo lembra que você já terminou), `test/violoncelo.mjs` (os
 segredos do menu, a partitura até o fim e o quinto retrato),
 `test/novidades.mjs` (a foto que a Lia joga, a cabana pela luz, a floresta
 pela fresta do armário, a sombra do pai que engole o Tear, o jornal),
-`test/costura.mjs` (a porta nova da sala, a caixa de costura com as dicas a
-cada erro, o recado que aponta a cozinha, as dicas do Tear depois do fim) e
+`test/costura.mjs` (a porta nova da sala, a caixa de costura, o quarto que
+ajuda quem demora, o recado que aponta a cozinha, as dicas do Tear depois do
+fim), `test/puzzles.mjs` (a gaiola do Dentro, o relógio do corredor e a
+lembrança do corte, que não deixa pular) e
 `test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
@@ -129,6 +131,8 @@ os três caminhos são testados de ponta a ponta.
 | Esconder o caderno da Lia (os passos) | clicar | espaço ou E | tocar |
 | Arrumar a coisa torta, no Dentro | clicar nela | E | tocar nela |
 | Girar os carretéis da caixa de costura | clicar no carretel; "abrir" e "deixar" embaixo | ← → escolhe, ↑ ↓ troca a cor, Enter abre, Esc deixa | tocar no carretel |
+| Mexer nos ponteiros do relógio do corredor | clicar perto da borda (minutos) ou do meio (horas); "soltar" e "deixar" do lado | ← → minutos, ↑ ↓ horas, Enter solta, Esc deixa | tocar no mostrador |
+| Pegar, devolver e atravessar, na gaiola | clicar na coisa ou na porta | setas e E | tocar na coisa ou na porta |
 | Entrar na frente de um prato | clicar onde correr | setas | tocar onde correr |
 | Escolher quem salvar, no Tear | clicar na metade dela | ← ou → | tocar na metade dela |
 | Pausar | ícone no canto de cima | Esc ou P | ícone no canto de cima |
@@ -165,6 +169,20 @@ do pai, e ela só existe no Tear (errar demais, ou parar demais, e ela engole
 a sala). Fora dali nada se perde: a crise da casa só acontece, o ar curto na
 cozinha só acontece, o prólogo é lembrança.
 
+**Puzzles: obrigatórios e opcionais.** Os obrigatórios (a caixa de
+costura, a gaiola do Dentro, a música do Tear) são de dificuldade média e
+medem o tempo: se o jogador estiver demorando muito, **de verdade**, o
+próprio lugar ajuda — sem texto de dica. Na costura, depois de dois minutos
+e meio presos na caixa, a foto escorrega do prego e mostra a ordem escrita
+atrás; mais tarde a xícara de chá tomba e as linhas ficam vivas no pano
+molhado; por último a prateleira cede e quatro carretéis rolam em fila até a
+caixa. Na gaiola, a pena sai voando e passa por baixo da porta; depois o fim
+do poema acende na parede; por último a sombra aparece e tudo cai da mão
+dele. Os opcionais (o relógio do corredor, a partitura do violoncelo) são
+mais difíceis e **não têm dica nenhuma**: a resposta está espalhada no jogo
+em detalhes que ninguém avisa que vai precisar lembrar, e o prêmio é
+segredo.
+
 **Dicas e avisos.** O jogo diz para onde ir sem pegar na mão:
 
 - **O objetivo no rodapé** muda com a história: *o recado da mãe, na
@@ -174,8 +192,8 @@ cozinha só acontece, o prólogo é lembrança.
   resto da casa antes.
 - **Quem anda muito tempo sem rumo** ouve o próprio Liam lembrar do próximo
   passo — no máximo duas vezes por etapa, uma linha só.
-- **A caixa de costura** pensa uma dica a cada erro, cada uma mais perto da
-  resposta; a quarta já é a resposta.
+- **A caixa de costura** só diz quantos carretéis encaixam a cada erro; o
+  resto é o quarto que mostra, e só para quem demora muito.
 - **No Tear, cada fim de jogo traz uma dica** na tela preta, mais direta a
   cada vez: primeiro o que faz ele crescer e o que C e R fazem; depois quais
   teclas são quais notas; na terceira, as notas que faltam no caderno. A
@@ -356,7 +374,9 @@ mesma interface.
    demo, o erro vira grito** (*"ERROU?! DE NOVO?! Agora vê se não erra. Você
    já passou por aqui. Já sabe como as coisas funcionam."*), e Liam tenta de
    novo com o arco tremendo em cima da corda. O prólogo é lembrança: errar
-   aqui não tem game over. No fim, toque à vontade. E aí vem o elogio, com a função dentro
+   aqui não tem game over. No fim, toque à vontade — um aviso pequeno no pé
+   da tela (*"pare de tocar para avançar"*) acende devagar enquanto as mãos
+   ficam paradas. E aí vem o elogio, com a função dentro
    dele: `Sua mãe não tem paciência pra isso. Você tem. Por isso eu conto com você.`
    Liam toca os três: o piano (que o pai ensinou), o violino (que o pai quis)
    e o violoncelo do bisavô, pendurado na parede do quarto dele — *"é o único
@@ -443,11 +463,36 @@ mesma interface.
    dele no manequim tem um ponto azul na etiqueta, no cesto o uniforme do
    Liam tem ponto cinza e a jaqueta da Lia, rosa. Azul, âmbar, cinza, rosa.
    O lilás não é de ninguém (o carretel lilás, sozinho na prateleira, tem
-   um *E.* a lápis embaixo). Cada tentativa errada diz quantos carretéis
-   encaixam e traz uma dica mais perto da resposta. Aberta, a caixa guarda
+   um *E.* a lápis embaixo). Cada tentativa errada só diz quantos carretéis
+   encaixam. Quem demora muito vê o quarto ajudar (a foto cai do prego e
+   mostra a ordem atrás, o chá derrama e as linhas ficam vivas, os
+   carretéis rolam em fila até a caixa). Aberta, a caixa guarda
    um papel com a lista de remendos dela e o recado: *"Quando você estiver
    pronto, vem pra cozinha. Senta do meu lado — não do lado dele."* Daí em
-   diante a cozinha abre de primeira; o resto da casa continua aberto.
+   diante a cozinha abre de primeira; o resto da casa continua aberto. O
+   recado agora abre numa folha grande, que se lê sem esforço.
+
+   **As portas.** Cada uma tem a cara de quem mora atrás: a do Liam é
+   arrumada demais (plaquinha de madeira com o nome, o desenho da casa com
+   um cômodo a mais e uma página de partitura, tudo reto; por dentro, o mapa
+   do céu e o casaco da escola); a da Lia é um protesto (a placa "BATE
+   ANTES!" a marcador vermelho, adesivo por cima de adesivo, o amassado na
+   altura do punho com fita isolante em X); a da cozinha tem vidro fosco, e
+   por ele passam as sombras dos dois discutindo; a da sala é de vidro em
+   quadradinhos; a da costura é a única que alguém escolheu a cor (a fita
+   métrica na maçaneta, a alfineteira de tomate, o bastidor bordado); a do
+   fim do corredor é mais velha que a casa, com lilás aparecendo por baixo
+   da tinta e a plaquinha do nome lixada.
+
+   **O relógio do corredor** (opcional, sem dica). O rádio do começo disse
+   que o fogo começou *"por volta das dez e quarenta"*; o relógio da sala
+   está parado nessa hora. O do corredor anda, e dá para abrir o vidro e
+   mexer nos ponteiros. Soltar numa hora qualquer só faz ele continuar dali.
+   Soltar nas **dez e quarenta** faz ele parar, e a portinha do pêndulo
+   abre: atrás, dobrado em oito, um desenho de criança — cinco pessoas de
+   mão dada, *"PAI MÃE EU LIAM LIA"*, assinado *"ELISA, 8 ANOS"* — e, no
+   verso, a letra da mãe: *"Guardei aqui porque ele tira tudo dela das
+   paredes."* É o segredo `relogio`, e o nome vai para o caderno.
 
    **A mãe repara no ar.** No corredor, antes da pergunta da mochila,
    Evelyn repara que ele está respirando curto e conta junto com ele,
@@ -590,12 +635,38 @@ mesma interface.
    varrendo as duas; a avó endireitando o retrato enquanto o menino baixa a
    cabeça; Amélia tecendo à luz de vela, o pano subindo e a lançadeira indo
    e voltando (*"Toda paz que lhes dei acordou dentro de mim"*) e,
-   por último, **a figura preta**: alguém na porta do quarto, contra a luz,
-   cortando o próprio fio para que nada chegasse nele. Quando o tecido fica
+   por último, **a figura preta** — a única que não é curta (trinta segundos,
+   e não dá para pular na primeira vez). O quarto do Liam pequeno, de noite;
+   a porta abre devagar e alguém entra contra a luz do corredor, onde as
+   sombras dos pais discutem. Ela atravessa o quarto, ajoelha do lado da
+   cama, põe a mão no cabelo dele, e o fio lilás aparece entre os dois,
+   batendo junto com o coração (os fios cinzentos dos outros saem dele pela
+   porta). *"Se eu ficar, é você que carrega."* *"Você não vai lembrar de
+   mim. É melhor assim."* A câmera fecha no fio; ela abre a tesoura.
+   *"Então eu corto."* Estalo, branco: a ponta dela vira faísca e sobe, a
+   dele volta para o peito e apaga. Ela vai embora se desfazendo em pó, e a
+   quinta figura do desenho na parede some. A porta fecha. No pé do quadro:
+   *"Na manhã seguinte, alguém pôs cinco pratos na mesa. Ninguém soube dizer
+   por quê."* Quando o tecido fica
    pronto, o desenho mostra o que faltava — um buraco do tamanho de uma
    pessoa, ao lado de Liam.
 
-5. **Dentro.** Corte seco para a cabeça de Liam: vácuo preto, uma toalha
+5. **Dentro.** Primeiro, **a gaiola**: um quarto escuro, uma lâmpada só e,
+   no meio, uma gaiola aberta. Em volta, uma pena, uma corrente quebrada,
+   uma chave enferrujada num prego e, no fundo, uma porta fechada. Na
+   parede, o poema: *"Nasci atrás das grades, / aprendi a amar meu chão. /
+   Quando o ferro desapareceu, / descobri que era eu / quem segurava a
+   prisão."* O jogador pensa: a chave abre a porta. Não abre — a porta não
+   tem fechadura. Tudo que Liam pega, ele carrega (anda mais devagar), e
+   fechar a portinha da gaiola também conta; carregando qualquer coisa, a
+   porta não abre. A saída é não pegar nada e só atravessar (quem pegou pode
+   devolver cada coisa no lugar). Atravessar sem tocar em nada é o segredo
+   `gaiola` (*"Você não pegou nada. Primeira vez."*). Quem demora muito vê a
+   sala ajudar: a pena voa e passa por baixo da porta, depois o fim do poema
+   acende, e por último a sombra diz *"Ninguém trancou essa porta. Você é
+   que não solta."* e tudo cai da mão dele.
+
+   Do outro lado, corte seco: vácuo preto, uma toalha
    xadrez do tamanho do chão, uma luz de cima. As lembranças chegam
    recortadas, e em cada recorte há uma coisa torta brilhando, flutuando
    torta debaixo de uma lâmpada pendurada que balança. Passar as falas não
@@ -792,7 +863,11 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | A rua pela janela da sala (poste, cone de luz, vulto) | `src/game/world/sala.ts` (`drawRua`, `luzDaRua`) |
 | Cozinha (fogão, pia, rádio, telefone, mesa) | `src/game/world/cozinha.ts` |
 | O Tear e a câmara | `src/game/world/camara.ts` |
-| As lembranças do Tear | `src/game/world/lembrancas.ts` |
+| As lembranças do Tear (a do corte é `figuraPreta`, com câmera plano a plano) | `src/game/world/lembrancas.ts` |
+| As portas, cada uma com a sua arte | `src/game/world/portas.ts` (inclui as letrinhas de pixel, `letreiro`) |
+| A gaiola (o primeiro quarto do Dentro) | `src/game/world/gaiola.ts`; as falas em `src/game/content/gaiola.ts` |
+| O relógio do corredor (puzzle opcional) | `src/game/ui/relogioAcerto.ts`; o desenho e as falas em `src/game/content/relogio.ts` |
+| As pistas do quarto de costura | `src/game/scenes/demo/casa.ts` (`pistaCostura`, `PISTA_COSTURA_EM`); as falas em `content/costura.ts` (`PISTAS_COSTURA`) |
 | Personagens animados (cabelo, barba, mochila, silhueta) | `src/game/world/figura.ts` |
 | Rádio do começo e hospital | `src/game/scenes/demo/hospital.ts` |
 | Dentro (montagem, sombra, oferta) | `src/game/world/dentro.ts` |

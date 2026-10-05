@@ -112,6 +112,11 @@ const PAGINAS: PaginaCaderno[] = [
       { texto: 'Eu sempre escrevo cinco linhas quando faço a lista da família.' },
       { se: 'pratos', texto: 'Cinco pratos na mesa. Somos quatro.' },
       { se: 'linha-lilas', texto: 'Na costura tem um carretel de linha lilás. Ninguém aqui usa lilás.' },
+      {
+        se: 'relogio',
+        texto: 'Dentro do relógio do corredor tinha um desenho de criança: cinco pessoas de mão dada. A quinta escreveu o nome dela. Elisa.',
+        nota: 'A mãe guardou onde ele não mexe. Ela sempre lembrou. Ela só esperou você aguentar.',
+      },
       { se: 'nome', texto: 'E. L. I. — lixaram um nome no batente da rouparia.' },
       { se: 'bater', texto: 'Alguém responde quando eu bato na porta do fim do corredor. Devagar, e depois rápido.' },
       { se: 'bilhete', texto: '"Você não precisa ser melhor. Você já é." — E.' },

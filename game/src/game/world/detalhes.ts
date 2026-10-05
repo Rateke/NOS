@@ -391,22 +391,6 @@ export function sapatos(c: CanvasRenderingContext2D, x: number, chao: number): v
   ret(c, x + 53, chao - 2, 1, 1, '#8a2a34')
 }
 
-/** O desenho colado com fita na porta do quarto: a casa com um cômodo a mais. */
-export function desenhoNaPorta(c: CanvasRenderingContext2D, x: number, y: number): void {
-  ret(c, x, y, 10, 9, '#e4dccb')
-  ret(c, x - 1, y - 1, 3, 2, 'rgba(230,220,180,0.6)')
-  ret(c, x + 8, y - 1, 3, 2, 'rgba(230,220,180,0.6)')
-  c.fillStyle = '#3a5a8a'
-  c.fillRect(x + 2, y + 4, 4, 4)
-  c.fillRect(x + 1, y + 3, 6, 1)
-  c.fillRect(x + 2, y + 2, 4, 1)
-  // O cômodo a mais, tracejado, em verde
-  c.fillStyle = '#4a8a4a'
-  c.fillRect(x + 7, y + 5, 1, 1)
-  c.fillRect(x + 8, y + 7, 1, 1)
-  c.fillRect(x + 7, y + 7, 1, 1)
-}
-
 /** Cesto de roupa suja, transbordando um pouco. */
 export function cestoRoupa(c: CanvasRenderingContext2D, x: number, chao: number): void {
   ret(c, x, chao - 12, 14, 12, '#5a5a62')

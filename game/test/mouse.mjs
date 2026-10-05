@@ -299,6 +299,17 @@ if (OUT) await page.screenshot({ path: `${OUT}/g-pico.png` })
 
 // --- Dentro: arrumar faz os recortes andarem; parar é a saída -----------
 esperar('o pico corta para dentro da cabeça', await esperarFase('dentro', 30000), true)
+// A gaiola, só no mouse: um clique na porta leva ele até lá; de mão vazia, ela abre.
+for (let i = 0; i < 120 && (await page.evaluate(() => !!window.__nos.scene.gaiola)); i++) {
+  const g = await page.evaluate(() => {
+    const g = window.__nos.scene.gaiola
+    return { falando: g.dialogue.active, porta: window.__nos.paraTela(344, 150) }
+  })
+  if (g.falando) await page.mouse.click(640, 90)
+  else await page.mouse.click(g.porta.x, g.porta.y)
+  await page.waitForTimeout(250)
+}
+esperar('a gaiola atravessada só com o mouse', await page.evaluate(() => !!window.__nos.scene.montagem), true)
 // O primeiro quarto de segundo de cada recorte não aceita toque (para
 // ninguém pular sem querer): espera ele assentar.
 await page.waitForTimeout(500)

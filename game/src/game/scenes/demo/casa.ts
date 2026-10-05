@@ -51,9 +51,13 @@ import { ArmarioFloresta } from '../../world/armarioFloresta'
 import { comodoCabana } from '../../world/cabanaDentro'
 import { comodoCostura } from '../../world/costura'
 import { CaixaCostura } from '../../ui/caixaCostura'
+import { RelogioAcerto } from '../../ui/relogioAcerto'
+import {
+  RELOGIO_DE_NOVO, RELOGIO_CONTINUA, RELOGIO_ABRIU, RELOGIO_DEPOIS, RELOGIO_ACHADO, DOC_DESENHO_ELISA,
+} from '../../content/relogio'
 import {
   CAIXA_DE_NOVO, CAIXA_ABRIU, DOC_RECADO_MAE, RECADO_DEPOIS, CASA_LUZ_COSTURA,
-  LEMBRETE_RECADO, LEMBRETE_COZINHA,
+  LEMBRETE_RECADO, LEMBRETE_COZINHA, PISTAS_COSTURA,
 } from '../../content/costura'
 import { MesaScene } from './mesa'
 import { FimScene } from './fim'
@@ -85,6 +89,9 @@ const RETRATO_VOO = 0.5
 const RETRATO_CORRIDA = 84
 const CAMA_LIAM_X = 128
 const SENTADO_NA_CAMA = 139
+
+/** Segundos presos na caixa de costura até o quarto dar cada pista. */
+const PISTA_COSTURA_EM = [150, 270, 390]
 
 /** Quantas coisas lidas até o peito fechar. */
 const LIMITE_CRISE = 10
@@ -191,6 +198,10 @@ export class CasaScene implements Scene {
   private armario: ArmarioFloresta | null = null
   /** A caixa de costura da mãe, com a tranca de carretéis (exposta para os testes). */
   readonly caixa = new CaixaCostura()
+  /** O mostrador do relógio do corredor, com o vidro aberto (exposto para os testes). */
+  readonly relogio = new RelogioAcerto()
+  /** Onde ele soltou os ponteiros, se soltou numa hora qualquer. */
+  private horaAcertada: { h: number; m: number; t: number } | null = null
   private somFloresta: { abrir: (k: number) => void; parar: () => void } | null = null
   private pararMusicaLia: (() => void) | null = null
   /** A foto da família no ar, jogada pela Lia. */
@@ -468,8 +479,13 @@ export class CasaScene implements Scene {
       this.noArmario(dt, ctx)
       return
     }
+    this.contarCaixa(dt)
     if (this.caixa.ativa) {
       this.naCaixa(dt, ctx)
+      return
+    }
+    if (this.relogio.ativa) {
+      this.noRelogio(dt, ctx)
       return
     }
 
@@ -484,6 +500,7 @@ export class CasaScene implements Scene {
       return
     }
     if (this.esperar(dt, ctx)) return
+    if (this.pistaCostura()) return
     if (this.lembrar(dt)) return
 
     if (this.caderno.update(dt, ctx, this.leitor, true)) return
@@ -660,6 +677,19 @@ export class CasaScene implements Scene {
     if (v.acao === 'deitar') {
       this.achados.add(v.id)
       this.deitarNaCabana(v.linhas)
+      return
+    }
+    if (v.acao === 'relogio') {
+      this.achados.add(v.id)
+      // Achado o desenho, o relógio só guarda o lugar dele.
+      if (this.jogo?.sabe.has('relogio')) {
+        this.dialogue.play(RELOGIO_ACHADO, () => this.ler(DOC_DESENHO_ELISA))
+        return
+      }
+      const h = this.horaDaCasa()
+      // O vidro abre com os ponteiros onde estão — nunca já na resposta.
+      const m = h.h % 12 === 10 && h.m === 40 ? 10 : h.m
+      this.dialogue.play(primeira ? v.linhas : RELOGIO_DE_NOVO, () => this.relogio.abrir(h.h, m))
       return
     }
     if (v.acao === 'costura') {
@@ -1273,6 +1303,61 @@ export class CasaScene implements Scene {
     return true
   }
 
+  /**
+   * A caixa é obrigatória: quem fica preso nela muito tempo, de verdade, vê
+   * o quarto ajudar — a foto cai, o chá derrama, os carretéis rolam. O tempo
+   * só conta depois de ele ter visto a caixa, e só dentro da costura.
+   */
+  private tempoCaixa = 0
+  /** Quantas pistas o quarto já deu (exposto para os testes). */
+  pistasCostura = 0
+
+  private contarCaixa(dt: number): void {
+    if (this.depois || this.jogo?.sabe.has('recado-mae') || !this.achados.has('c-caixa')) return
+    if (this.atual.id === 'costura' || this.caixa.ativa) this.tempoCaixa += dt
+  }
+
+  private pistaCostura(): boolean {
+    if (this.depois || this.atual.id !== 'costura' || this.jogo?.sabe.has('recado-mae')) return false
+    const limiar = PISTA_COSTURA_EM[this.pistasCostura]
+    const fala = PISTAS_COSTURA[this.pistasCostura]
+    if (limiar === undefined || !fala || this.tempoCaixa < limiar) return false
+    this.pistasCostura++
+    this.destino = null
+    this.liam.andando = 0
+    if (this.pistasCostura === 1) sons.estalo()
+    else if (this.pistasCostura === 2) sons.pisada(0.3)
+    else audio.bater(3, 120)
+    this.jolt = 0.25
+    this.dialogue.play(fala)
+    return true
+  }
+
+  /**
+   * Mexendo nos ponteiros do relógio do corredor. Na hora em que o fogo
+   * começou (o rádio disse; o relógio da sala parou nela), ele para e abre
+   * a portinha do pêndulo. Em qualquer outra hora, só continua dali.
+   */
+  private noRelogio(dt: number, ctx: SceneCtx): void {
+    this.destino = null
+    this.liam.andando = 0
+    const r = this.relogio.update(dt, ctx.input)
+    if (r === 'girou') sons.tique(false, 0.5)
+    if (r !== 'soltou') return
+    const { hora, minuto } = this.relogio
+    if (hora === 10 && minuto === 40) {
+      this.horaAcertada = null
+      this.jogo?.aprender('relogio')
+      this.segredo('relogio')
+      sons.estalo()
+      this.dialogue.play(RELOGIO_ABRIU, () => this.ler(DOC_DESENHO_ELISA, RELOGIO_DEPOIS))
+      return
+    }
+    this.horaAcertada = { h: hora, m: minuto, t: this.t }
+    sons.tique(true, 0.7)
+    this.dialogue.play(RELOGIO_CONTINUA)
+  }
+
   /** Mexendo nos carretéis da caixa de costura. */
   private naCaixa(dt: number, ctx: SceneCtx): void {
     this.destino = null
@@ -1549,6 +1634,13 @@ export class CasaScene implements Scene {
   }
 
   private horaDaCasa(): { h: number; m: number; parado: boolean } {
+    // Acertado na hora do fogo, parou. Acertado em outra, anda dali.
+    if (!this.depois && this.jogo?.sabe.has('relogio')) return { h: 22, m: 40, parado: true }
+    if (!this.depois && this.horaAcertada) {
+      const extra = Math.floor((this.t - this.horaAcertada.t) / 20)
+      const total = this.horaAcertada.h * 60 + this.horaAcertada.m + extra
+      return { h: 12 + (Math.floor(total / 60) % 12), m: total % 60, parado: false }
+    }
     // Na segunda vez, o relógio já começa parado onde parou.
     if (this.outraVez && !this.depois) return { h: 22, m: 40, parado: true }
     const agora = new Date()
@@ -2253,6 +2345,8 @@ export class CasaScene implements Scene {
       celloFora: this.tocandoCello,
       quintoRetrato: this.quinto,
       caixaAberta: this.jogo?.sabe.has('recado-mae') ?? false,
+      pistasCostura: this.pistasCostura,
+      relogioAberto: !this.depois && (this.jogo?.sabe.has('relogio') ?? false),
     }
 
     if (this.armario) {
@@ -2336,6 +2430,8 @@ export class CasaScene implements Scene {
       this.piano.drawDica(ctx.display, ctx.input.touchMode ? 'toque o que quiser  ·  toque fora das teclas para levantar' : 'toque o que quiser  ·  A S D F G H J K  ·  Esc levanta')
     } else if (this.caixa.ativa) {
       this.caixa.draw(c, cssW, cssH, ctx.input.touchMode)
+    } else if (this.relogio.ativa) {
+      this.relogio.draw(c, cssW, cssH, ctx.input.touchMode)
     } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa) {
       this.drawInterface(ctx, cam)
       if (!this.dialogue.active && !this.saindo) this.caderno.draw(c, cssW, cssH, ctx.state.novidade)

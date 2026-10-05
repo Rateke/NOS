@@ -418,6 +418,49 @@ if (OUT) await page.screenshot({ path: `${OUT}/g-pico.png` })
 
 // --- Dentro: arrumar faz os recortes andarem; parar é a saída -----------
 esperar('o pico corta para dentro da cabeça', await esperarFase('dentro', 30000), true)
+// A gaiola: a porta sem fechadura. Pega a chave, a porta não abre; devolve
+// e atravessa sem nada na mão.
+const gaiola = () => page.evaluate(() => {
+  const g = window.__nos?.scene?.gaiola
+  return g ? { x: g.x, falando: g.dialogue.active, seg: [...g.segurando], fase: g.faseAtual } : null
+})
+async function passarGaiola() {
+  for (let i = 0; i < 40; i++) {
+    if (!(await gaiola())?.falando) return
+    await page.keyboard.press('Space')
+    await page.waitForTimeout(180)
+  }
+}
+async function andarNaGaiola(x, dir) {
+  await page.keyboard.down(dir)
+  for (let i = 0; i < 120; i++) {
+    const g = await gaiola()
+    if (!g || g.falando || (dir === 'ArrowRight' ? g.x >= x : g.x <= x)) break
+    await page.waitForTimeout(100)
+  }
+  await page.keyboard.up(dir)
+  await page.waitForTimeout(150)
+}
+await passarGaiola()
+await andarNaGaiola(284, 'ArrowRight')
+await page.keyboard.press('KeyE')
+await page.waitForTimeout(250)
+await passarGaiola()
+esperar('na gaiola, a chave vai no bolso', (await gaiola())?.seg, ['chave'])
+await andarNaGaiola(400, 'ArrowRight')
+esperar('com a chave, a porta sem fechadura não abre', (await gaiola())?.fase, 'sala')
+await passarGaiola()
+await andarNaGaiola(287, 'ArrowLeft')
+await page.keyboard.press('KeyE')
+await page.waitForTimeout(250)
+await passarGaiola()
+await andarNaGaiola(400, 'ArrowRight')
+esperar('de mão vazia, a porta abre', (await gaiola())?.fase, 'saindo')
+for (let i = 0; i < 60 && (await gaiola()); i++) {
+  await page.keyboard.press('Space')
+  await page.waitForTimeout(200)
+}
+esperar('do outro lado da porta, a montagem', await page.evaluate(() => !!window.__nos.scene.montagem), true)
 // O primeiro quarto de segundo de cada recorte não aceita toque (para
 // ninguém pular sem querer): espera ele assentar.
 await page.waitForTimeout(500)

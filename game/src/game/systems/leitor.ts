@@ -110,7 +110,8 @@ const PAPEL: Record<TipoDocumento, { cor: string; borda: string; proporcao: numb
   carta: { cor: '#f1eee6', borda: '#cfcabe', proporcao: 0.72, escala: 1 },
   jornal: { cor: '#dcd6c4', borda: '#b4b0a4', proporcao: 0.74, escala: 1.1 },
   livro: { cor: '#efe6cf', borda: '#cbbd98', proporcao: 0.72, escala: 1 },
-  bilhete: { cor: '#f2eee2', borda: '#cdc6b2', proporcao: 0.9, escala: 0.62 },
+  // Bilhete é papel pequeno na mão, mas na tela tem que ler sem esforço.
+  bilhete: { cor: '#f2eee2', borda: '#cdc6b2', proporcao: 0.8, escala: 1 },
 }
 
 export interface OpcoesLeitura {
@@ -262,7 +263,7 @@ export class Leitor {
       desenharJornal(c, pag, this.pagina, x, y, w, h,
         grade ? (gx, gy, gw) => this.desenharCruzadas(c, grade, gx, gy, gw, w / 26) : undefined)
     } else {
-      this.desenharTexto(c, pag, x, y, w, h)
+      this.desenharTexto(c, pag, x, y, w, h, doc.tipo === 'bilhete' ? 22 : 30)
     }
     c.restore()
 
@@ -687,11 +688,13 @@ export class Leitor {
     c.restore()
   }
 
-  private desenharTexto(c: CanvasRenderingContext2D, pag: Pagina, x: number, y: number, w: number, h: number): void {
+  private desenharTexto(
+    c: CanvasRenderingContext2D, pag: Pagina, x: number, y: number, w: number, h: number, linhasPorFolha = 30,
+  ): void {
     const margem = w * 0.14
     const largura = w - margem - w * 0.09
     // Encolhe a letra até o texto caber na folha: página nenhuma transborda.
-    let base = h / 30
+    let base = h / linhasPorFolha
     for (let i = 0; i < 6; i++) {
       const fim = this.medirTexto(c, pag, base, largura)
       if (fim <= h - base * 2.4) break
