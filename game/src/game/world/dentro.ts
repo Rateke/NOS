@@ -509,7 +509,7 @@ export class Montagem {
       c.globalAlpha = Math.min(1, (this.desdeConversou - 0.3) / 0.4) * (0.6 + Math.sin(this.t * 3.2) * 0.25)
       c.font = `${s2}px ${FONT_BODY}`
       c.letterSpacing = '0.12em'
-      const texto = toque ? 'toque nele para arrumar' : 'E  ·  arrumar'
+      const texto = toque ? 'toque nele para arrumar' : 'Arrumar'
       const larg = c.measureText(texto).width + s2 * 1.6
       c.fillStyle = 'rgba(6,6,10,0.82)'
       c.beginPath()

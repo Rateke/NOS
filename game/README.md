@@ -34,7 +34,7 @@ npm test           # joga a fatia inteira num navegador real e confere tudo
 
 Testes de ponta a ponta, num Chromium de verdade: `test/demo.mjs` (a demo
 inteira no teclado, escondendo o caderno a tempo, entrando na frente do
-prato, respirando no ritmo e parando de arrumar), `test/mouse.mjs` (a mesma
+prato e parando de arrumar), `test/mouse.mjs` (a mesma
 só no mouse, sendo pego com o caderno e arrumando até o fim), `test/escolha.mjs` (a escolha do
 Tear numa segunda partida, salvando cada uma), `test/salvar.mjs` (salvar,
 continuar, pausar, sair), `test/celular.mjs` (em pé e deitado, só no
@@ -43,8 +43,9 @@ alto que fala, nada estoura na briga), `test/segunda.mjs` (o que muda
 quando o jogo lembra que você já terminou), `test/violoncelo.mjs` (os
 segredos do menu, a partitura até o fim e o quinto retrato),
 `test/novidades.mjs` (a foto que a Lia joga, a cabana pela luz, a floresta
-pela fresta do armário, a sombra do pai que engole o Tear, a cozinha que
-fecha a tela sem ar, o jornal) e
+pela fresta do armário, a sombra do pai que engole o Tear, o jornal),
+`test/costura.mjs` (a porta nova da sala, a caixa de costura com as dicas a
+cada erro, o recado que aponta a cozinha, as dicas do Tear depois do fim) e
 `test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
@@ -118,7 +119,7 @@ os três caminhos são testados de ponta a ponta.
 | Escolher no menu | clicar no item | ↑ ↓ e espaço | tocar no item |
 | Avançar uma fala | clicar | espaço, E ou Enter | tocar |
 | Andar pelo quarto | clicar no chão | setas ou WASD | arrastar à esquerda |
-| Examinar | clicar no objeto | E perto dele | tocar |
+| Examinar | clicar no objeto | E perto dele (a caixa na tela mostra só o que ele vai fazer: "Olhar", "Abrir") | tocar |
 | Tocar o piano ou o violino | clicar na tecla ou na nota | A S D F G H J K | tocar na tecla ou na nota |
 | Abrir um fio no Tear | tocar a melodia | tocar a melodia | tocar a melodia |
 | Rever o caderno da bisavó / escutar o fio, no Tear | clicar no botão | C / R | tocar no botão |
@@ -127,7 +128,7 @@ os três caminhos são testados de ponta a ponta.
 | Examinar um vestígio | clicar nele | E perto dele | tocar nele |
 | Esconder o caderno da Lia (os passos) | clicar | espaço ou E | tocar |
 | Arrumar a coisa torta, no Dentro | clicar nela | E | tocar nela |
-| Respirar (com a mãe; na cozinha, valendo) | segurar o botão | segurar espaço | segurar o dedo |
+| Girar os carretéis da caixa de costura | clicar no carretel; "abrir" e "deixar" embaixo | ← → escolhe, ↑ ↓ troca a cor, Enter abre, Esc deixa | tocar no carretel |
 | Entrar na frente de um prato | clicar onde correr | setas | tocar onde correr |
 | Escolher quem salvar, no Tear | clicar na metade dela | ← ou → | tocar na metade dela |
 | Pausar | ícone no canto de cima | Esc ou P | ícone no canto de cima |
@@ -148,26 +149,38 @@ letras, que se leem num relance): esses passam sozinhos e não dá para
 pular. É o único momento em que o jogo tira o controle de quem joga. Grito
 comprido espera o toque como o resto.
 
-**Respirar.** Às vezes o ar não entra. A tela some em volta, um anel claro
-cresce e encolhe no ritmo certo (quatro pra dentro, quatro pra fora),
-contando de 1 a 4 no meio, e o círculo de dentro é o ar do Liam: cresce
-enquanto você segura e esvazia quando solta. Embaixo, sempre: *"segure
-ESPAÇO enquanto o círculo cresce · solte enquanto ele diminui"*. Quando o ar
-acompanha o anel, o escuro em volta abre; quando escapa, fecha. Não tem
-botão de pular — quem não segura nada também está respirando, mal. A
-primeira vez é com a mãe, no corredor, sem como errar.
+**A tecla não aparece.** Quem joga já sabe que E (ou o clique) usa: a caixa
+em cima do Liam mostra só o que ele vai fazer — *Olhar*, *Abrir*, *Ler*,
+*Tocar* — e o rodapé mostra só o objetivo, quantos vestígios ele viu e a
+tecla do caderno. Tecla só aparece onde a mecânica é nova (os carretéis da
+caixa de costura, as teclas do piano, os botões do Tear).
 
 **Mecânica nova aparece antes de importar.** O jogo não pausa para explicar.
 Cada mecânica aparece primeiro num momento sem perigo: a marca vermelha no
-chão (a foto que a Lia joga, antes dos pratos da cozinha), a respiração (com
-a mãe, antes da cozinha), o tema (com o pai no prólogo, antes do Tear).
+chão (a foto que a Lia joga, antes dos pratos da cozinha), o tema (com o pai
+no prólogo, antes do Tear).
 
-**Game over só onde decide.** As mecânicas que podem dar game over aparecem
-só nos momentos definitivos: a sombra do pai, só no Tear (errar demais e
-ela engole a sala); a respiração valendo, só na cozinha (o ar não volta e a
-tela fecha). Fora daí elas aparecem como apresentação, sem perigo (a mãe
-ensinando), ou nem aparecem (a crise da casa só acontece; o prólogo é
-lembrança).
+**Game over só onde decide.** A única mecânica que dá game over é a sombra
+do pai, e ela só existe no Tear (errar demais, ou parar demais, e ela engole
+a sala). Fora dali nada se perde: a crise da casa só acontece, o ar curto na
+cozinha só acontece, o prólogo é lembrança.
+
+**Dicas e avisos.** O jogo diz para onde ir sem pegar na mão:
+
+- **O objetivo no rodapé** muda com a história: *o recado da mãe, na
+  costura* → *a cozinha, do lado da mãe*.
+- **O recado na caixa de costura** é o primeiro empurrão de verdade (ver a
+  casa, abaixo). Ele diz *"quando você estiver pronto"*: dá para ver o
+  resto da casa antes.
+- **Quem anda muito tempo sem rumo** ouve o próprio Liam lembrar do próximo
+  passo — no máximo duas vezes por etapa, uma linha só.
+- **A caixa de costura** pensa uma dica a cada erro, cada uma mais perto da
+  resposta; a quarta já é a resposta.
+- **No Tear, cada fim de jogo traz uma dica** na tela preta, mais direta a
+  cada vez: primeiro o que faz ele crescer e o que C e R fazem; depois quais
+  teclas são quais notas; na terceira, as notas que faltam no caderno. A
+  dica fica escrita embaixo dos botões enquanto ele tece de novo, e quem já
+  leu pode pular o preto.
 
 O clique também traz o foco do teclado para o jogo — dentro de um painel ou
 iframe, sem foco nenhuma tecla chega à página.
@@ -419,13 +432,27 @@ mesma interface.
    manda ele sair — e, quando ele vira, enfia um bilhete no bolso do moletom
    dele.
 
-   **A mãe ensina a respirar.** No corredor, antes da pergunta da mochila,
-   Evelyn repara que ele está respirando curto e faz o exercício junto
-   (*"Quatro pra dentro, quatro pra fora. Eu conto."*): o anel cresce e
-   encolhe contando de um a quatro, ela conta em voz alta, e não dá para
-   errar. É a mesma respiração que ele vai precisar sozinho na cozinha —
-   e lá, quando o ar acompanha o anel, o escuro em volta abre e o coração
-   desacelera; quando escapa, a tela fecha.
+   **O quarto de costura.** Do lado da sala, uma porta com luz por baixo: a
+   máquina da mãe está acesa. Logo depois de o pai chegar, Liam pensa nisso
+   (*"Quando ela não pode falar, ela deixa recado lá."*), e o objetivo no
+   rodapé aponta para lá. A caixa de costura dela tranca com quatro
+   carretéis que giram por cinco cores; na tampa, bordado: *"do jeito que a
+   gente sai na foto"*. A resposta está espalhada pelo quarto: a foto grande
+   na parede dá a ordem (ele, ela, eu, a Lia — e um espaço vazio na ponta), e
+   as roupas dão a cor de cada um — o avental dela tem barra âmbar, o paletó
+   dele no manequim tem um ponto azul na etiqueta, no cesto o uniforme do
+   Liam tem ponto cinza e a jaqueta da Lia, rosa. Azul, âmbar, cinza, rosa.
+   O lilás não é de ninguém (o carretel lilás, sozinho na prateleira, tem
+   um *E.* a lápis embaixo). Cada tentativa errada diz quantos carretéis
+   encaixam e traz uma dica mais perto da resposta. Aberta, a caixa guarda
+   um papel com a lista de remendos dela e o recado: *"Quando você estiver
+   pronto, vem pra cozinha. Senta do meu lado — não do lado dele."* Daí em
+   diante a cozinha abre de primeira; o resto da casa continua aberto.
+
+   **A mãe repara no ar.** No corredor, antes da pergunta da mochila,
+   Evelyn repara que ele está respirando curto e conta junto com ele,
+   baixinho (*"Quatro pra dentro, quatro pra fora. Igual quando você era
+   pequeno."*). Não é mecânica: é ela cuidando dele antes de perguntar.
 
    **Os dois sustos.** O espelho do quarto da Lia: quando Liam passa, o
    reflexo atrasa — uma vez só. Quem estranha e volta para olhar, parado na
@@ -448,9 +475,9 @@ mesma interface.
    perto. Vem de mim."*
 
    **A crise.** Cada coisa que ele olha tem outra escondida embaixo, e o
-   coração vai subindo junto. Na sétima, o peito fecha: o zumbido, as mãos
-   formigando, *"Quatro pra dentro, quatro pra fora"*. Aqui a crise só
-   acontece, não se joga — e passa.
+   coração vai subindo junto. Na décima, o peito fecha: o zumbido, as mãos
+   formigando, *"Quatro pra dentro, quatro pra fora"*. A crise só acontece,
+   não se joga — e passa.
 
    **Ninguém veio.** Quem fica dois minutos sem mexer em nada vê Liam sentar
    no chão, esperando alguém vir procurar.
@@ -517,11 +544,10 @@ mesma interface.
    param). Quem não chega vê o prato quebrar nela. O E não funciona enquanto
    o prato está no ar.
 
-   **O ar.** Depois do primeiro prato, o ar para de entrar e vem a
-   respiração — e aqui ela decide. Conseguindo, a cena segue, e o pai ouve:
-   *"TÁ RESPIRANDO ASSIM POR QUÊ?! OLHA PRA MIM!"* (a tela fecha um pouco e
-   não volta inteira). Não conseguindo, a tela fecha das bordas para o meio
-   até o preto — *"O ar não voltou."* — e a respiração recomeça.
+   **O ar.** Depois do primeiro prato, o ar para de entrar. Ele conta do
+   jeito que a mãe ensinou, e o pai ouve: *"TÁ RESPIRANDO ASSIM POR QUÊ?!
+   OLHA PRA MIM!"* (a tela fecha um pouco e não volta inteira). Não se
+   joga: acontece.
 
    **O fundo do poço é em voz.** Quando a tensão enche, o pai vira para Liam.
    Ele sobe a voz; Liam sobe a dele pedindo para parar; as falas entram no
@@ -757,7 +783,10 @@ trancada. Saiu do menu; continua no código e abre com `?cena=quarto`.
 | O violoncelo, a partitura e o quinto retrato | `src/game/content/violoncelo.ts` (`PARTITURA`); a cena em `src/game/scenes/demo/casa.ts` (`aoCello`) |
 | A mensagem escondida (acróstico, cruzadas, marca do diário) | `src/game/content/documentos.ts`; o Morse em `src/engine/audio.ts` (`morse`); o poste em `src/game/world/sala.ts` (`posteAceso`) |
 | Os sustos (silêncio, rosto, estouro) | `src/game/scenes/demo/casa.ts` (`iniciarSusto`), `src/engine/audio.ts` (`susto`) |
-| A respiração (ritmo, tolerância, desenho) | `src/game/ui/respiracao.ts`; a aula da mãe em `content/demoScript.ts` (`EVELYN_RESPIRA_*`); a da cozinha, que dá game over, em `scenes/demo/mesa.ts` (`respirar`, `semAr`) e `content/noite.ts` |
+| **O quarto de costura** (arte e pistas) | `src/game/world/costura.ts`; a porta na sala em `world/sala.ts` (`SALA_COSTURA`) |
+| A caixa de costura (carretéis, dicas a cada erro, o recado da mãe) | `src/game/ui/caixaCostura.ts`; as falas, as cores, o segredo e o recado em `src/game/content/costura.ts` |
+| Objetivo no rodapé e lembretes de quem anda sem rumo | `src/game/scenes/demo/casa.ts` (`drawInterface`, `lembrar`); as falas em `content/costura.ts` (`LEMBRETE_*`) |
+| As dicas do Tear depois de cada fim | `src/game/content/noite.ts` (`dicaDoTear`); a tela preta em `src/game/ui/sombraPai.ts` (`drawFim`) |
 | **A segunda partida**, o vulto, o cheiro, "Ninguém veio", a pressa | `src/game/content/deNovo.ts`; o que o jogo lembra em `src/game/systems/memoria.ts` |
 | Quem passa as falas sem ler | `src/game/systems/dialogue.ts` (`leitorApressado`) |
 | A rua pela janela da sala (poste, cone de luz, vulto) | `src/game/world/sala.ts` (`drawRua`, `luzDaRua`) |

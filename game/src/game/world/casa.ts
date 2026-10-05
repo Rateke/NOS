@@ -15,8 +15,9 @@ import {
 } from './detalhes'
 import {
   drawSalaFundo, drawSalaFrente, drawLuzSala,
-  SALA_W, SALA_PORTA, CHAO_Y as SALA_CHAO, PASSO_Y as SALA_PASSO, ABAJUR, PIANO,
+  SALA_W, SALA_PORTA, SALA_COSTURA, CHAO_Y as SALA_CHAO, PASSO_Y as SALA_PASSO, ABAJUR, PIANO,
 } from './sala'
+import { COSTURA_TRANCADA } from '../content/costura'
 
 /**
  * A casa explorável.
@@ -58,7 +59,7 @@ export interface VestigioCasa {
   naParede?: boolean
   /** Em vez de só ler: sentar ao piano, entrar na cabana, ouvir o recado. */
   acao?: 'piano' | 'cabana' | 'secretaria' | 'conversaLia' | 'no' | 'violoncelo'
-    | 'foneLia' | 'entrarCabana' | 'armarioFloresta' | 'caixinha' | 'lata' | 'deitar'
+    | 'foneLia' | 'entrarCabana' | 'armarioFloresta' | 'caixinha' | 'lata' | 'deitar' | 'costura'
   /** O que Liam fica sabendo ao olhar (vira linha no caderno). */
   aprende?: string
   /** Só existe quando o corredor já esticou até este comprimento. */
@@ -91,6 +92,8 @@ export interface EstadoComodo {
   celloFora?: boolean
   /** 0..1: o quinto retrato de volta na parede da sala. */
   quintoRetrato?: number
+  /** A caixa de costura da mãe já foi aberta. */
+  caixaAberta?: boolean
 }
 
 export interface Comodo {
@@ -205,7 +208,12 @@ export function comodoSala(depois = false): Comodo {
     limiteEsq: 24,
     limiteDir: SALA_W - 24,
     luzX: ABAJUR.x,
-    portas: [{ x: SALA_PORTA, para: 'corredor', entraEm: 42, rotulo: 'Corredor' }],
+    portas: [
+      { x: SALA_PORTA, para: 'corredor', entraEm: 42, rotulo: 'Corredor' },
+      depois
+        ? { x: SALA_COSTURA, para: 'costura', entraEm: 62, rotulo: 'Costura', travada: true, fala: COSTURA_TRANCADA }
+        : { x: SALA_COSTURA, para: 'costura', entraEm: 62, rotulo: 'Costura' },
+    ],
     vestigios: [
       {
         id: 'janela', x: 68, rotulo: 'Olhar', naParede: true,

@@ -10,7 +10,7 @@ import {
   TEAR_FIM, TEAR_PIANO, TEAR_ERRO, TEAR_CADERNO, TEAR_ENGOLIU, TEAR_GRITO,
 } from '../../content/demoScript'
 import {
-  TEAR_CONTAR, TEAR_COMO, TEAR_DE_NOVO, TEAR_ENGOLE, PRESSAO_ADRIAN, TEAR_LEI, ESCOLHA_ARMADILHA, ESCOLHA_GRITOS, ESCOLHA_ME_QUEIMA,
+  TEAR_CONTAR, TEAR_COMO, TEAR_DE_NOVO, TEAR_ENGOLE, dicaDoTear, PRESSAO_ADRIAN, TEAR_LEI, ESCOLHA_ARMADILHA, ESCOLHA_GRITOS, ESCOLHA_ME_QUEIMA,
   ESCOLHA_DEPOIS, DENTRO_2_ABRE, DENTRO_2_ESE, DENTRO_2, TEAR_VOLTA_DEPOIS,
 } from '../../content/noite'
 import type { PassoDentro, FiguraDentro } from '../../content/noite'
@@ -131,6 +131,11 @@ export class TearScene implements Scene {
   // A sombra do pai: cresce a cada erro; cheia, engole a sala e o Tear recomeça.
   private sombra = new SombraDoPai()
   private fimDeJogo: { t: number } | null = null
+  /** Quantas vezes a sombra já engoliu a sala (exposto para os testes). */
+  fins = 0
+  /** A dica do último fim, que fica escrita embaixo dos botões enquanto ele tece. */
+  private dicaFim: string[] = []
+  private toque = false
   /** As lembranças que já passaram: depois de recomeçar, não passam de novo. */
   private lembrancasVistas = new Set<number>()
   /** "Escuta o fio": a frase do fio aceso tocando sozinha, tecla por tecla. */
@@ -260,8 +265,11 @@ export class TearScene implements Scene {
     this.t += dt
     this.sombra.update(dt)
     this.dialogue.graveAdrian = this.sombra.grave
+    this.toque = ctx.input.touchMode
     if (this.fimDeJogo) {
-      this.recomecarDepoisDoFim(dt)
+      // Quem já leu a dica pode pular o resto do preto.
+      const pulou = (ctx.input.consumeConfirm() || ctx.input.consumeTap() !== null) && this.fimDeJogo.t > 3.4
+      this.recomecarDepoisDoFim(dt, pulou)
       return
     }
     if (this.sombra.engoliu) {
@@ -508,6 +516,8 @@ export class TearScene implements Scene {
   /** A sombra encheu: engoliu a sala. */
   private engolido(): void {
     this.fimDeJogo = { t: 0 }
+    this.fins++
+    this.dicaFim = dicaDoTear(this.fins, this.toque)
     this.escutando = null
     this.dialogue.play([])
     audio.cutAll(0.4)
@@ -517,11 +527,12 @@ export class TearScene implements Scene {
   }
 
   /** Depois do preto: o Tear volta para o começo. As lembranças vistas não voltam. */
-  private recomecarDepoisDoFim(dt: number): void {
+  private recomecarDepoisDoFim(dt: number, pulou = false): void {
     const f = this.fimDeJogo
     if (!f) return
     f.t += dt
-    if (f.t < 4.4) return
+    // Tempo de ler a dica antes de o Tear voltar.
+    if (f.t < 7.5 && !pulou) return
     this.fimDeJogo = null
     this.sombra.zerar()
     for (const fio of this.fios) {
@@ -1059,7 +1070,7 @@ export class TearScene implements Scene {
       this.desenharObjetivo(ctx)
     }
     if (this.fimDeJogo) {
-      this.sombra.drawFim(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH, this.fimDeJogo.t, TEAR_ENGOLE)
+      this.sombra.drawFim(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH, this.fimDeJogo.t, TEAR_ENGOLE, this.dicaFim)
       return
     }
     if (this.lembranca) this.desenharFalaLembranca(ctx, m)
@@ -1396,6 +1407,20 @@ export class TearScene implements Scene {
       c.fillText(texto, x + w / 2, by + h * 0.68)
       by += h + s * 0.5
     }
+    // Depois de um fim: a dica continua ali, em âmbar, para quem precisar.
+    if (this.dicaFim.length > 0) {
+      c.textAlign = 'right'
+      c.globalAlpha = 0.85
+      c.font = `italic ${s * 0.82}px ${FONT_BODY}`
+      c.fillStyle = '#e2a95e'
+      let y = by + s * 0.9
+      for (const linha of this.dicaFim) {
+        for (const parte of quebrarLinha(c, linha, Math.min(cssW * 0.46, s * 30))) {
+          c.fillText(parte, xd, y)
+          y += s * 1.15
+        }
+      }
+    }
     c.restore()
   }
 
@@ -1444,4 +1469,21 @@ function misturar(a: string, b: string, k: number): string {
 function hexRgba(hex: string): string {
   const n = parseInt(hex.slice(1), 16)
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},`
+}
+
+/** Quebra um texto em linhas que caibam em `larg`, com a fonte atual. */
+function quebrarLinha(c: CanvasRenderingContext2D, texto: string, larg: number): string[] {
+  const linhas: string[] = []
+  let atual = ''
+  for (const p of texto.split(' ')) {
+    const teste = atual ? `${atual} ${p}` : p
+    if (c.measureText(teste).width > larg && atual) {
+      linhas.push(atual)
+      atual = p
+    } else {
+      atual = teste
+    }
+  }
+  if (atual) linhas.push(atual)
+  return linhas
 }

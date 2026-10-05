@@ -1,5 +1,5 @@
 import type { Scene, SceneCtx } from '../types'
-import { Dialogue, FONT_BODY, FONT_FIM } from '../../systems/dialogue'
+import { Dialogue, FONT_BODY } from '../../systems/dialogue'
 import { PAL, WORLD_W } from '../../../engine/constants'
 import { audio, sons } from '../../../engine/audio'
 import { voz } from '../../../engine/voz'
@@ -12,11 +12,10 @@ import {
   MESA_VESTIGIOS, MESA_PRATOS, PUXAO_ADRIAN, PUXAO_EVELYN, PUXAO_LIA,
 } from '../../content/demoScript'
 import {
-  MESA_FALTA_AR, MESA_RESPIROU, MESA_SEM_AR, MESA_DE_NOVO_AR,
+  MESA_FALTA_AR, MESA_RESPIROU,
   MESA_ESTOURO, ARREMESSO_ADRIAN, PRATO_NELAS, PRATO_NO_LIAM, PRATO_PENSAMENTO, GRITARIA, GRITARIA_FIM,
 } from '../../content/noite'
 import { TearScene } from './tear'
-import { Respiracao } from '../../ui/respiracao'
 import { memoria } from '../../systems/memoria'
 import { DE_NOVO_MESA } from '../../content/deNovo'
 import { Etiquetas } from '../../ui/etiqueta'
@@ -148,14 +147,7 @@ export class MesaScene implements Scene {
   private tGritaria = 0
   private idxGrito = 0
   private tFundo = 0
-  /** Entre os pratos, ele tenta respirar. Dando certo ou não, piora. */
-  respiracao = new Respiracao()
   private respirou = false
-  /**
-   * O ar não voltou: a tela fecha inteira e a respiração recomeça. É o
-   * momento em que respirar decide — o único game over fora do Tear.
-   */
-  private semAr: number | null = null
   /** 0..1: o ar que faltou. Fecha a tela e não volta inteiro. */
   private sufoco = 0
   private feridas: Ferida[] = []
@@ -272,24 +264,8 @@ export class MesaScene implements Scene {
       }
     }
 
-    if (this.semAr !== null) {
-      this.semAr += dt
-      if (this.semAr > 4.2) {
-        this.semAr = null
-        this.sufoco = 0.6
-        this.dialogue.play(MESA_DE_NOVO_AR, () => this.respirar())
-      }
-      return
-    }
     this.sufoco = Math.max(this.respirou ? 0.35 : 0, this.sufoco - dt * 0.08)
     this.sangrar(dt)
-    if (this.respiracao.ativa) {
-      // Tudo continua em volta. Ele só consegue pensar no ar.
-      this.liam.ofego = 3.2
-      this.liam.tremor = 1
-      this.respiracao.update(dt, ctx.input)
-      return
-    }
 
     if (this.fase === 'gritaria') {
       this.gritar(dt)
@@ -481,37 +457,22 @@ export class MesaScene implements Scene {
     }
   }
 
+  /**
+   * Depois do primeiro prato, o ar falta. Não se joga: ele puxa, entra pela
+   * metade, e o pai ouve. A tela fecha um pouco e não volta inteira.
+   */
   private faltaAr(): void {
     this.respirou = true
     this.destino = null
     this.liam.andando = 0
-    this.dialogue.play(MESA_FALTA_AR, () => this.respirar())
-  }
-
-  /**
-   * Respirar no ritmo. Aqui decide: conseguindo, a cena segue (e o pai ouve
-   * o ar entrando); não conseguindo, a tela fecha inteira e começa de novo.
-   */
-  private respirar(): void {
-    this.respiracao.comecar({
-      ciclos: 2, periodo: 3.4, tolerancia: 0.22,
-      onFim: (ok) => {
-        if (!ok) {
-          this.jogo?.aprender('sem-ar')
-          this.semAr = 0
-          this.sufoco = 1
-          audio.heartbeat(0.4)
-          sons.zumbido(0.9, 3)
-          return
-        }
-        // Piora mesmo assim: a tela fecha um pouco e não abre mais inteira.
-        this.tensao = Math.min(0.97, this.tensao + 0.08)
-        this.sufoco = 1
-        // Ele conseguiu. O pai ouviu o ar entrando.
-        this.jogo?.aprender('respirou')
-        this.jolt = 1
-        this.dialogue.play(MESA_RESPIROU, undefined, 1.2)
-      },
+    this.liam.ofego = 3.2
+    this.liam.tremor = 1
+    audio.heartbeat(0.3)
+    this.dialogue.play([...MESA_FALTA_AR, ...MESA_RESPIROU], () => {
+      this.tensao = Math.min(0.97, this.tensao + 0.08)
+      this.sufoco = 1
+      this.jolt = 1
+      this.liam.tremor = 0
     })
   }
 
@@ -920,35 +881,10 @@ export class MesaScene implements Scene {
     if (this.fase === 'preso' && !this.leitor.aberto && !this.dialogue.active) {
       this.caderno.draw(c, ctx.display.cssW, ctx.display.cssH, this.jogo?.novidade ?? 0)
     }
-    this.respiracao.draw(c, ctx.display.cssW, ctx.display.cssH, ctx.input.touchMode)
     this.dialogue.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
     this.leitor.render(ctx.display.ctx, ctx.display.cssW, ctx.display.cssH)
-    if (this.semAr !== null) this.desenharSemAr(c, ctx.display.cssW, ctx.display.cssH, this.semAr)
   }
 
-  /** O ar que não voltou: a tela fecha das bordas para o meio, e o preto. */
-  private desenharSemAr(c: CanvasRenderingContext2D, W: number, H: number, t: number): void {
-    const fecha = Math.min(1, t / 1.4)
-    c.save()
-    const g = c.createRadialGradient(W / 2, H / 2, Math.max(1, (1 - fecha) * Math.max(W, H) * 0.5), W / 2, H / 2, Math.max(W, H) * 0.75)
-    g.addColorStop(0, `rgba(0,0,0,${fecha})`)
-    g.addColorStop(1, 'rgba(0,0,0,1)')
-    c.fillStyle = g
-    c.fillRect(0, 0, W, H)
-    if (fecha >= 1) {
-      c.fillStyle = '#000'
-      c.fillRect(0, 0, W, H)
-    }
-    const s = Math.max(16, Math.min(W / 34, 30))
-    c.textAlign = 'center'
-    c.font = `italic 500 ${s * 1.4}px ${FONT_FIM}`
-    c.fillStyle = `rgba(232,220,200,${Math.min(1, Math.max(0, (t - 1.4) / 0.8))})`
-    c.fillText(MESA_SEM_AR[0], W / 2, H * 0.5)
-    c.font = `400 ${s * 0.8}px ${FONT_BODY}`
-    c.fillStyle = `rgba(200,190,180,${Math.min(0.8, Math.max(0, (t - 2.4) / 0.8))})`
-    c.fillText(MESA_SEM_AR[1], W / 2, H * 0.5 + s * 1.8)
-    c.restore()
-  }
 
   /**
    * O prato: na mão dele, acima da cabeça, enquanto ele mira; depois no ar,
@@ -1070,22 +1006,18 @@ export class MesaScene implements Scene {
       const sx = ctx.display.toScreenX(this.liam.x)
       const sy = ctx.display.toScreenY(this.liam.y - 40)
       const txt = perto ? perto.rotulo : 'Contar os pratos'
-      const w = c.measureText(txt).width + s * 3.2
+      const w = c.measureText(txt).width + s * 1.8
       c.fillStyle = 'rgba(4,6,11,0.82)'
       c.fillRect(sx - w / 2, sy - s, w, s * 1.9)
-      c.textAlign = 'left'
-      c.fillStyle = PAL.accent
-      c.fillText('E', sx - w / 2 + s * 0.7, sy + s * 0.45)
       c.fillStyle = PAL.ink
-      c.fillText(txt, sx - w / 2 + s * 2, sy + s * 0.45)
-      c.textAlign = 'center'
+      c.fillText(txt, sx, sy + s * 0.45)
     }
 
     c.globalAlpha = 0.45
     c.fillStyle = PAL.inkDim
     c.font = `${s * 0.92}px ${FONT_BODY}`
     c.fillText(
-      `${this.achados.size}/${MESA_VESTIGIOS.length} · ← → anda · E examina · C caderno`,
+      `${this.achados.size}/${MESA_VESTIGIOS.length} vistos · C caderno`,
       cssW / 2, cssH - s * 2,
     )
     c.restore()

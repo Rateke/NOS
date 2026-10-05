@@ -280,7 +280,7 @@ export class Leitor {
     const total = doc.paginas.length
     const rodape = total > 1
       ? `‹   ${this.pagina + 1} / ${total}   ›      ← → vira   ·   Esc fecha`
-      : 'E ou Esc fecha'
+      : 'Esc fecha'
     c.globalAlpha = 0.6 * this.abrindo
     c.fillText(rodape, cssW / 2, Math.min(cssH - s * 0.8, y + h + s * 2))
     c.restore()

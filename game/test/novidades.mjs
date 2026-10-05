@@ -136,29 +136,11 @@ esperar('errando seguido, a sombra dele engole a sala', await s(() => !!window._
 await ate(() => s(() => !window.__nos.scene.fimDeJogo), 9000)
 esperar('e o Tear recomeça, com a sombra pequena de novo', await s(() => window.__nos.scene.sombra.nivel < 0.05 && window.__nos.scene.faseAtual === 'absorvendo'), true)
 
-// 5. A cozinha: a respiração decide. Sem respirar, a tela fecha e recomeça.
-await abrir('mesa', 'demo-mesa')
-await ate(async () => {
-  if (await s(() => window.__nos.scene.respiracao.ativa)) return true
-  // Passa as falas sem segurar nada; os pratos voam sozinhos.
-  if (await s(() => window.__nos.scene.dialogue.active)) await page.keyboard.press('Enter')
-  return false
-}, 60000)
-esperar('na cozinha, o ar falta', await s(() => window.__nos.scene.respiracao.ativa), true)
-await ate(() => s(() => window.__nos.scene.semAr !== null), 15000)
-esperar('sem respirar no ritmo, a tela fecha inteira', await s(() => window.__nos.scene.semAr !== null), true)
-await ate(async () => {
-  if (await s(() => window.__nos.scene.respiracao.ativa)) return true
-  if (await s(() => window.__nos.scene.dialogue.active)) await page.keyboard.press('Enter')
-  return false
-}, 15000)
-esperar('e a respiração recomeça', await s(() => window.__nos.scene.respiracao.ativa), true)
-
-// 6. O prólogo é lembrança: nem sombra nem respiração lá.
+// 5. O prólogo é lembrança: sem sombra lá.
 await abrir('prologo', 'demo-prologo')
-esperar('o prólogo não tem sombra nem respiração', await s(() => [window.__nos.scene.sombra, window.__nos.scene.respiracao]), [null, null])
+esperar('o prólogo não tem sombra', await s(() => window.__nos.scene.sombra ?? null), null)
 
-// 7. O jornal: quatro páginas, diagramado.
+// 6. O jornal: quatro páginas, diagramado.
 await abrir('casa', 'demo-casa')
 await passarFalas()
 await ir('sala', 320)

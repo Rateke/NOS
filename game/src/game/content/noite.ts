@@ -91,16 +91,7 @@ export const MESA_RESPIROU: Line[] = [
 ]
 
 /** Não conseguiu. */
-/** Não respirou: a tela fecha inteira. É o único game over fora do Tear. */
-export const MESA_SEM_AR: [string, string] = [
-  'O ar não voltou.',
-  'de novo: quatro pra dentro, quatro pra fora',
-]
 
-/** Depois do preto, de volta ao ar. */
-export const MESA_DE_NOVO_AR: Line[] = [
-  { text: 'De novo. Quatro pra dentro. Quatro pra fora.' },
-]
 
 /** O primeiro prato que ele leva: a mão no rosto, o sangue, e ele fica. */
 export const PRATO_PENSAMENTO: Line[] = [
@@ -158,6 +149,27 @@ export const TEAR_ENGOLE: [string, string] = [
   'Ele cresceu até não sobrar sala.',
   'o Tear recomeça',
 ]
+
+/**
+ * Dicas depois de cada vez que a sombra engole a sala: uma por fim de jogo,
+ * cada uma mais direta. A terceira já é a resposta — perder de novo não
+ * ensina nada a ninguém. No celular, as teclas viram posições no teclado
+ * da tela.
+ */
+export function dicaDoTear(fins: number, toque: boolean): string[] {
+  const dicas: string[][] = toque
+    ? [
+      ['Cada nota errada e cada pausa longa fazem ele crescer.', 'Toque "caderno da bisavó" para ver as notas, e "escutar o fio" para ouvir a frase antes de tocar.'],
+      ['As teclas vão da mais grave, à esquerda, até a mais aguda:', 'ré · mi · fá · sol · lá · si♭ · dó♯ · ré de cima.'],
+      ['Primeira volta: ré, lá, si♭, lá.', 'Na segunda, a nota que falta é dó♯ (a sétima tecla). Na terceira, é lá (a quinta).'],
+    ]
+    : [
+      ['Cada nota errada e cada pausa longa fazem ele crescer.', 'C abre o caderno da bisavó com as notas. R faz o fio tocar a frase antes de você.'],
+      ['As teclas vão da mais grave à mais aguda:', 'A ré · S mi · D fá · F sol · G lá · H si♭ · J dó♯ · K ré de cima.'],
+      ['Primeira volta: A G H G (ré, lá, si♭, lá).', 'Na segunda, a nota que falta é dó♯ (J). Na terceira, é lá (G).'],
+    ]
+  return dicas[Math.max(0, Math.min(fins, dicas.length) - 1)] ?? []
+}
 
 /**
  * O pai não deixa ele pensar. Cada vez que Liam para, ele chega mais perto e

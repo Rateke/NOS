@@ -83,6 +83,7 @@ const PAGINAS: PaginaCaderno[] = [
         texto: 'Ela perguntou se eu arrumava uma mochila. Só o que coubesse.',
         nota: 'Ela estava te chamando pra ir junto. Você respondeu com a voz dele.',
       },
+      { se: 'recado-mae', texto: 'Recado dela na caixa de costura: "Quando você estiver pronto, vem pra cozinha. Senta do meu lado."', nota: 'Do lado dela ele grita menos. Ela sabia. Ela ia te contar a coisa boa depois do jantar.' },
       { se: 'bilhete-catarina', texto: 'Ela ia embora hoje. Às 23h. Com a gente.' },
       {
         se: 'secretaria',
@@ -110,6 +111,7 @@ const PAGINAS: PaginaCaderno[] = [
     linhas: [
       { texto: 'Eu sempre escrevo cinco linhas quando faço a lista da família.' },
       { se: 'pratos', texto: 'Cinco pratos na mesa. Somos quatro.' },
+      { se: 'linha-lilas', texto: 'Na costura tem um carretel de linha lilás. Ninguém aqui usa lilás.' },
       { se: 'nome', texto: 'E. L. I. — lixaram um nome no batente da rouparia.' },
       { se: 'bater', texto: 'Alguém responde quando eu bato na porta do fim do corredor. Devagar, e depois rápido.' },
       { se: 'bilhete', texto: '"Você não precisa ser melhor. Você já é." — E.' },

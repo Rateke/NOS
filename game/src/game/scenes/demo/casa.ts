@@ -21,7 +21,7 @@ import { musica, TEMA, ESCALA } from '../../../engine/musica'
 import { principal } from '../../../engine/principal'
 import {
   CASA_ABERTURA, CASA_CORREDOR, CASA_ANTES_DA_COZINHA, CASA_PRONTO,
-  CASA_OBJETIVO_INICIAL, CASA_OBJETIVO_COZINHA, CASA_PORTA_FIM, CASA_MELODIA,
+  CASA_OBJETIVO_INICIAL, CASA_OBJETIVO_COZINHA, CASA_OBJETIVO_RECADO, CASA_PORTA_FIM, CASA_MELODIA,
   CASA_MELODIA_DELE, CASA_CHAVE, CASA_CHAVE_DEPOIS, CASA_PAREDE,
   EVELYN_PERGUNTA, EVELYN_RESPIRA_ABRE, EVELYN_RESPIRA_FECHA, EVELYN_OPCOES, LIAM_ECO, EVELYN_DEPOIS_ECO, EVELYN_RESPOSTAS,
   LIAM_DEPOIS_ECO, SOMBRA_REFLEXO, DEPOIS_ABERTURA, DEPOIS_LIA, DEPOIS_RECADO,
@@ -38,7 +38,6 @@ import { Camada } from '../../ui/camada'
 import { CadernoUI } from '../../ui/cadernoUI'
 import { Escolha } from '../../ui/escolha'
 import { memoria } from '../../systems/memoria'
-import { Respiracao } from '../../ui/respiracao'
 import {
   PARTITURA, PARTITURA_TITULO, VIOLONCELO_DE_NOVO, VIOLONCELO_TERMINOU, QUINTO_RETRATO, QUINTO_RETRATO_VAZIO,
 } from '../../content/violoncelo'
@@ -50,6 +49,12 @@ import {
 } from '../../content/deNovo'
 import { ArmarioFloresta } from '../../world/armarioFloresta'
 import { comodoCabana } from '../../world/cabanaDentro'
+import { comodoCostura } from '../../world/costura'
+import { CaixaCostura } from '../../ui/caixaCostura'
+import {
+  CAIXA_DE_NOVO, CAIXA_ABRIU, DOC_RECADO_MAE, RECADO_DEPOIS, CASA_LUZ_COSTURA,
+  LEMBRETE_RECADO, LEMBRETE_COZINHA,
+} from '../../content/costura'
 import { MesaScene } from './mesa'
 import { FimScene } from './fim'
 
@@ -82,7 +87,7 @@ const CAMA_LIAM_X = 128
 const SENTADO_NA_CAMA = 139
 
 /** Quantas coisas lidas até o peito fechar. */
-const LIMITE_CRISE = 7
+const LIMITE_CRISE = 10
 /** Segundos parado até ele sentar no chão. */
 const ESPERA_NINGUEM = 120
 
@@ -184,6 +189,8 @@ export class CasaScene implements Scene {
   private brilhoCabana: { t: number; trocou: boolean } | null = null
   /** Dentro do guarda-roupa, olhando pela fresta. */
   private armario: ArmarioFloresta | null = null
+  /** A caixa de costura da mãe, com a tranca de carretéis (exposta para os testes). */
+  readonly caixa = new CaixaCostura()
   private somFloresta: { abrir: (k: number) => void; parar: () => void } | null = null
   private pararMusicaLia: (() => void) | null = null
   /** A foto da família no ar, jogada pela Lia. */
@@ -248,7 +255,6 @@ export class CasaScene implements Scene {
   private portasPassadas = 0
   private cheiros = 0
   /** A crise de ansiedade: segredo demais, o peito fecha. */
-  respiracao = new Respiracao()
   /** Já teve a crise (para os testes, e para não repetir). */
   criseFeita = false
   private coracaoAlvo = 0
@@ -316,7 +322,7 @@ export class CasaScene implements Scene {
 
   /** Alguma coisa que o jogador só assiste ou escolhe — não é hora de andar. */
   get ocupado(): boolean {
-    return this.cutscene !== null || this.escolha.ativa || this.respiracao.ativa
+    return this.cutscene !== null || this.escolha.ativa
   }
 
   get cutsceneAtual(): string | null {
@@ -368,6 +374,7 @@ export class CasaScene implements Scene {
     const retrato = sabe?.has('retrato-quebrou') ? 'quebrou' : sabe?.has('pegou-retrato') ? 'pegou' : null
     const comodos = [comodoSala(d), comodoCorredor(this.corredorLargura, d), comodoQuarto(d), comodoLia(d, bilhete, retrato)]
     if (d) comodos.push(comodoCabana())
+    else comodos.push(comodoCostura())
     for (const c of comodos) {
       if (d) {
         // Depois do grito: o nó de cada cômodo.
@@ -424,12 +431,6 @@ export class CasaScene implements Scene {
       this.escolha.update(dt, ctx.input)
       return
     }
-    if (this.respiracao.ativa) {
-      this.liam.andando = 0
-      this.liam.ofego = 3
-      this.respiracao.update(dt, ctx.input)
-      return
-    }
     if (this.cutscene && !this.leitor.aberto) {
       this.liam.andando = 0
       if (this.dialogue.active && ctx.input.consumeConfirm()) this.dialogue.confirm()
@@ -467,6 +468,10 @@ export class CasaScene implements Scene {
       this.noArmario(dt, ctx)
       return
     }
+    if (this.caixa.ativa) {
+      this.naCaixa(dt, ctx)
+      return
+    }
 
     if (this.tocando) {
       this.aoPiano(ctx)
@@ -479,6 +484,7 @@ export class CasaScene implements Scene {
       return
     }
     if (this.esperar(dt, ctx)) return
+    if (this.lembrar(dt)) return
 
     if (this.caderno.update(dt, ctx, this.leitor, true)) return
     this.gatilhos(ctx)
@@ -654,6 +660,17 @@ export class CasaScene implements Scene {
     if (v.acao === 'deitar') {
       this.achados.add(v.id)
       this.deitarNaCabana(v.linhas)
+      return
+    }
+    if (v.acao === 'costura') {
+      this.achados.add(v.id)
+      // Aberta, a caixa só guarda o recado: relê quantas vezes quiser.
+      if (this.jogo?.sabe.has('recado-mae')) {
+        this.ler(DOC_RECADO_MAE)
+        return
+      }
+      audio.interact()
+      this.dialogue.play(primeira ? v.linhas : CAIXA_DE_NOVO, () => this.caixa.abrir())
       return
     }
     if (primeira) {
@@ -954,7 +971,9 @@ export class CasaScene implements Scene {
             // Na segunda vez, alguém já sabe. De madrugada, a mãe percebe
             // que ele ainda está acordado (o relógio parado não concorda).
             const extra = this.outraVez ? DE_NOVO_CASA : madrugada() ? CASA_MADRUGADA : []
-            if (extra.length > 0) this.dialogue.play(extra)
+            // E por onde começar: o recado dela, na costura.
+            const recado = this.jogo?.sabe.has('recado-mae') ? [] : CASA_LUZ_COSTURA
+            if (extra.length + recado.length > 0) this.dialogue.play([...extra, ...recado])
           })
         })
       })
@@ -979,17 +998,10 @@ export class CasaScene implements Scene {
       this.evelyn.andando = 0
       this.passoCut = 1
       this.etiquetas.apresentar(ctx.state, 'Evelyn')
-      // Ela chama, repara no ar curto dele, e respira junto. Só depois pergunta.
-      this.dialogue.play([...EVELYN_PERGUNTA.slice(0, 1), ...EVELYN_RESPIRA_ABRE], () => {
-        this.respiracao.comecar({
-          ciclos: 2, periodo: 6, ensino: true,
-          onFim: () => {
-            ctx.state.aprender('respirar')
-            this.liam.ofego = 1
-            this.dialogue.play([...EVELYN_RESPIRA_FECHA, ...EVELYN_PERGUNTA.slice(1)], () => this.evelynPergunta(ctx))
-          },
-        })
-      })
+      // Ela chama, repara no ar curto dele, e só depois pergunta.
+      this.dialogue.play([
+        ...EVELYN_PERGUNTA.slice(0, 1), ...EVELYN_RESPIRA_ABRE, ...EVELYN_RESPIRA_FECHA, ...EVELYN_PERGUNTA.slice(1),
+      ], () => this.evelynPergunta(ctx))
       return
     }
     if (this.passoCut === 2) {
@@ -1230,6 +1242,55 @@ export class CasaScene implements Scene {
     }
   }
 
+  /** Segundos andando livre na etapa atual, e quantos lembretes já vieram nela. */
+  private semRumo = 0
+  private lembretes = 0
+  private etapa: 'recado' | 'cozinha' = 'recado'
+
+  /**
+   * Muito tempo sem chegar ao próximo passo: o próprio Liam lembra. Na
+   * primeira etapa, o recado na costura; depois dele, a cozinha.
+   */
+  private lembrar(dt: number): boolean {
+    if (this.depois) return false
+    const etapa = this.jogo?.sabe.has('recado-mae') ? 'cozinha' : 'recado'
+    if (etapa !== this.etapa) {
+      this.etapa = etapa
+      this.semRumo = 0
+      this.lembretes = 0
+    }
+    // Quem já está no lugar certo não precisa de empurrão.
+    if (etapa === 'recado' && this.atual.id === 'costura') return false
+    this.semRumo += dt
+    const falas = etapa === 'recado' ? LEMBRETE_RECADO : LEMBRETE_COZINHA
+    const fala = falas[this.lembretes]
+    if (!fala || this.semRumo < 70 + this.lembretes * 50) return false
+    this.lembretes++
+    this.semRumo = 0
+    this.destino = null
+    this.liam.andando = 0
+    this.dialogue.play(fala)
+    return true
+  }
+
+  /** Mexendo nos carretéis da caixa de costura. */
+  private naCaixa(dt: number, ctx: SceneCtx): void {
+    this.destino = null
+    this.liam.andando = 0
+    const r = this.caixa.update(dt, ctx.input)
+    if (r === 'girou') sons.tique(false, 0.7)
+    else if (r === 'errou') audio.refuse()
+    else if (r === 'abriu') {
+      sons.estalo()
+      audio.interact()
+    }
+    if (this.caixa.acabou && this.caixa.aberta && !this.jogo?.sabe.has('recado-mae')) {
+      // O recado diz o próximo passo — e deixa o resto da casa aberto.
+      this.jogo?.aprender('recado-mae')
+      this.dialogue.play(CAIXA_ABRIU, () => this.ler(DOC_RECADO_MAE, RECADO_DEPOIS))
+    }
+  }
+
   private sentarComCello(): void {
     this.tocandoCello = true
     this.partituraIdx = 0
@@ -1440,7 +1501,7 @@ export class CasaScene implements Scene {
     this.liam.tremor = 1.2
     sons.zumbido(0.8, 4)
     clima.set({ coracao: 0.7, cordas: 0.25, aperto: 0.6 }, 2)
-    // Só acontece: a respiração que custa caro é a da cozinha.
+    // Só acontece: ninguém precisa apertar nada para passar.
     this.dialogue.play([...CRISE_ABRE, ...CRISE_PASSOU], () => {
       this.jogo?.aprender('crise')
       this.liam.curvatura = 0
@@ -2064,7 +2125,8 @@ export class CasaScene implements Scene {
 
     // A cozinha encerra a exploração: é lá que a noite começa.
     if (p.para === 'cozinha') {
-      if (!this.avisouCozinha) {
+      // Quem leu o recado já sabe que pode entrar: ela pediu.
+      if (!this.avisouCozinha && !this.jogo?.sabe.has('recado-mae')) {
         this.avisouCozinha = true
         this.dialogue.play(CASA_ANTES_DA_COZINHA)
         return
@@ -2190,6 +2252,7 @@ export class CasaScene implements Scene {
       retratoTorto: this.retratoTorto,
       celloFora: this.tocandoCello,
       quintoRetrato: this.quinto,
+      caixaAberta: this.jogo?.sabe.has('recado-mae') ?? false,
     }
 
     if (this.armario) {
@@ -2267,11 +2330,13 @@ export class CasaScene implements Scene {
       if (!this.dialogue.active) this.desenharPartitura(c, cssW, cssH)
       const prox = this.jogo?.sabe.has('partitura') ? undefined : PARTITURA[this.partituraIdx]
       this.cello.draw(ctx.display, prox !== undefined ? { destaque: prox } : {})
-      this.cello.drawDica(ctx.display, ctx.input.touchMode ? 'toque a partitura  ·  toque fora das notas para levantar' : 'toque a partitura  ·  A S D F G H J K  ·  E ou Esc levanta')
+      this.cello.drawDica(ctx.display, ctx.input.touchMode ? 'toque a partitura  ·  toque fora das notas para levantar' : 'toque a partitura  ·  A S D F G H J K  ·  Esc levanta')
     } else if (this.tocando) {
       this.piano.draw(ctx.display, {})
-      this.piano.drawDica(ctx.display, ctx.input.touchMode ? 'toque o que quiser  ·  toque fora das teclas para levantar' : 'toque o que quiser  ·  A S D F G H J K  ·  E ou Esc levanta')
-    } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa && !this.respiracao.ativa) {
+      this.piano.drawDica(ctx.display, ctx.input.touchMode ? 'toque o que quiser  ·  toque fora das teclas para levantar' : 'toque o que quiser  ·  A S D F G H J K  ·  Esc levanta')
+    } else if (this.caixa.ativa) {
+      this.caixa.draw(c, cssW, cssH, ctx.input.touchMode)
+    } else if (!this.leitor.aberto && !this.cutscene && !this.escolha.ativa) {
       this.drawInterface(ctx, cam)
       if (!this.dialogue.active && !this.saindo) this.caderno.draw(c, cssW, cssH, ctx.state.novidade)
     }
@@ -2284,7 +2349,6 @@ export class CasaScene implements Scene {
     this.escolha.draw(c, cssW, cssH)
     if (susto > 0) this.drawPassos(c, cssW, cssH, susto)
     if (this.exclamacao > 0) this.desenharExclamacao(ctx, cam)
-    this.respiracao.draw(c, cssW, cssH, ctx.input.touchMode)
     this.dialogue.render(c, cssW, cssH)
     this.leitor.render(c, cssW, cssH)
     // O instante do susto: o rosto passa por cima de tudo, até das margens.
@@ -2340,8 +2404,7 @@ export class CasaScene implements Scene {
     c.font = `600 ${s}px ${FONT_BODY}`
     c.letterSpacing = '0.16em'
     c.fillStyle = '#ffe2da'
-    const toque = 'ontouchstart' in window ? 'TOQUE' : 'E'
-    c.fillText(`${toque}  ·  ESCONDE O CADERNO`, cssW / 2 + (Math.random() - 0.5) * tremor, cssH * 0.38)
+    c.fillText('ESCONDE O CADERNO', cssW / 2 + (Math.random() - 0.5) * tremor, cssH * 0.38)
     c.letterSpacing = '0em'
     const larg = cssW * 0.3
     c.fillStyle = 'rgba(255,255,255,0.15)'
@@ -2416,15 +2479,13 @@ export class CasaScene implements Scene {
       const sy = ctx.display.toScreenY(this.liam.y - 42)
       const txt = v ? v.rotulo : p?.rotulo ?? ''
       c.font = `${s}px ${FONT_BODY}`
-      const w = c.measureText(txt).width + s * 3.2
+      // Só o que ele vai fazer: a tecla o jogador já conhece.
+      const w = c.measureText(txt).width + s * 1.8
       c.globalAlpha = visto ? 0.42 : 1
       c.fillStyle = 'rgba(4,6,11,0.85)'
       c.fillRect(sx - w / 2, sy - s, w, s * 1.9)
-      c.textAlign = 'left'
-      c.fillStyle = PAL.accent
-      c.fillText('E', sx - w / 2 + s * 0.7, sy + s * 0.45)
       c.fillStyle = PAL.ink
-      c.fillText(txt, sx - w / 2 + s * 2, sy + s * 0.45)
+      c.fillText(txt, sx, sy + s * 0.45)
       c.globalAlpha = 1
     }
 
@@ -2435,10 +2496,11 @@ export class CasaScene implements Scene {
     c.font = `${s * 0.95}px ${FONT_BODY}`
     const objetivo = this.depois
       ? (this.visitados.has('corredor') ? 'a luz âmbar no corredor' : 'ouvir a casa')
-      : this.avisouCozinha ? CASA_OBJETIVO_COZINHA : CASA_OBJETIVO_INICIAL
+      : this.jogo?.sabe.has('recado-mae') ? CASA_OBJETIVO_RECADO
+        : this.avisouCozinha ? CASA_OBJETIVO_COZINHA : CASA_OBJETIVO_INICIAL
     const vistos = [...this.achados].filter((a) => !a.endsWith('+') && a !== 'melodia-dele').length
     c.fillText(
-      `${objetivo}  ·  ${vistos} ${vistos === 1 ? 'vestígio' : 'vestígios'}  ·  ← → anda · E usa · C caderno`,
+      `${objetivo}  ·  ${vistos} ${vistos === 1 ? 'vestígio' : 'vestígios'}  ·  C caderno`,
       cssW / 2, cssH - s * 2,
     )
     c.restore()

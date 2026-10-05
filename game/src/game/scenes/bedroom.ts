@@ -242,14 +242,11 @@ export class BedroomScene implements Scene {
     c.textAlign = 'center'
     const tw = c.measureText(label).width
     const padX = size * 0.7
-    const boxW = tw + padX * 2 + size * 2.1
+    const boxW = tw + padX * 2
     c.fillStyle = 'rgba(4,6,11,0.8)'
     c.fillRect(sx - boxW / 2, sy - size * 1.1, boxW, size * 1.85)
-    c.fillStyle = PAL.accent
-    c.textAlign = 'left'
-    c.fillText('E', sx - boxW / 2 + padX * 0.8, sy + size * 0.35)
     c.fillStyle = PAL.ink
-    c.fillText(label, sx - boxW / 2 + padX * 0.8 + size * 1.5, sy + size * 0.35)
+    c.fillText(label, sx, sy + size * 0.35)
     c.restore()
   }
 

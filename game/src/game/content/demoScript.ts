@@ -369,8 +369,10 @@ export const CASA_MELODIA_DELE: Line[] = [
 ]
 
 /** Objetivo mostrado no canto, que muda conforme ele explora. */
-export const CASA_OBJETIVO_INICIAL = 'guardar as coisas'
+export const CASA_OBJETIVO_INICIAL = 'o recado da mãe, na costura'
 export const CASA_OBJETIVO_COZINHA = 'ir até a cozinha'
+/** Depois do recado: o que ela pediu. */
+export const CASA_OBJETIVO_RECADO = 'a cozinha, do lado da mãe'
 
 export const CASA_ANTES_DA_COZINHA: Line[] = [
   { text: 'Tem voz na cozinha.' },
@@ -465,13 +467,11 @@ export const EVELYN_PERGUNTA: Line[] = [
 
 export const EVELYN_OPCOES = ['Arrumo.', 'Pra onde a gente vai?', 'Mãe, eu tô com medo.']
 
-/**
- * Antes da pergunta, ela repara que ele está respirando curto e faz o
- * exercício junto — o mesmo que ele vai precisar sozinho, mais tarde.
- */
+/** Antes da pergunta, ela repara que ele está respirando curto. */
 export const EVELYN_RESPIRA_ABRE: Line[] = [
   { speaker: 'Evelyn', text: 'Ei. Olha pra mim. Você tá respirando curto de novo.', style: 'speech' },
-  { speaker: 'Evelyn', text: 'Faz comigo, igual quando você era pequeno. Quatro pra dentro, quatro pra fora. Eu conto.', style: 'speech' },
+  { speaker: 'Evelyn', text: 'Quatro pra dentro, quatro pra fora. Igual quando você era pequeno.', style: 'speech' },
+  { text: 'Eu conto junto com ela, baixinho. O peito solta um pouco.' },
 ]
 
 export const EVELYN_RESPIRA_FECHA: Line[] = [

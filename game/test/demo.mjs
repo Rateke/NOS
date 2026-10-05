@@ -368,12 +368,12 @@ for (const alvo of [262, 200, 158, 116]) {
   }
 }
 esperar('os quatro vestígios foram encontrados', (await estado()).achados, 4)
-// Entre os pratos o ar falta. Respirando no ritmo, ele consegue — e o pai grita por isso.
-for (let i = 0; i < 80 && !(await page.evaluate(() => window.__nos.state.sabe.has('respirou') || window.__nos.state.sabe.has('sem-ar'))); i++) {
+// Entre os pratos o ar falta: ele conta como a mãe ensinou — e o pai grita por isso.
+for (let i = 0; i < 80 && !(await page.evaluate(() => !!window.__nos.scene.respirou)); i++) {
   await limpar(1)
   await page.waitForTimeout(150)
 }
-esperar('respirou no ritmo, na cozinha', await page.evaluate(() => window.__nos.state.sabe.has('respirou')), true)
+esperar('o ar falta na cozinha, e ele conta como a mãe ensinou', await page.evaluate(() => !!window.__nos.scene.respirou), true)
 if (OUT) await page.screenshot({ path: `${OUT}/d-achados.png` })
 
 // O fundo do poço é em voz: o pai sobe, Liam sobe pedindo para parar, e as

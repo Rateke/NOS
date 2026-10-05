@@ -133,8 +133,10 @@ export class SombraDoPai {
     c.restore()
   }
 
-  /** A tela do fim deste momento: preto, os olhos, e o que ele diz. */
-  drawFim(c: CanvasRenderingContext2D, cssW: number, cssH: number, t: number, linhas: [string, string]): void {
+  /** A tela do fim deste momento: preto, os olhos, o que ele diz — e uma dica para a próxima vez. */
+  drawFim(
+    c: CanvasRenderingContext2D, cssW: number, cssH: number, t: number, linhas: [string, string], dica: string[] = [],
+  ): void {
     c.save()
     c.fillStyle = '#000'
     c.fillRect(0, 0, cssW, cssH)
@@ -154,6 +156,11 @@ export class SombraDoPai {
     c.font = `400 ${f * 0.8}px ${FONT_BODY}`
     c.fillStyle = `rgba(200,190,180,${Math.min(0.8, Math.max(0, (t - 2) / 0.8))})`
     c.fillText(linhas[1], cssW / 2, cssH * 0.66 + f * 1.8)
+    if (dica.length > 0) {
+      c.font = `italic ${f * 0.78}px ${FONT_BODY}`
+      c.fillStyle = `rgba(226,169,94,${Math.min(0.95, Math.max(0, (t - 2.6) / 0.8))})`
+      dica.forEach((l, i) => c.fillText(l, cssW / 2, cssH * 0.66 + f * (3.6 + i * 1.3), cssW - f * 2))
+    }
     c.restore()
   }
 }

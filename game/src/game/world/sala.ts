@@ -20,9 +20,11 @@ import {
  * quente da obra; mais baixo na exploração, depois que o calor foi embora.
  */
 
-export const SALA_W = 516
+export const SALA_W = 596
 /** Porta da sala para o corredor. */
 export const SALA_PORTA = 484
+/** Porta da sala para o quarto de costura da mãe, no canto. */
+export const SALA_COSTURA = 552
 export const CHAO_Y = 150
 /** Linha onde Liam anda: na frente dos móveis encostados na parede. */
 export const PASSO_Y = 163
@@ -110,6 +112,8 @@ export function drawSalaFundo(c: CanvasRenderingContext2D, e: EstadoSala): void 
   drawAbajur(c, k)
   drawEstante(c, k)
   porta(c, SALA_PORTA, CHAO_Y, { cor: tom([34, 42, 58], [62, 44, 40], k), luz: true })
+  // A costura: a luz da máquina dela escapando por baixo da porta.
+  porta(c, SALA_COSTURA, CHAO_Y, { cor: tom([40, 38, 52], [70, 50, 44], k), luz: true })
   interruptor(c, 506, 100, k)
   cestoTrico(c, 222, CHAO_Y + 8, k)
   chinelos(c, 300, CHAO_Y + 4, rgb(tom([58, 54, 70], [110, 70, 60], k)))
