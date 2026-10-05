@@ -282,7 +282,8 @@ for (let i = 0; i < 6; i++) {
   if (st.fase !== 'absorvendo') break
   await tocar(TEMA[(st.sel ?? 0) % 3])
   // Cada fio tecido abre uma lembrança; a entrada volta quando ela acaba.
-  for (let k = 0; k < 60; k++) {
+  // A última (o corte) dura trinta segundos e não deixa pular.
+  for (let k = 0; k < 180; k++) {
     if (!(await page.evaluate(() => !!window.__nos?.scene?.lembrando))) break
     await page.waitForTimeout(250)
   }

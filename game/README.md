@@ -47,7 +47,8 @@ pela fresta do armário, a sombra do pai que engole o Tear, o jornal),
 `test/costura.mjs` (a porta nova da sala, a caixa de costura, o quarto que
 ajuda quem demora, o recado que aponta a cozinha, as dicas do Tear depois do
 fim), `test/puzzles.mjs` (a gaiola do Dentro, o relógio do corredor e a
-lembrança do corte, que não deixa pular) e
+lembrança do corte, que não deixa pular), `test/primeira.mjs` (a primeira
+partida não tem nada de "de novo"; só o fim grava que terminou) e
 `test/playthrough.mjs` (a fatia
 antiga do quarto). `npm run test:all` roda todos.
 
@@ -779,11 +780,18 @@ mesma interface.
     bipando. O dedo dele mexe. Volta para o menu.
 
 **A segunda partida.** (Spoiler.) Tudo o que muda na segunda vez só muda
-depois de **zerar** a demo: quem começou, cansou e saiu continua com o
-jogo salvo, mas sem nada disso. Quem termina a demo e aperta *Só mais um*
-de novo não volta para a mesma casa: volta para uma casa que lembra. O fio
-fino embaixo do título aparece cortado no meio, com as pontas desfiadas, e o
-tema do menu volta um pouco fora do tom. O pai abre a aula com *"De novo, filho?"* e,
+depois de **zerar** a demo: a marca é gravada uma vez só, quando os
+créditos abrem, e tudo o que muda lê só ela. Quem começou, cansou e saiu
+continua com o jogo salvo, mas sem nada disso (`test/primeira.mjs` confere:
+navegador limpo, nenhuma fala de quem já zerou do menu ao Tear, e a marca
+só aparece depois do fim). A marca fica no navegador: quem quiser ver a
+primeira vez de novo precisa limpar os dados do site. Quem termina a demo e aperta *Só mais um*
+de novo não volta para a mesma casa: volta para uma casa que lembra. No
+título, o S se soltou e alguém está bordando ele de volta: o N e o Ó
+impressos, o S um contorno de pontos de linha âmbar feito até dois terços,
+o fantasma da letra impressa por baixo, a agulha espetada onde o ponto
+parou e a linha sobrando dela, balançando devagar até um nó. O fio embaixo
+do título aparece cortado, e o tema do menu volta um pouco fora do tom. O pai abre a aula com *"De novo, filho?"* e,
 quando Liam acerta, *"Você já sabe essa. Eu sei que sabe."* A Lia, no rádio,
 diz que fala a mesma coisa todo dia. A sombra aparece logo na entrada da
 casa (*"Você já esteve aqui."*), o relógio do corredor já começa parado nas

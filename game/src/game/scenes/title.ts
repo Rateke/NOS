@@ -509,6 +509,72 @@ export class TitleScene implements Scene {
     c.restore()
   }
 
+  /**
+   * Na segunda vez, o S do título se soltou — e alguém está bordando ele de
+   * volta. O N e o Ó ficam impressos; o S é um contorno de pontos de linha
+   * âmbar, feito até mais ou menos dois terços. Embaixo do bordado, o
+   * fantasma da letra impressa que estava ali. A agulha ainda está espetada
+   * onde o ponto parou, e a linha sobra dela, balançando devagar até um nó.
+   */
+  private tituloBordado(c: CanvasRenderingContext2D, cx: number, y: number, tam: number, semAcento: boolean): void {
+    const inteiro = c.measureText('NÓS').width
+    const parte = semAcento ? 'NO' : 'NÓ'
+    const no = c.measureText(parte).width
+    const larguraS = c.measureText('S').width
+    const x0 = cx - inteiro / 2
+    const xS = x0 + no
+    const alinhar = c.textAlign
+    c.textAlign = 'left'
+    c.fillText(parte, x0, y)
+    // O fantasma da letra impressa
+    c.save()
+    c.globalAlpha *= 0.13
+    c.fillText('S', xS, y)
+    c.restore()
+    // O bordado: só até onde a agulha chegou
+    const ate = y - tam * 0.27
+    c.save()
+    c.beginPath()
+    c.rect(xS - tam * 0.2, y - tam * 1.1, larguraS + tam * 0.4, ate - (y - tam * 1.1))
+    c.clip()
+    c.strokeStyle = '#e2a95e'
+    c.lineWidth = Math.max(1.2, tam * 0.017)
+    c.lineCap = 'round'
+    c.setLineDash([tam * 0.04, tam * 0.028])
+    c.strokeText('S', xS, y)
+    c.restore()
+    // A agulha, espetada onde o ponto parou, e a linha que sobra dela
+    const ax = xS + larguraS * 0.62
+    const ay = ate + tam * 0.02
+    c.save()
+    c.strokeStyle = 'rgba(214,218,228,0.9)'
+    c.lineWidth = Math.max(1, tam * 0.011)
+    c.beginPath()
+    c.moveTo(ax - tam * 0.09, ay + tam * 0.07)
+    c.lineTo(ax + tam * 0.1, ay - tam * 0.08)
+    c.stroke()
+    // O olho da agulha
+    c.beginPath()
+    c.ellipse(ax + tam * 0.085, ay - tam * 0.067, tam * 0.012, tam * 0.006, -0.68, 0, Math.PI * 2)
+    c.stroke()
+    const balanca = Math.sin(this.t * 0.8) * tam * 0.04
+    const fx = ax + tam * 0.16 + balanca
+    const fy = ay + tam * 0.42
+    c.strokeStyle = 'rgba(226,169,94,0.85)'
+    c.lineWidth = Math.max(1, tam * 0.009)
+    c.beginPath()
+    c.moveTo(ax + tam * 0.085, ay - tam * 0.067)
+    c.bezierCurveTo(ax + tam * 0.24, ay, ax + tam * 0.08 + balanca * 0.5, ay + tam * 0.22, fx, fy)
+    c.stroke()
+    // O nó na ponta da linha
+    c.fillStyle = '#e2a95e'
+    c.beginPath()
+    c.arc(fx, fy, Math.max(1.5, tam * 0.014), 0, Math.PI * 2)
+    c.fill()
+    c.restore()
+    c.textAlign = alinhar
+  }
+
   /** Antes de tudo: preto e uma linha só. */
   private drawEspera(ctx: SceneCtx): void {
     const c = ctx.display.ctx
@@ -535,16 +601,19 @@ export class TitleScene implements Scene {
 
     // O título se monta antes do menu.
     const aTit = Math.max(0, Math.min(1, (this.desde - 0.9) / 2.4)) * (1 - (this.fase === 'saindo' ? Math.min(1, this.desde / 1.4) : 0))
-    const tam = Math.max(56, Math.min(cssW / 6.4, 176))
+    // Cabe também no celular deitado: o acento do Ó não pode sair por cima.
+    const tam = Math.max(48, Math.min(cssW / 6.4, cssH * 0.26, 176))
     c.globalAlpha = aTit
     c.fillStyle = PAL.ink
     c.font = `400 ${tam}px ${FONT_TITLE}`
     c.letterSpacing = `${0.26 - aTit * 0.04}em`
     const xTit = cssW / 2 + tam * 0.12
-    const yTit = cssH * 0.3
+    const yTit = Math.max(cssH * 0.3, tam * 1.02)
     // Quem digita "nos" vê o acento cair: sem ele, nós vira só um pronome.
     const semAcento = this.acento > 0 && this.acento < 9
-    c.fillText(semAcento ? 'NOS' : 'NÓS', xTit, yTit)
+    // Depois de zerar, o S está sendo bordado de volta.
+    if (this.deNovo) this.tituloBordado(c, xTit, yTit, tam, semAcento)
+    else c.fillText(semAcento ? 'NOS' : 'NÓS', xTit, yTit)
     if (semAcento) this.acentoCaindo(c, xTit, yTit, tam)
     c.letterSpacing = '0em'
 
@@ -552,7 +621,7 @@ export class TitleScene implements Scene {
     c.globalAlpha = aTit * 0.35
     c.fillStyle = PAL.accent
     const fio = tam * 1.4 * aTit
-    const yFio = cssH * 0.3 + tam * 0.2
+    const yFio = yTit + tam * 0.2
     if (this.deNovo) {
       const vao = tam * 0.12
       c.fillRect(cssW / 2 - fio / 2, yFio, fio / 2 - vao, 1)
